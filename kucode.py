@@ -3,9 +3,9 @@ from tkinter import ttk, scrolledtext, messagebox, filedialog
 import string
 
 
-DIGITS = '0123456789'
-ALPHABET = string.ascii_letters
-ALPHADIG = DIGITS + ALPHABET
+NUM = '0123456789'
+LETTERS = string.ascii_letters
+LETTERNUM = NUM + LETTERS
 WHITESPACE = '\n\t '
 
 #RESERVED WORDS - FROM PAPER 
@@ -287,7 +287,7 @@ class Lexer:
                     continue
 
             #RW or ID
-            elif self.current_char in ALPHABET:  # FIXED: Must start with letter only
+            elif self.current_char in LETTERS:  # FIXED: Must start with letter only
                 pos_start = self.pos.copy()
                 id_str = ''
 
@@ -296,7 +296,7 @@ class Lexer:
                 self.advance()
 
                 # Subsequent characters can be letters, digits, or underscore
-                while self.current_char != None and (self.current_char in ALPHADIG or self.current_char == '_'):
+                while self.current_char != None and (self.current_char in LETTERNUM or self.current_char == '_'):
                     id_str += self.current_char
                     self.advance()
 
@@ -313,9 +313,9 @@ class Lexer:
                         self.advance()
 
                     # Check if next word is "check"
-                    if self.current_char != None and self.current_char in ALPHABET:
+                    if self.current_char != None and self.current_char in LETTERS:
                         next_word = ''
-                        while self.current_char != None and (self.current_char in ALPHADIG or self.current_char == '_'):
+                        while self.current_char != None and (self.current_char in LETTERNUM or self.current_char == '_'):
                             next_word += self.current_char
                             self.advance()
 
@@ -388,7 +388,7 @@ class Lexer:
                 continue
 
             #numbers
-            elif self.current_char in DIGITS:
+            elif self.current_char in NUM:
                 pos_start = self.pos.copy()
                 num_str = ''
 
@@ -397,7 +397,7 @@ class Lexer:
                 dec_dig_count = 0
 
                 # Collect digits before decimal
-                while self.current_char != None and self.current_char in DIGITS:
+                while self.current_char != None and self.current_char in NUM:
                     num_str += self.current_char
                     int_dig_count += 1
                     self.advance()
@@ -409,7 +409,7 @@ class Lexer:
                     self.advance()
 
                     # Collect decimal digits
-                    while self.current_char != None and self.current_char in DIGITS:
+                    while self.current_char != None and self.current_char in NUM:
                         num_str += self.current_char
                         dec_dig_count += 1
                         self.advance()
@@ -417,10 +417,10 @@ class Lexer:
                 pos_end = self.pos.copy()
 
                 #CHECK: If followed by letter or underscore, it's an invalid identifier
-                if self.current_char != None and (self.current_char in ALPHABET or self.current_char == '_'):
+                if self.current_char != None and (self.current_char in LETTERS or self.current_char == '_'):
                     # Continue collecting the rest as part of the error
                     error_str = num_str
-                    while self.current_char != None and (self.current_char in ALPHADIG or self.current_char == '_'):
+                    while self.current_char != None and (self.current_char in LETTERNUM or self.current_char == '_'):
                         error_str += self.current_char
                         self.advance()
 
@@ -534,7 +534,7 @@ class Lexer:
                 self.advance()
 
                 # Check if this is a negative number (unary minus)
-                if self.current_char and self.current_char in DIGITS:
+                if self.current_char and self.current_char in NUM:
                     # Look at previous token to determine if this is unary minus
                     if len(tokens) == 0 or tokens[-1].type in [
                         OP_ASSIGNMENT, OP_ADDITION_ASSIGN, OP_SUBTRACTION_ASSIGN,
@@ -555,7 +555,7 @@ class Lexer:
                         dec_dig_count = 0
 
                         # Collect integer digits
-                        while self.current_char != None and self.current_char in DIGITS:
+                        while self.current_char != None and self.current_char in NUM:
                             num_str += self.current_char
                             int_dig_count += 1
                             self.advance()
@@ -567,7 +567,7 @@ class Lexer:
                             self.advance()
 
                             # Collect decimal digits
-                            while self.current_char != None and self.current_char in DIGITS:
+                            while self.current_char != None and self.current_char in NUM:
                                 num_str += self.current_char
                                 dec_dig_count += 1
                                 self.advance()
@@ -575,9 +575,9 @@ class Lexer:
                         num_end = self.pos.copy()
 
                         # Check if followed by letter/underscore (invalid identifier)
-                        if self.current_char != None and (self.current_char in ALPHABET or self.current_char == '_'):
+                        if self.current_char != None and (self.current_char in LETTERS or self.current_char == '_'):
                             error_str = num_str
-                            while self.current_char != None and (self.current_char in ALPHADIG or self.current_char == '_'):
+                            while self.current_char != None and (self.current_char in LETTERNUM or self.current_char == '_'):
                                 error_str += self.current_char
                                 self.advance()
                             errors.append(LexicalError(num_start, self.pos.copy(),
