@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog
 import string
 
-########## DEFINITIONS ##########
+########## THIS IS DEFINITIONS ##########
 DIGITS = '0123456789'
 ALPHABET = string.ascii_letters
 ALPHADIG = DIGITS + ALPHABET
