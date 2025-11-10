@@ -2,13 +2,13 @@ import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog
 import string
 
-########## THIS IS DEFINITIONS ##########
+
 DIGITS = '0123456789'
 ALPHABET = string.ascii_letters
 ALPHADIG = DIGITS + ALPHABET
 WHITESPACE = '\n\t '
 
-########## RESERVED WORDS - FROM PAPER ##########
+#RESERVED WORDS - FROM PAPER 
 keywords = {
     'start', 'finish', 'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool',
     'Yes', 'No', 'none', 'empty', 'read', 'show', 'check', 'otherwise', 'otherwise check',
@@ -16,7 +16,7 @@ keywords = {
     'stop', 'skip', 'give', 'define', 'worldwide', 'fixed', 'list', 'group'
 }
 
-########## TOKEN TYPES - SPECIFIC AS PER PAPER ##########
+
 # Reserved Words - Program Structure
 RW_START = 'RW_START'
 RW_FINISH = 'RW_FINISH'
@@ -141,7 +141,7 @@ WHITESPACE_TAB = 'WHITESPACE'
 NEWLINE = 'NEWLINE'
 EOF = 'EOF'
 
-########## POSITION CLASS ##########
+#position
 
 
 class Position:
@@ -164,7 +164,7 @@ class Position:
     def copy(self):
         return Position(self.idx, self.ln, self.col, self.fullText)
 
-########## ERROR CLASS ##########
+#error
 
 
 class Error:
@@ -184,7 +184,7 @@ class LexicalError(Error):
     def __init__(self, pos_start, pos_end, info):
         super().__init__(pos_start, pos_end, 'Lexical Error', info)
 
-########## TOKEN CLASS ##########
+#token
 
 
 class Token:
@@ -205,7 +205,7 @@ class Token:
             return f'{self.type}: {self.value}'
         return f'{self.type}'
 
-########## MAIN LEXER CLASS ##########
+#lexer
 
 
 class Lexer:
@@ -237,7 +237,7 @@ class Lexer:
         errors = []
 
         while self.current_char != None:
-            ############### WHITESPACE ###############
+            #whitespace
             if self.current_char in WHITESPACE:
                 pos_start = self.pos.copy()
 
@@ -257,7 +257,7 @@ class Lexer:
                                   pos_start, self.pos.copy()))
                     continue
 
-            ############### COMMENTS - BASED ON PAPER (~ for single, ~~ for multi) ###############
+            #comments for both single and multi 
             elif self.current_char == '~':
                 pos_start = self.pos.copy()
                 self.advance()
@@ -286,7 +286,7 @@ class Lexer:
                         Token(COMMENT_SINGLE, comment_val.strip(), pos_start, self.pos.copy()))
                     continue
 
-            ############### KEYWORDS OR IDENTIFIERS ###############
+            #RW or ID
             elif self.current_char in ALPHABET:  # FIXED: Must start with letter only
                 pos_start = self.pos.copy()
                 id_str = ''
@@ -379,7 +379,7 @@ class Lexer:
                         Token(IDENTIFIER, id_str, pos_start, pos_end))
                 continue
 
-            ############### UNDERSCORE AT START - ERROR ###############
+            #error for underscore
             elif self.current_char == '_':
                 pos_start = self.pos.copy()
                 errors.append(LexicalError(pos_start, pos_start,
@@ -387,7 +387,7 @@ class Lexer:
                 self.advance()
                 continue
 
-            ############### NUMBERS ###############
+            #numbers
             elif self.current_char in DIGITS:
                 pos_start = self.pos.copy()
                 num_str = ''
@@ -416,7 +416,7 @@ class Lexer:
 
                 pos_end = self.pos.copy()
 
-                # CRITICAL CHECK: If followed by letter or underscore, it's an invalid identifier
+                #CHECK: If followed by letter or underscore, it's an invalid identifier
                 if self.current_char != None and (self.current_char in ALPHABET or self.current_char == '_'):
                     # Continue collecting the rest as part of the error
                     error_str = num_str
@@ -429,11 +429,11 @@ class Lexer:
                                                f'Invalid identifier "{error_str}" - identifier cannot start with a digit'))
                     continue
 
-                # FIXED: Validate number according to paper rules
+                # Validate number according to paper rules
                 # Integer: max 10 digits
-                if dot_count == 0 and int_dig_count > 10:
+                if dot_count == 0 and int_dig_count > 11:
                     errors.append(LexicalError(pos_start, pos_end,
-                                               f'Integer exceeds maximum digits: {int_dig_count}/10'))
+                                               f'Integer exceeds maximum digits: {int_dig_count}/11'))
                     continue
 
                 if dot_count > 0 and dec_dig_count == 0:
@@ -441,7 +441,7 @@ class Lexer:
                                                f'{num_str} must have digits after decimal point'))
                     continue
 
-                # FIXED: Decimal validation
+                # Decimal validation
                 # decimal: up to 11 decimal places
                 # bigdecimal: up to 16 decimal places
                 if dec_dig_count > 16:
@@ -458,7 +458,7 @@ class Lexer:
                         Token(LIT_DECIMAL, num_str, pos_start, pos_end))
                 continue
 
-            ############### STRING LITERALS - DOUBLE QUOTES ###############
+            #stringlit
             elif self.current_char == '"':
                 pos_start = self.pos.copy()
                 self.advance()
@@ -485,7 +485,7 @@ class Lexer:
                     Token(LIT_STRING, string_val, pos_start, pos_end))
                 continue
 
-            ############### CHARACTER LITERALS - SINGLE QUOTES ###############
+            #charlit
             elif self.current_char == "'":
                 pos_start = self.pos.copy()
                 self.advance()
@@ -511,7 +511,7 @@ class Lexer:
                     Token(LIT_CHARACTER, char_val, pos_start, pos_end))
                 continue
 
-            ############### OPERATORS ###############
+            #operators
             elif self.current_char == '+':
                 pos_start = self.pos.copy()
                 self.advance()
@@ -744,7 +744,7 @@ class Lexer:
                                                'Invalid character "|" (did you mean "||"?)'))
                 continue
 
-            ############### DELIMITERS ###############
+            #delimiters
             elif self.current_char == '(':
                 pos_start = self.pos.copy()
                 self.advance()
@@ -815,7 +815,7 @@ class Lexer:
                     Token(DELIM_DOT, '.', pos_start, self.pos.copy()))
                 continue
 
-            ############### UNRECOGNIZED CHARACTER ###############
+            #unrecognized char
             else:
                 pos_start = self.pos.copy()
                 char = self.current_char
@@ -828,7 +828,7 @@ class Lexer:
         tokens.append(Token(EOF, '', self.pos.copy(), self.pos.copy()))
         return tokens, errors
 
-########## GUI APPLICATION ##########
+#gui tkinter
 
 
 class KuCodeLexerGUI:
@@ -1104,7 +1104,7 @@ finish"""
             messagebox.showerror("Error", f"Failed to save file:\n{str(e)}")
 
 
-########## MAIN EXECUTION ##########
+#main
 if __name__ == "__main__":
     root = tk.Tk()
     app = KuCodeLexerGUI(root)
