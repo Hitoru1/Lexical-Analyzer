@@ -971,7 +971,7 @@ class KuCodeLexerGUI:
         # Load sample code
         self.load_sample_code()
         self.update_line_numbers()
-    s
+    
     def load_sample_code(self):
         sample = """~ Sample KuCode program
 fixed num PI = 3.1416;
