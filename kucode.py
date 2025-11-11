@@ -18,63 +18,63 @@ keywords = {
 
 
 # Reserved Words - Program Structure
-RW_START = 'RW_START'
-RW_FINISH = 'RW_FINISH'
+RW_START = 'RW_start'
+RW_FINISH = 'RW_finish'
 
 # Reserved Words - Data Types
-RW_NUM = 'RW_NUM'
-RW_DECIMAL = 'RW_DECIMAL'
-RW_BIGDECIMAL = 'RW_BIGDECIMAL'
-RW_LETTER = 'RW_LETTER'
-RW_TEXT = 'RW_TEXT'
-RW_BOOL = 'RW_BOOL'
+RW_NUM = 'RW_num'
+RW_DECIMAL = 'RW_decimal'
+RW_BIGDECIMAL = 'RW_bigdecimal'
+RW_LETTER = 'RW_letter'
+RW_TEXT = 'RW_text'
+RW_BOOL = 'RW_bool'
 
 # Reserved Words - Boolean Literals
-RW_YES = 'RW_YES'
-RW_NO = 'RW_NO'
+RW_YES = 'RW_Yes'
+RW_NO = 'RW_No'
 
 # Reserved Words - Null/Empty
-RW_NONE = 'RW_NONE'
-RW_EMPTY = 'RW_EMPTY'
+RW_NONE = 'RW_none'
+RW_EMPTY = 'RW_empty'
 
 # Reserved Words - Constant
-RW_FIXED = 'RW_FIXED'
+RW_FIXED = 'RW_fixed'
 
 # Reserved Words - Input/Output
-RW_READ = 'RW_READ'
-RW_SHOW = 'RW_SHOW'
+RW_READ = 'RW_read'
+RW_SHOW = 'RW_show'
 
 # Reserved Words - Conditionals
-RW_CHECK = 'RW_CHECK'
-RW_OTHERWISE = 'RW_OTHERWISE'
-RW_OTHERWISECHECK = 'RW_OTHERWISECHECK'
+RW_CHECK = 'RW_check'
+RW_OTHERWISE = 'RW_otherwise'
+RW_OTHERWISECHECK = 'RW_otherwise_check'
 
 # Reserved Words - Switch
-RW_FALLBACK = 'RW_FALLBACK'
-RW_SELECT = 'RW_SELECT'
-RW_OPTION = 'RW_OPTION'
+RW_FALLBACK = 'RW_fallback'
+RW_SELECT = 'RW_select'
+RW_OPTION = 'RW_option'
 
 # Reserved Words - Loops
-RW_EACH = 'RW_EACH'
-RW_DURING = 'RW_DURING'
-RW_FROM = 'RW_FROM'
-RW_TO = 'RW_TO'
-RW_STEP = 'RW_STEP'
+RW_EACH = 'RW_each'
+RW_DURING = 'RW_during'
+RW_FROM = 'RW_from'
+RW_TO = 'RW_to'
+RW_STEP = 'RW_step'
 
 # Reserved Words - Control Flow
-RW_STOP = 'RW_STOP'
-RW_SKIP = 'RW_SKIP'
-RW_GIVE = 'RW_GIVE'
+RW_STOP = 'RW_stop'
+RW_SKIP = 'RW_skip'
+RW_GIVE = 'RW_give'
 
 # Reserved Words - Function
-RW_DEFINE = 'RW_DEFINE'
+RW_DEFINE = 'RW_define'
 
 # Reserved Words - Scope
-RW_WORLDWIDE = 'RW_WORLDWIDE'
+RW_WORLDWIDE = 'RW_worldwide'
 
 # Reserved Words - Data Structures
-RW_LIST = 'RW_LIST'
-RW_GROUP = 'RW_GROUP'
+RW_LIST = 'RW_list'
+RW_GROUP = 'RW_group'
 
 # Arithmetic Operators
 OP_ADDITION = 'OP_ADDITION'
@@ -967,11 +967,11 @@ class KuCodeLexerGUI:
                                                        height=6)
         self.terminal_text.pack(
             fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
-
+    '''
         # Load sample code
         self.load_sample_code()
         self.update_line_numbers()
-
+    s
     def load_sample_code(self):
         sample = """~ Sample KuCode program
 fixed num PI = 3.1416;
@@ -990,6 +990,7 @@ start {
 }
 finish"""
         self.source_text.insert(1.0, sample)
+    '''
 
     def update_line_numbers(self, event=None):
         # Get the number of lines in the source text
