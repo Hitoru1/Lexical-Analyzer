@@ -244,7 +244,7 @@ class Lexer:
                 if self.current_char == '\n':
                     self.advance()
                     tokens.append(
-                        Token(NEWLINE, '\\n', pos_start, self.pos.copy()))
+                        Token(NEWLINE, 'NEWLINE', pos_start, self.pos.copy()))
                     continue
                 elif self.current_char == ' ':
                     self.advance()
@@ -253,7 +253,7 @@ class Lexer:
                     continue
                 elif self.current_char == '\t':
                     self.advance()
-                    tokens.append(Token(WHITESPACE_TAB, '\\t',
+                    tokens.append(Token(WHITESPACE_TAB, 'WHITESPACE_TAB',
                                   pos_start, self.pos.copy()))
                     continue
 
