@@ -18,96 +18,96 @@ keywords = {
 
 
 # Reserved Words - Program Structure
-RW_START = 'RW_start'
-RW_FINISH = 'RW_finish'
+RW_START = 'start'
+RW_FINISH = 'finish'
 
 # Reserved Words - Data Types
-RW_NUM = 'RW_num'
-RW_DECIMAL = 'RW_decimal'
-RW_BIGDECIMAL = 'RW_bigdecimal'
-RW_LETTER = 'RW_letter'
-RW_TEXT = 'RW_text'
-RW_BOOL = 'RW_bool'
+RW_NUM = 'num'
+RW_DECIMAL = 'decimal'
+RW_BIGDECIMAL = 'bigdecimal'
+RW_LETTER = 'letter'
+RW_TEXT = 'text'
+RW_BOOL = 'bool'
 
 # Reserved Words - Boolean Literals
-RW_YES = 'RW_Yes'
-RW_NO = 'RW_No'
+RW_YES = 'Yes'
+RW_NO = 'No'
 
 # Reserved Words - Null/Empty
-RW_NONE = 'RW_none'
-RW_EMPTY = 'RW_empty'
+RW_NONE = 'none'
+RW_EMPTY = 'empty'
 
 # Reserved Words - Constant
-RW_FIXED = 'RW_fixed'
+RW_FIXED = 'fixed'
 
 # Reserved Words - Input/Output
-RW_READ = 'RW_read'
-RW_SHOW = 'RW_show'
+RW_READ = 'read'
+RW_SHOW = 'show'
 
 # Reserved Words - Conditionals
-RW_CHECK = 'RW_check'
-RW_OTHERWISE = 'RW_otherwise'
-RW_OTHERWISECHECK = 'RW_otherwise_check'
+RW_CHECK = 'check'
+RW_OTHERWISE = 'otherwise'
+RW_OTHERWISECHECK = 'otherwise_check'
 
 # Reserved Words - Switch
-RW_FALLBACK = 'RW_fallback'
-RW_SELECT = 'RW_select'
-RW_OPTION = 'RW_option'
+RW_FALLBACK = 'fallback'
+RW_SELECT = 'select'
+RW_OPTION = 'option'
 
 # Reserved Words - Loops
-RW_EACH = 'RW_each'
-RW_DURING = 'RW_during'
-RW_FROM = 'RW_from'
-RW_TO = 'RW_to'
-RW_STEP = 'RW_step'
+RW_EACH = 'each'
+RW_DURING = 'during'
+RW_FROM = 'from'
+RW_TO = 'to'
+RW_STEP = 'step'
 
 # Reserved Words - Control Flow
-RW_STOP = 'RW_stop'
-RW_SKIP = 'RW_skip'
-RW_GIVE = 'RW_give'
+RW_STOP = 'stop'
+RW_SKIP = 'skip'
+RW_GIVE = 'give'
 
 # Reserved Words - Function
-RW_DEFINE = 'RW_define'
+RW_DEFINE = 'define'
 
 # Reserved Words - Scope
-RW_WORLDWIDE = 'RW_worldwide'
+RW_WORLDWIDE = 'worldwide'
 
 # Reserved Words - Data Structures
-RW_LIST = 'RW_list'
-RW_GROUP = 'RW_group'
+RW_LIST = 'list'
+RW_GROUP = 'group'
 
 # Arithmetic Operators
-OP_ADDITION = 'OP_ADDITION'
-OP_SUBTRACTION = 'OP_SUBTRACTION'
-OP_MULTIPLICATION = 'OP_MULTIPLICATION'
-OP_DIVISION = 'OP_DIVISION'
-OP_MODULUS = 'OP_MODULUS'
-OP_EXPONENTIATION = 'OP_EXPONENTIATION'
+OP_ADDITION = '+'
+OP_SUBTRACTION = '-'
+OP_MULTIPLICATION = '*'
+OP_DIVISION = '/'
+OP_MODULUS = '%'
+OP_EXPONENTIATION = '**'
 
 # Assignment Operators
-OP_ASSIGNMENT = 'OP_ASSIGNMENT'
-OP_ADDITION_ASSIGN = 'OP_ADDITION_ASSIGN'
-OP_SUBTRACTION_ASSIGN = 'OP_SUBTRACTION_ASSIGN'
-OP_MULTIPLICATION_ASSIGN = 'OP_MULTIPLICATION_ASSIGN'
-OP_DIVISION_ASSIGN = 'OP_DIVISION_ASSIGN'
-OP_MODULUS_ASSIGN = 'OP_MODULUS_ASSIGN'
+OP_ASSIGNMENT = '='
+OP_ADDITION_ASSIGN = '+='
+OP_SUBTRACTION_ASSIGN = '-='
+OP_MULTIPLICATION_ASSIGN = '*='
+OP_DIVISION_ASSIGN = '/='
+OP_MODULUS_ASSIGN = '%='
 
 # Comparison Operators
-OP_EQUAL_TO = 'OP_EQUAL_TO'
-OP_NOT_EQUAL = 'OP_NOT_EQUAL'
-OP_GREATER_THAN = 'OP_GREATER_THAN'
-OP_LESS_THAN = 'OP_LESS_THAN'
-OP_GREATER_EQUAL = 'OP_GREATER_EQUAL'
-OP_LESS_EQUAL = 'OP_LESS_EQUAL'
+OP_EQUAL_TO = '=='
+OP_NOT_EQUAL = '!='
+OP_GREATER_THAN = '>'
+OP_LESS_THAN = '<'
+OP_GREATER_EQUAL = '>='
+OP_LESS_EQUAL = '<='
 
 # Logical Operators
-OP_LOGICAL_AND = 'OP_LOGICAL_AND'
-OP_LOGICAL_OR = 'OP_LOGICAL_OR'
-OP_LOGICAL_NOT = 'OP_LOGICAL_NOT'
+OP_LOGICAL_AND = '&&'
+OP_LOGICAL_OR = '||'
+OP_LOGICAL_NOT = '!'
 
 # Postfix Operators
-OP_INCREMENT = 'OP_INCREMENT'
-OP_DECREMENT = 'OP_DECREMENT'
+OP_INCREMENT = '++'
+OP_DECREMENT = '--'
 
 # Delimiters
 DELIM_LEFT_PAREN = 'DELIM_LEFT_PAREN'
@@ -122,8 +122,8 @@ DELIM_COMMA = 'DELIM_COMMA'
 DELIM_DOT = 'DELIM_DOT'
 
 # Comments
-COMMENT_SINGLE = 'COMMENT_SINGLE'
-COMMENT_MULTI = 'COMMENT_MULTI'
+COMMENT_SINGLE = '~'
+COMMENT_MULTI = '~~'
 
 # Literals
 LIT_NUMBER = 'LIT_NUMBER'
@@ -133,12 +133,12 @@ LIT_CHARACTER = 'LIT_CHARACTER'
 LIT_BOOLEAN = 'LIT_BOOLEAN'
 
 # Identifier
-IDENTIFIER = 'IDENTIFIER'
+IDENTIFIER = 'id'
 
 # Special
-WHITESPACE_SPACE = 'WHITESPACE'
-WHITESPACE_TAB = 'WHITESPACE'
-NEWLINE = 'NEWLINE'
+WHITESPACE_SPACE = 'space'
+WHITESPACE_TAB = 'WHITESPACE_TAB'
+NEWLINE = 'newline'
 EOF = 'EOF'
 
 #position
@@ -244,12 +244,12 @@ class Lexer:
                 if self.current_char == '\n':
                     self.advance()
                     tokens.append(
-                        Token(NEWLINE, 'NEWLINE', pos_start, self.pos.copy()))
+                        Token(NEWLINE, 'newline', pos_start, self.pos.copy()))
                     continue
                 elif self.current_char == ' ':
                     self.advance()
                     tokens.append(
-                        Token(WHITESPACE_SPACE, 'WHITESPACE', pos_start, self.pos.copy()))
+                        Token(WHITESPACE_SPACE, 'space', pos_start, self.pos.copy()))
                     continue
                 elif self.current_char == '\t':
                     self.advance()
@@ -912,7 +912,7 @@ class KuCodeLexerGUI:
             main_container, bg="white", relief=tk.RAISED, bd=1)
         right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
 
-        tokens_label = tk.Label(right_panel, text="Tokens",
+        tokens_label = tk.Label(right_panel, text="Lexical Table",
                                 font=("Arial", 12, "bold"), bg="white", anchor="w")
         tokens_label.pack(fill=tk.X, padx=10, pady=(10, 5))
 
@@ -929,7 +929,7 @@ class KuCodeLexerGUI:
 
         # Treeview
         self.token_table = ttk.Treeview(table_frame,
-                                        columns=("Type", "Lexeme",
+                                        columns=("Lexeme", "Token",
                                                  "Line", "Col"),
                                         show="headings",
                                         yscrollcommand=vsb.set,
@@ -939,13 +939,13 @@ class KuCodeLexerGUI:
         hsb.config(command=self.token_table.xview)
 
         # Configure columns
-        self.token_table.heading("Type", text="Type")
         self.token_table.heading("Lexeme", text="Lexeme")
+        self.token_table.heading("Token", text="Token")
         self.token_table.heading("Line", text="Line")
         self.token_table.heading("Col", text="Col")
 
-        self.token_table.column("Type", width=200)
         self.token_table.column("Lexeme", width=200)
+        self.token_table.column("Token", width=200)
         self.token_table.column("Line", width=80)
         self.token_table.column("Col", width=80)
 
@@ -1040,7 +1040,7 @@ finish"""
                 lexeme = token.value if token.value else "-"
 
                 self.token_table.insert("", tk.END,
-                                        values=(token.type, lexeme, line, col))
+                                        values=(lexeme, token.type, line, col))
 
         # Display terminal message
         if errors:
@@ -1084,7 +1084,7 @@ finish"""
                 f.write("TOKENS\n")
                 f.write("=" * 80 + "\n")
                 f.write(
-                    f"{'Type':<30} {'Lexeme':<30} {'Line':<10} {'Col':<10}\n")
+                    f"{'Lexeme':<30} {'Token':<30} {'Line':<10} {'Col':<10}\n")
                 f.write("-" * 80 + "\n")
 
                 for item in self.token_table.get_children():
