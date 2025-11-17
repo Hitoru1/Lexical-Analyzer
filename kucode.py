@@ -126,11 +126,11 @@ COMMENT_SINGLE = '~'
 COMMENT_MULTI = '~~'
 
 # Literals
-LIT_NUMBER = 'LIT_NUMBER'
-LIT_DECIMAL = 'LIT_DECIMAL'
-LIT_STRING = 'LIT_STRING'
-LIT_CHARACTER = 'LIT_CHARACTER'
-LIT_BOOLEAN = 'LIT_BOOLEAN'
+LIT_NUMBER = 'num_literal'
+LIT_DECIMAL = 'decimal_literal'
+LIT_STRING = 'text_literal'
+LIT_CHARACTER = 'letter_literal'
+LIT_BOOLEAN = 'bool_literal'
 
 # Identifier
 IDENTIFIER = 'id'
@@ -927,10 +927,9 @@ class KuCodeLexerGUI:
         hsb = ttk.Scrollbar(table_frame, orient="horizontal")
         hsb.pack(side=tk.BOTTOM, fill=tk.X)
 
-        # Treeview
+        # Treeview - MODIFIED: Only Lexeme and Token columns
         self.token_table = ttk.Treeview(table_frame,
-                                        columns=("Lexeme", "Token",
-                                                 "Line", "Col"),
+                                        columns=("Lexeme", "Token"),
                                         show="headings",
                                         yscrollcommand=vsb.set,
                                         xscrollcommand=hsb.set)
@@ -938,16 +937,12 @@ class KuCodeLexerGUI:
         vsb.config(command=self.token_table.yview)
         hsb.config(command=self.token_table.xview)
 
-        # Configure columns
+        # Configure columns - MODIFIED: Only 2 columns
         self.token_table.heading("Lexeme", text="Lexeme")
         self.token_table.heading("Token", text="Token")
-        self.token_table.heading("Line", text="Line")
-        self.token_table.heading("Col", text="Col")
 
-        self.token_table.column("Lexeme", width=200)
-        self.token_table.column("Token", width=200)
-        self.token_table.column("Line", width=80)
-        self.token_table.column("Col", width=80)
+        self.token_table.column("Lexeme", width=250)
+        self.token_table.column("Token", width=250)
 
         self.token_table.pack(fill=tk.BOTH, expand=True)
 
@@ -967,30 +962,6 @@ class KuCodeLexerGUI:
                                                        height=6)
         self.terminal_text.pack(
             fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
-    '''
-        # Load sample code
-        self.load_sample_code()
-        self.update_line_numbers()
-    
-    def load_sample_code(self):
-        sample = """~ Sample KuCode program
-fixed num PI = 3.1416;
-num x = -15-5;
-decimal y = 2.5;
-text name = "Axel";
-start {
-    show("Hello, KuCode");
-    check (x > 0) {
-        show("Positive");
-    } otherwise check (x < 0) {
-        show("Negative");
-    } otherwise {
-        show("Zero");
-    }
-}
-finish"""
-        self.source_text.insert(1.0, sample)
-    '''
 
     def update_line_numbers(self, event=None):
         # Get the number of lines in the source text
@@ -1032,15 +1003,12 @@ finish"""
         lexer = Lexer(source)
         tokens, errors = lexer.tokenize()
 
-        # Display tokens (skip only EOF)
+        # Display tokens (skip only EOF) - MODIFIED: Only lexeme and token
         for token in tokens:
             if token.type not in [EOF]:
-                line = token.pos_start.ln + 1
-                col = token.pos_start.col + 1
                 lexeme = token.value if token.value else "-"
-
                 self.token_table.insert("", tk.END,
-                                        values=(lexeme, token.type, line, col))
+                                        values=(lexeme, token.type))
 
         # Display terminal message
         if errors:
@@ -1079,18 +1047,16 @@ finish"""
                 f.write(self.source_text.get(1.0, tk.END))
                 f.write("\n")
 
-                # Write tokens
+                # Write tokens - MODIFIED: Only lexeme and token
                 f.write("=" * 80 + "\n")
                 f.write("TOKENS\n")
                 f.write("=" * 80 + "\n")
-                f.write(
-                    f"{'Lexeme':<30} {'Token':<30} {'Line':<10} {'Col':<10}\n")
+                f.write(f"{'Lexeme':<40} {'Token':<40}\n")
                 f.write("-" * 80 + "\n")
 
                 for item in self.token_table.get_children():
                     values = self.token_table.item(item)['values']
-                    f.write(
-                        f"{values[0]:<30} {values[1]:<30} {values[2]:<10} {values[3]:<10}\n")
+                    f.write(f"{values[0]:<40} {values[1]:<40}\n")
 
                 f.write("\n")
 
