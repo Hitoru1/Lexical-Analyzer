@@ -176,7 +176,7 @@ DELIM_SETS = {
     # space_nline, ,, +, ), ], }, ;
     'string_char': {' ', '\n', ',', '+', ')', ']', '}', ';'},
     # space_nline, null, }, ], ), ,, ;, mathop, relop, logicop, =
-    'lit_delim': {' ', '\n', '}', ']', ')', ',', ';', '+', '-', '*', '/', '%', '=', '!', '<', '>', '&', '|'},
+    'lit_delim': {' ', '\n', '}', ']', ')', ',', ';', '+', '-', '*', '/', '%', '=', '!', '<', '>', '&', '|', ':'},
     # space_nline, mathop, =, <, >, (, ), ], ,, ;, }, &, |, !
     'identifier_del': {' ', '\n', '+', '-', '*', '/', '%', '=', '<', '>', '(', ')', ']', ',', ';', '}', '&', '|', '!'},
     # num only
@@ -261,6 +261,7 @@ TOKEN_DELIMITERS = {
     DELIM_DOT: 'num',
     DELIM_COMMA: 'comma_delim',
     DELIM_SEMICOLON: 'space_nline',
+    DELIM_COLON: 'space_nline',
 
     # Comments
     COMMENT_SINGLE: 'ascii',
@@ -1060,9 +1061,9 @@ class Lexer:
                     continue
 
                 if dot_count == 0:
-                    token = Token(LIT_NUMBER, num_str, pos_start, pos_end)
+                    token = Token(num_str, num_str, pos_start, pos_end)
                 else:
-                    token = Token(LIT_DECIMAL, num_str, pos_start, pos_end)
+                    token = Token(num_str, num_str, pos_start, pos_end)
 
                 tokens.append(token)
                 # Check delimiter
@@ -1102,7 +1103,7 @@ class Lexer:
                                                'Unterminated string literal - missing closing """'))
                     continue
 
-                token = Token(LIT_STRING, string_val, pos_start, pos_end)
+                token = Token(string_val, string_val, pos_start, pos_end)
                 tokens.append(token)
                 # Check delimiter
                 delim_error = self.check_delimiter(
@@ -1147,7 +1148,7 @@ class Lexer:
                                                f'Character literal must contain exactly one character, got "{char_val}"'))
                     continue
 
-                token = Token(LIT_CHARACTER, char_val, pos_start, pos_end)
+                token = Token(char_val, char_val, pos_start, pos_end)
                 tokens.append(token)
                 # Check delimiter
                 delim_error = self.check_delimiter(
@@ -1253,10 +1254,10 @@ class Lexer:
                             continue
 
                         if dot_count == 0:
-                            token = Token(LIT_NUMBER, num_str,
+                            token = Token(num_str, num_str,
                                           num_start, num_end)
                         else:
-                            token = Token(LIT_DECIMAL, num_str,
+                            token = Token(num_str, num_str,
                                           num_start, num_end)
 
                         tokens.append(token)
