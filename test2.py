@@ -278,6 +278,166 @@ TOKEN_DELIMITERS = {
 
 # position
 
+def check_semicolon_requirements(tokens):
+    """
+    Check for missing semicolons after certain statements.
+    Returns a list of potential errors.
+    """
+    errors = []
+    
+    i = 0
+    while i < len(tokens):
+        token = tokens[i]
+        
+        # Helper: get next meaningful token (skip whitespace)
+        def get_next_meaningful(idx):
+            j = idx + 1
+            while j < len(tokens) and tokens[j].type in {WHITESPACE_SPACE, WHITESPACE_TAB}:
+                j += 1
+            return j, tokens[j] if j < len(tokens) else None
+        
+        # Check variable declarations: datatype identifier = value NEWLINE
+        if token.type in {RW_NUM, RW_DECIMAL, RW_BIGDECIMAL, RW_TEXT, 
+                          RW_LETTER, RW_BOOL, RW_LIST, RW_FIXED}:
+            j = i + 1
+            found_assign = False
+            last_val_idx = -1
+            
+            while j < len(tokens):
+                if tokens[j].type == NEWLINE:
+                    if found_assign and last_val_idx > 0:
+                        has_semi = any(tokens[k].type == DELIM_SEMICOLON 
+                                      for k in range(last_val_idx + 1, j))
+                        if not has_semi:
+                            errors.append(LexicalError(
+                                tokens[last_val_idx].pos_end,
+                                tokens[j].pos_start,
+                                f'Missing semicolon ";" after "{tokens[last_val_idx].value}"'
+                            ))
+                    break
+                elif tokens[j].type == OP_ASSIGNMENT:
+                    found_assign = True
+                elif tokens[j].type in {LIT_NUMBER, LIT_DECIMAL, LIT_STRING, 
+                                        LIT_CHARACTER, LIT_BOOLEAN, IDENTIFIER,
+                                        DELIM_RIGHT_PAREN, DELIM_RIGHT_BRACKET}:
+                    last_val_idx = j
+                elif tokens[j].type == DELIM_SEMICOLON:
+                    break
+                elif tokens[j].type == DELIM_LEFT_BRACE:
+                    break
+                j += 1
+        
+        # Check show() and read() calls
+        if token.type in {RW_SHOW, RW_READ}:
+            j = i + 1
+            paren_depth = 0
+            close_paren_idx = -1
+            
+            while j < len(tokens):
+                if tokens[j].type == DELIM_LEFT_PAREN:
+                    paren_depth += 1
+                elif tokens[j].type == DELIM_RIGHT_PAREN:
+                    paren_depth -= 1
+                    if paren_depth == 0:
+                        close_paren_idx = j
+                elif tokens[j].type == NEWLINE and close_paren_idx > 0:
+                    has_semi = any(tokens[k].type == DELIM_SEMICOLON 
+                                  for k in range(close_paren_idx + 1, j))
+                    if not has_semi:
+                        errors.append(LexicalError(
+                            tokens[close_paren_idx].pos_end,
+                            tokens[j].pos_start,
+                            f'Missing semicolon ";" after {token.value}() call'
+                        ))
+                    break
+                elif tokens[j].type == NEWLINE:
+                    break
+                j += 1
+        
+        # Check increment/decrement: x++ or x--
+        if token.type in {OP_INCREMENT, OP_DECREMENT}:
+            next_idx, next_tok = get_next_meaningful(i)
+            if next_tok and next_tok.type == NEWLINE:
+                has_semi = any(tokens[k].type == DELIM_SEMICOLON 
+                              for k in range(i + 1, next_idx))
+                if not has_semi:
+                    errors.append(LexicalError(
+                        token.pos_end,
+                        next_tok.pos_start,
+                        f'Missing semicolon ";" after "{token.value}"'
+                    ))
+        
+        # Check give statement
+        if token.type == RW_GIVE:
+            j = i + 1
+            last_val_idx = -1
+            
+            while j < len(tokens):
+                if tokens[j].type == NEWLINE:
+                    if last_val_idx > 0:
+                        has_semi = any(tokens[k].type == DELIM_SEMICOLON 
+                                      for k in range(last_val_idx + 1, j))
+                        if not has_semi:
+                            errors.append(LexicalError(
+                                tokens[last_val_idx].pos_end,
+                                tokens[j].pos_start,
+                                f'Missing semicolon ";" after return value'
+                            ))
+                    break
+                elif tokens[j].type in {LIT_NUMBER, LIT_DECIMAL, LIT_STRING,
+                                        LIT_CHARACTER, LIT_BOOLEAN, IDENTIFIER,
+                                        DELIM_RIGHT_PAREN}:
+                    last_val_idx = j
+                elif tokens[j].type == DELIM_SEMICOLON:
+                    break
+                j += 1
+        
+        # Check stop/skip keywords
+        if token.type in {RW_STOP, RW_SKIP}:
+            next_idx, next_tok = get_next_meaningful(i)
+            if next_tok and next_tok.type == NEWLINE:
+                has_semi = any(tokens[k].type == DELIM_SEMICOLON 
+                              for k in range(i + 1, next_idx))
+                if not has_semi:
+                    errors.append(LexicalError(
+                        token.pos_end,
+                        next_tok.pos_start,
+                        f'Missing semicolon ";" after "{token.value}"'
+                    ))
+        
+        # Check assignment statements: identifier = value NEWLINE
+        if token.type == IDENTIFIER:
+            next_idx, next_tok = get_next_meaningful(i)
+            if next_tok and next_tok.type == OP_ASSIGNMENT:
+                j = next_idx + 1
+                last_val_idx = -1
+                
+                while j < len(tokens):
+                    if tokens[j].type == NEWLINE:
+                        if last_val_idx > 0:
+                            has_semi = any(tokens[k].type == DELIM_SEMICOLON 
+                                          for k in range(last_val_idx + 1, j))
+                            if not has_semi:
+                                errors.append(LexicalError(
+                                    tokens[last_val_idx].pos_end,
+                                    tokens[j].pos_start,
+                                    f'Missing semicolon ";" after "{tokens[last_val_idx].value}"'
+                                ))
+                        break
+                    elif tokens[j].type in {LIT_NUMBER, LIT_DECIMAL, LIT_STRING,
+                                            LIT_CHARACTER, LIT_BOOLEAN, IDENTIFIER,
+                                            DELIM_RIGHT_PAREN, DELIM_RIGHT_BRACKET}:
+                        last_val_idx = j
+                    elif tokens[j].type == DELIM_SEMICOLON:
+                        break
+                    elif tokens[j].type == DELIM_LEFT_BRACE:
+                        break
+                    j += 1
+        
+        i += 1
+    
+    return errors
+
 
 class Position:
     def __init__(self, idx, ln, col, fullText):
@@ -1462,6 +1622,11 @@ class Lexer:
 
         # Always append EOF at the end
         tokens.append(Token(EOF, '', self.pos.copy(), self.pos.copy()))
+        
+        # NEW: Check for missing semicolons
+        semicolon_errors = check_semicolon_requirements(tokens)
+        errors.extend(semicolon_errors)
+        
         return tokens, errors
 
 # gui tkinter
