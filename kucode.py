@@ -146,7 +146,7 @@ DELIM_SETS = {
     # space only
     'space': {' '},
     # space, newline
-    'space_nline': {' ', '\n'},
+    'space_nline': {' ', '\n', '{', '}'},
     # space, {
     'delim1': {' ', '{'},
     # space, (
