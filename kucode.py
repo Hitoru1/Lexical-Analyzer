@@ -141,6 +141,141 @@ WHITESPACE_TAB = 'WHITESPACE_TAB'
 NEWLINE = 'newline'
 EOF = 'EOF'
 
+# Delimiter sets based on regular definitions
+DELIM_SETS = {
+    # space only
+    'space': {' '},
+    # space, newline
+    'space_nline': {' ', '\n'},
+    # space, {
+    'delim1': {' ', '{'},
+    # space, (
+    'delim2': {' ', '('},
+    # space, letternum, (, ", '
+    'delim3': {' ', '(', '"', "'"} | set(LETTERNUM),
+    # space, id, "
+    'escseq_delim': {' ', '"'} | set(LETTERNUM) | {'_'},
+    # ;
+    'sem_col': {';'},
+    # space, letternum, (
+    'op_delim': {' ', '('} | set(LETTERNUM),
+    # (
+    'open_paren': {'('},
+    # space, letternum, (, ", {, [
+    'comma_delim': {' ', '(', '"', '{', '['} | set(LETTERNUM),
+    # space, num, ", [, ]
+    'open_list': {' ', '"', '[', ']'} | set(NUM),
+    # space, ;, ,, =
+    'close_list': {' ', ';', ',', '='},
+    # space, letternum, ', ", ), !
+    'openparen_delim': {' ', "'", '"', ')', '!'} | set(LETTERNUM),
+    # space, mathop, logicop, relop, ;, {, )
+    'closeparen_delim': {' ', '+', '-', '*', '/', '%', '&', '|', '!', '=', '<', '>', ';', '{', ')'},
+    # space, &, |, !, ;
+    'bool_delim': {' ', '&', '|', '!', ';'},
+    # space_nline, ,, +, ), ], }, ;
+    'string_char': {' ', '\n', ',', '+', ')', ']', '}', ';'},
+    # space_nline, null, }, ], ), ,, ;, mathop, relop, logicop, =
+    'lit_delim': {' ', '\n', '}', ']', ')', ',', ';', '+', '-', '*', '/', '%', '=', '!', '<', '>', '&', '|'},
+    # space_nline, mathop, =, <, >, (, ), ], ,, ;, }, &, |, !
+    'identifier_del': {' ', '\n', '+', '-', '*', '/', '%', '=', '<', '>', '(', ')', ']', ',', ';', '}', '&', '|', '!'},
+    # num only
+    'num': set(NUM),
+    # space, num
+    'id3': {' '} | set(NUM),
+    # any ascii character
+    'ascii': set(string.printable),
+    # = delimiter (special for assignment)
+    'delim7': {' ', '\n', '"', "'"} | set(LETTERNUM),
+}
+
+# Token to delimiter mapping
+TOKEN_DELIMITERS = {
+    # Reserved Words
+    RW_BIGDECIMAL: 'space',
+    RW_BOOL: 'space',
+    RW_CHECK: 'delim2',
+    RW_DECIMAL: 'space',
+    RW_DEFINE: 'space',
+    RW_DURING: 'space',
+    RW_EACH: 'delim2',
+    RW_EMPTY: 'space',
+    RW_FALLBACK: 'sem_col',  # Actually should be : but will check as ;
+    RW_FINISH: 'space_nline',
+    RW_FROM: 'space',
+    RW_FIXED: 'space',
+    RW_GIVE: 'space',
+    RW_GROUP: 'space',
+    RW_LETTER: 'space',
+    RW_NUM: 'space',
+    RW_NONE: 'sem_col',
+    RW_NO: 'bool_delim',
+    RW_OPTION: 'space',
+    RW_OTHERWISE: 'delim1',
+    RW_OTHERWISECHECK: 'delim1',
+    RW_READ: 'open_paren',
+    RW_SELECT: 'delim2',
+    RW_SHOW: 'open_paren',
+    RW_SKIP: 'sem_col',
+    RW_START: 'delim1',
+    RW_STEP: 'id3',
+    RW_STOP: 'sem_col',
+    RW_TEXT: 'space',
+    RW_TO: 'space',
+    RW_WORLDWIDE: 'space',
+    RW_YES: 'bool_delim',
+    RW_LIST: 'space',
+    
+    # Operators
+    OP_ADDITION: 'delim3',
+    OP_INCREMENT: 'sem_col',
+    OP_ADDITION_ASSIGN: 'op_delim',
+    OP_SUBTRACTION: 'op_delim',
+    OP_DECREMENT: 'sem_col',
+    OP_SUBTRACTION_ASSIGN: 'op_delim',
+    OP_DIVISION: 'op_delim',
+    OP_DIVISION_ASSIGN: 'op_delim',
+    OP_MULTIPLICATION: 'op_delim',
+    OP_MULTIPLICATION_ASSIGN: 'op_delim',
+    OP_EXPONENTIATION: 'op_delim',
+    OP_MODULUS: 'op_delim',
+    OP_MODULUS_ASSIGN: 'op_delim',
+    OP_ASSIGNMENT: 'delim7',
+    OP_EQUAL_TO: 'delim3',
+    OP_LOGICAL_NOT: 'open_paren',
+    OP_NOT_EQUAL: 'delim3',
+    OP_GREATER_THAN: 'op_delim',
+    OP_GREATER_EQUAL: 'op_delim',
+    OP_LESS_THAN: 'op_delim',
+    OP_LESS_EQUAL: 'op_delim',
+    OP_LOGICAL_AND: 'op_delim',
+    OP_LOGICAL_OR: 'op_delim',
+    
+    # Delimiters
+    DELIM_LEFT_BRACKET: 'open_list',
+    DELIM_RIGHT_BRACKET: 'close_list',
+    DELIM_LEFT_BRACE: 'space_nline',
+    DELIM_RIGHT_BRACE: 'space_nline',
+    DELIM_LEFT_PAREN: 'openparen_delim',
+    DELIM_RIGHT_PAREN: 'closeparen_delim',
+    DELIM_DOT: 'num',
+    DELIM_COMMA: 'comma_delim',
+    DELIM_SEMICOLON: 'space_nline',
+    
+    # Comments
+    COMMENT_SINGLE: 'ascii',
+    COMMENT_MULTI: 'ascii',
+    
+    # Literals
+    LIT_NUMBER: 'lit_delim',
+    LIT_DECIMAL: 'lit_delim',
+    LIT_STRING: 'string_char',
+    LIT_CHARACTER: 'string_char',
+    
+    # Identifier
+    IDENTIFIER: 'identifier_del',
+}
+
 #position
 
 
@@ -232,6 +367,67 @@ class Lexer:
             return self.source[peek_pos]
         return None
 
+    def check_delimiter(self, token_type, token_value, pos_end):
+        """Check if the character following a token matches the expected delimiter"""
+        # Skip delimiter check for certain token types
+        skip_check = [NEWLINE, WHITESPACE_SPACE, WHITESPACE_TAB, EOF, COMMENT_SINGLE, COMMENT_MULTI]
+        if token_type in skip_check:
+            return None
+        
+        # Get expected delimiter set
+        if token_type not in TOKEN_DELIMITERS:
+            return None
+            
+        delimiter_type = TOKEN_DELIMITERS[token_type]
+        expected_delims = DELIM_SETS.get(delimiter_type, set())
+        
+        # Special case for fallback - expects ':'
+        if token_type == RW_FALLBACK:
+            if self.current_char != ':':
+                return LexicalError(pos_end, pos_end, 
+                    f'Expected ":" after "{token_value}", got "{self.current_char if self.current_char else "EOF"}"')
+            return None
+        
+        # Check current character
+        next_char = self.current_char if self.current_char else ''
+        
+        # EOF is valid for certain delimiters
+        if next_char == '' and delimiter_type in ['space_nline', 'lit_delim', 'identifier_del', 'closeparen_delim', 'string_char']:
+            return None
+        
+        if next_char not in expected_delims:
+            # Build friendly error message
+            delim_names = {
+                'space': 'space',
+                'space_nline': 'space or newline',
+                'delim1': 'space or "{"',
+                'delim2': 'space or "("',
+                'delim3': 'space, letter, digit, "(", """ or "\'"',
+                'sem_col': '";"',
+                'op_delim': 'space, letter, digit or "("',
+                'open_paren': '"("',
+                'comma_delim': 'space, letter, digit, "(", """, "{" or "["',
+                'open_list': 'space, digit, """, "[" or "]"',
+                'close_list': 'space, ";", "," or "="',
+                'openparen_delim': 'space, letter, digit, "\'", """, ")" or "!"',
+                'closeparen_delim': 'space, operator, ";", "{" or ")"',
+                'bool_delim': 'space, "&", "|", "!" or ";"',
+                'string_char': 'space, newline, ",", "+", ")", "]", "}" or ";"',
+                'lit_delim': 'space, newline, operator, delimiter or ";"',
+                'identifier_del': 'space, newline, operator, delimiter or punctuation',
+                'num': 'digit',
+                'id3': 'space or digit',
+                'delim7': 'space, newline, letter, digit, """ or "\'"',
+            }
+            
+            expected = delim_names.get(delimiter_type, delimiter_type)
+            actual = f'"{next_char}"' if next_char else 'EOF'
+            
+            return LexicalError(pos_end, pos_end, 
+                f'Invalid delimiter after "{token_value}": expected {expected}, got {actual}')
+        
+        return None
+
     def tokenize(self):
         tokens = []
         errors = []
@@ -287,7 +483,7 @@ class Lexer:
                     continue
 
             #RW or ID
-            elif self.current_char in LETTERS:  # FIXED: Must start with letter only
+            elif self.current_char in LETTERS:
                 pos_start = self.pos.copy()
                 id_str = ''
 
@@ -304,15 +500,12 @@ class Lexer:
 
                 # Check for multi-word keywords (e.g., "otherwise check")
                 if id_str == 'otherwise':
-                    # Save current position to potentially rollback
                     saved_pos = self.pos.copy()
                     saved_char = self.current_char
 
-                    # Skip whitespace
                     while self.current_char != None and self.current_char in ' \t':
                         self.advance()
 
-                    # Check if next word is "check"
                     if self.current_char != None and self.current_char in LETTERS:
                         next_word = ''
                         while self.current_char != None and (self.current_char in LETTERNUM or self.current_char == '_'):
@@ -320,27 +513,31 @@ class Lexer:
                             self.advance()
 
                         if next_word == 'check':
-                            # It's "otherwise check"
                             pos_end = self.pos.copy()
-                            tokens.append(
-                                Token(RW_OTHERWISECHECK, 'otherwise check', pos_start, pos_end))
+                            token = Token(RW_OTHERWISECHECK, 'otherwise check', pos_start, pos_end)
+                            tokens.append(token)
+                            # Check delimiter
+                            delim_error = self.check_delimiter(token.type, token.value, pos_end)
+                            if delim_error:
+                                errors.append(delim_error)
                             continue
                         else:
-                            # Not "otherwise check", rollback and process "otherwise" alone
                             self.pos = saved_pos
                             self.current_char = saved_char
                             pos_end = saved_pos
                     else:
-                        # No word after "otherwise", process it alone
                         pos_end = saved_pos
 
-                    tokens.append(
-                        Token(RW_OTHERWISE, 'otherwise', pos_start, pos_end))
+                    token = Token(RW_OTHERWISE, 'otherwise', pos_start, pos_end)
+                    tokens.append(token)
+                    # Check delimiter
+                    delim_error = self.check_delimiter(token.type, token.value, pos_end)
+                    if delim_error:
+                        errors.append(delim_error)
                     continue
 
                 # Check if it's a keyword
                 if id_str in keywords:
-                    # Map to appropriate token type
                     token_map = {
                         'start': RW_START, 'finish': RW_FINISH,
                         'num': RW_NUM, 'decimal': RW_DECIMAL, 'bigdecimal': RW_BIGDECIMAL,
@@ -350,7 +547,6 @@ class Lexer:
                         'fixed': RW_FIXED,
                         'read': RW_READ, 'show': RW_SHOW,
                         'check': RW_CHECK, 'otherwise': RW_OTHERWISE,
-                        'otherwise check': RW_OTHERWISECHECK,
                         'fallback': RW_FALLBACK, 'select': RW_SELECT, 'option': RW_OPTION,
                         'each': RW_EACH, 'during': RW_DURING,
                         'from': RW_FROM, 'to': RW_TO, 'step': RW_STEP,
@@ -360,23 +556,28 @@ class Lexer:
                         'list': RW_LIST, 'group': RW_GROUP
                     }
 
-                    # Check for boolean literals
                     if id_str in ['Yes', 'No']:
-                        tokens.append(
-                            Token(LIT_BOOLEAN, id_str, pos_start, pos_end))
+                        token = Token(LIT_BOOLEAN, id_str, pos_start, pos_end)
                     else:
-                        tokens.append(
-                            Token(token_map[id_str], id_str, pos_start, pos_end))
+                        token = Token(token_map[id_str], id_str, pos_start, pos_end)
+                    
+                    tokens.append(token)
+                    # Check delimiter
+                    delim_error = self.check_delimiter(token.type, token.value, pos_end)
+                    if delim_error:
+                        errors.append(delim_error)
                 else:
-                    # Check identifier length (max 20 characters according to paper)
                     if len(id_str) > 20:
                         errors.append(LexicalError(pos_start, pos_end,
                                                    f'Identifier "{id_str}" exceeds maximum length: {len(id_str)}/20'))
                         continue
 
-                    # Valid identifier
-                    tokens.append(
-                        Token(IDENTIFIER, id_str, pos_start, pos_end))
+                    token = Token(IDENTIFIER, id_str, pos_start, pos_end)
+                    tokens.append(token)
+                    # Check delimiter
+                    delim_error = self.check_delimiter(token.type, token.value, pos_end)
+                    if delim_error:
+                        errors.append(delim_error)
                 continue
 
             #error for underscore
@@ -396,19 +597,16 @@ class Lexer:
                 int_dig_count = 0
                 dec_dig_count = 0
 
-                # Collect digits before decimal
                 while self.current_char != None and self.current_char in NUM:
                     num_str += self.current_char
                     int_dig_count += 1
                     self.advance()
 
-                # Check for decimal point
                 if self.current_char == '.':
                     num_str += self.current_char
                     dot_count += 1
                     self.advance()
 
-                    # Collect decimal digits
                     while self.current_char != None and self.current_char in NUM:
                         num_str += self.current_char
                         dec_dig_count += 1
@@ -416,9 +614,7 @@ class Lexer:
 
                 pos_end = self.pos.copy()
 
-                #CHECK: If followed by letter or underscore, it's an invalid identifier
                 if self.current_char != None and (self.current_char in LETTERS or self.current_char == '_'):
-                    # Continue collecting the rest as part of the error
                     error_str = num_str
                     while self.current_char != None and (self.current_char in LETTERNUM or self.current_char == '_'):
                         error_str += self.current_char
@@ -429,8 +625,6 @@ class Lexer:
                                                f'Invalid identifier "{error_str}" - identifier cannot start with a digit'))
                     continue
 
-                # Validate number according to paper rules
-                # Integer: max 10 digits
                 if dot_count == 0 and int_dig_count > 11:
                     errors.append(LexicalError(pos_start, pos_end,
                                                f'Integer exceeds maximum digits: {int_dig_count}/11'))
@@ -441,21 +635,21 @@ class Lexer:
                                                f'{num_str} must have digits after decimal point'))
                     continue
 
-                # Decimal validation
-                # decimal: up to 11 decimal places
-                # bigdecimal: up to 16 decimal places
                 if dec_dig_count > 16:
                     errors.append(LexicalError(pos_start, pos_end,
                                                f'Decimal part exceeds maximum digits: {dec_dig_count}/16 (bigdecimal limit)'))
                     continue
 
-                # Integer literal
                 if dot_count == 0:
-                    tokens.append(
-                        Token(LIT_NUMBER, num_str, pos_start, pos_end))
+                    token = Token(LIT_NUMBER, num_str, pos_start, pos_end)
                 else:
-                    tokens.append(
-                        Token(LIT_DECIMAL, num_str, pos_start, pos_end))
+                    token = Token(LIT_DECIMAL, num_str, pos_start, pos_end)
+                
+                tokens.append(token)
+                # Check delimiter
+                delim_error = self.check_delimiter(token.type, token.value, pos_end)
+                if delim_error:
+                    errors.append(delim_error)
                 continue
 
             #stringlit
@@ -463,11 +657,11 @@ class Lexer:
                 pos_start = self.pos.copy()
                 self.advance()
                 string_val = ''
+                found_closing = False
 
                 while self.current_char != None and self.current_char != '"':
                     if self.current_char == '\\':
                         self.advance()
-                        # Escape sequences from paper: \n, \t, \", \', \\
                         if self.current_char in ['n', 't', '\\', '"', "'"]:
                             string_val += '\\' + self.current_char
                             self.advance()
@@ -478,11 +672,22 @@ class Lexer:
                         self.advance()
 
                 if self.current_char == '"':
+                    found_closing = True
                     self.advance()
 
                 pos_end = self.pos.copy()
-                tokens.append(
-                    Token(LIT_STRING, string_val, pos_start, pos_end))
+                
+                if not found_closing:
+                    errors.append(LexicalError(pos_start, pos_end, 
+                        'Unterminated string literal - missing closing """'))
+                    continue
+                
+                token = Token(LIT_STRING, string_val, pos_start, pos_end)
+                tokens.append(token)
+                # Check delimiter
+                delim_error = self.check_delimiter(token.type, token.value, pos_end)
+                if delim_error:
+                    errors.append(delim_error)
                 continue
 
             #charlit
@@ -490,6 +695,7 @@ class Lexer:
                 pos_start = self.pos.copy()
                 self.advance()
                 char_val = ''
+                found_closing = False
 
                 while self.current_char != None and self.current_char != "'":
                     if self.current_char == '\\':
@@ -504,11 +710,28 @@ class Lexer:
                         self.advance()
 
                 if self.current_char == "'":
+                    found_closing = True
                     self.advance()
 
                 pos_end = self.pos.copy()
-                tokens.append(
-                    Token(LIT_CHARACTER, char_val, pos_start, pos_end))
+                
+                if not found_closing:
+                    errors.append(LexicalError(pos_start, pos_end, 
+                        'Unterminated character literal - missing closing "\'"'))
+                    continue
+                
+                # Check if it's a single character (excluding escape sequences)
+                if len(char_val) > 2 or (len(char_val) == 2 and char_val[0] != '\\'):
+                    errors.append(LexicalError(pos_start, pos_end, 
+                        f'Character literal must contain exactly one character, got "{char_val}"'))
+                    continue
+                
+                token = Token(LIT_CHARACTER, char_val, pos_start, pos_end)
+                tokens.append(token)
+                # Check delimiter
+                delim_error = self.check_delimiter(token.type, token.value, pos_end)
+                if delim_error:
+                    errors.append(delim_error)
                 continue
 
             #operators
@@ -518,15 +741,24 @@ class Lexer:
 
                 if self.current_char == '=':
                     self.advance()
-                    tokens.append(Token(OP_ADDITION_ASSIGN, '+=',
-                                  pos_start, self.pos.copy()))
+                    token = Token(OP_ADDITION_ASSIGN, '+=', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 elif self.current_char == '+':
                     self.advance()
-                    tokens.append(Token(OP_INCREMENT, '++',
-                                  pos_start, self.pos.copy()))
+                    token = Token(OP_INCREMENT, '++', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 else:
-                    tokens.append(
-                        Token(OP_ADDITION, '+', pos_start, self.pos.copy()))
+                    token = Token(OP_ADDITION, '+', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 continue
 
             elif self.current_char == '-':
@@ -535,7 +767,6 @@ class Lexer:
 
                 # Check if this is a negative number (unary minus)
                 if self.current_char and self.current_char in NUM:
-                    # Look at previous token to determine if this is unary minus
                     if len(tokens) == 0 or tokens[-1].type in [
                         OP_ASSIGNMENT, OP_ADDITION_ASSIGN, OP_SUBTRACTION_ASSIGN,
                         OP_MULTIPLICATION_ASSIGN, OP_DIVISION_ASSIGN, OP_MODULUS_ASSIGN,
@@ -547,26 +778,22 @@ class Lexer:
                         NEWLINE, WHITESPACE_SPACE, WHITESPACE_TAB, DELIM_SEMICOLON,
                         RW_START, DELIM_LEFT_BRACE
                     ]:
-                        # This is a negative number
                         num_start = pos_start
                         num_str = '-'
                         dot_count = 0
                         int_dig_count = 0
                         dec_dig_count = 0
 
-                        # Collect integer digits
                         while self.current_char != None and self.current_char in NUM:
                             num_str += self.current_char
                             int_dig_count += 1
                             self.advance()
 
-                        # Check for decimal point
                         if self.current_char == '.':
                             num_str += self.current_char
                             dot_count += 1
                             self.advance()
 
-                            # Collect decimal digits
                             while self.current_char != None and self.current_char in NUM:
                                 num_str += self.current_char
                                 dec_dig_count += 1
@@ -574,7 +801,6 @@ class Lexer:
 
                         num_end = self.pos.copy()
 
-                        # Check if followed by letter/underscore (invalid identifier)
                         if self.current_char != None and (self.current_char in LETTERS or self.current_char == '_'):
                             error_str = num_str
                             while self.current_char != None and (self.current_char in LETTERNUM or self.current_char == '_'):
@@ -584,7 +810,6 @@ class Lexer:
                                                        f'Invalid identifier "{error_str}" - identifier cannot start with a digit'))
                             continue
 
-                        # Validate number ranges
                         if dot_count == 0 and int_dig_count > 10:
                             errors.append(LexicalError(num_start, num_end,
                                                        f'Integer exceeds maximum digits: {int_dig_count}/10'))
@@ -600,27 +825,37 @@ class Lexer:
                                                        f'Decimal part exceeds maximum digits: {dec_dig_count}/16 (bigdecimal limit)'))
                             continue
 
-                        # Create token
                         if dot_count == 0:
-                            tokens.append(
-                                Token(LIT_NUMBER, num_str, num_start, num_end))
+                            token = Token(LIT_NUMBER, num_str, num_start, num_end)
                         else:
-                            tokens.append(
-                                Token(LIT_DECIMAL, num_str, num_start, num_end))
+                            token = Token(LIT_DECIMAL, num_str, num_start, num_end)
+                        
+                        tokens.append(token)
+                        delim_error = self.check_delimiter(token.type, token.value, num_end)
+                        if delim_error:
+                            errors.append(delim_error)
                         continue
 
-                # Not a negative number, treat as subtraction operator
                 if self.current_char == '=':
                     self.advance()
-                    tokens.append(Token(OP_SUBTRACTION_ASSIGN,
-                                  '-=', pos_start, self.pos.copy()))
+                    token = Token(OP_SUBTRACTION_ASSIGN, '-=', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 elif self.current_char == '-':
                     self.advance()
-                    tokens.append(Token(OP_DECREMENT, '--',
-                                  pos_start, self.pos.copy()))
+                    token = Token(OP_DECREMENT, '--', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 else:
-                    tokens.append(Token(OP_SUBTRACTION, '-',
-                                  pos_start, self.pos.copy()))
+                    token = Token(OP_SUBTRACTION, '-', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 continue
 
             elif self.current_char == '*':
@@ -629,15 +864,24 @@ class Lexer:
 
                 if self.current_char == '*':
                     self.advance()
-                    tokens.append(Token(OP_EXPONENTIATION, '**',
-                                  pos_start, self.pos.copy()))
+                    token = Token(OP_EXPONENTIATION, '**', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 elif self.current_char == '=':
                     self.advance()
-                    tokens.append(Token(OP_MULTIPLICATION_ASSIGN,
-                                  '*=', pos_start, self.pos.copy()))
+                    token = Token(OP_MULTIPLICATION_ASSIGN, '*=', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 else:
-                    tokens.append(Token(OP_MULTIPLICATION, '*',
-                                  pos_start, self.pos.copy()))
+                    token = Token(OP_MULTIPLICATION, '*', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 continue
 
             elif self.current_char == '/':
@@ -646,11 +890,17 @@ class Lexer:
 
                 if self.current_char == '=':
                     self.advance()
-                    tokens.append(Token(OP_DIVISION_ASSIGN, '/=',
-                                  pos_start, self.pos.copy()))
+                    token = Token(OP_DIVISION_ASSIGN, '/=', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 else:
-                    tokens.append(
-                        Token(OP_DIVISION, '/', pos_start, self.pos.copy()))
+                    token = Token(OP_DIVISION, '/', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 continue
 
             elif self.current_char == '%':
@@ -659,11 +909,17 @@ class Lexer:
 
                 if self.current_char == '=':
                     self.advance()
-                    tokens.append(Token(OP_MODULUS_ASSIGN, '%=',
-                                  pos_start, self.pos.copy()))
+                    token = Token(OP_MODULUS_ASSIGN, '%=', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 else:
-                    tokens.append(
-                        Token(OP_MODULUS, '%', pos_start, self.pos.copy()))
+                    token = Token(OP_MODULUS, '%', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 continue
 
             elif self.current_char == '=':
@@ -672,11 +928,17 @@ class Lexer:
 
                 if self.current_char == '=':
                     self.advance()
-                    tokens.append(
-                        Token(OP_EQUAL_TO, '==', pos_start, self.pos.copy()))
+                    token = Token(OP_EQUAL_TO, '==', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 else:
-                    tokens.append(Token(OP_ASSIGNMENT, '=',
-                                  pos_start, self.pos.copy()))
+                    token = Token(OP_ASSIGNMENT, '=', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 continue
 
             elif self.current_char == '!':
@@ -685,11 +947,17 @@ class Lexer:
 
                 if self.current_char == '=':
                     self.advance()
-                    tokens.append(Token(OP_NOT_EQUAL, '!=',
-                                  pos_start, self.pos.copy()))
+                    token = Token(OP_NOT_EQUAL, '!=', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 else:
-                    tokens.append(Token(OP_LOGICAL_NOT, '!',
-                                  pos_start, self.pos.copy()))
+                    token = Token(OP_LOGICAL_NOT, '!', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 continue
 
             elif self.current_char == '>':
@@ -698,11 +966,17 @@ class Lexer:
 
                 if self.current_char == '=':
                     self.advance()
-                    tokens.append(Token(OP_GREATER_EQUAL, '>=',
-                                  pos_start, self.pos.copy()))
+                    token = Token(OP_GREATER_EQUAL, '>=', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 else:
-                    tokens.append(Token(OP_GREATER_THAN, '>',
-                                  pos_start, self.pos.copy()))
+                    token = Token(OP_GREATER_THAN, '>', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 continue
 
             elif self.current_char == '<':
@@ -711,11 +985,17 @@ class Lexer:
 
                 if self.current_char == '=':
                     self.advance()
-                    tokens.append(Token(OP_LESS_EQUAL, '<=',
-                                  pos_start, self.pos.copy()))
+                    token = Token(OP_LESS_EQUAL, '<=', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 else:
-                    tokens.append(
-                        Token(OP_LESS_THAN, '<', pos_start, self.pos.copy()))
+                    token = Token(OP_LESS_THAN, '<', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 continue
 
             elif self.current_char == '&':
@@ -724,8 +1004,11 @@ class Lexer:
 
                 if self.current_char == '&':
                     self.advance()
-                    tokens.append(Token(OP_LOGICAL_AND, '&&',
-                                  pos_start, self.pos.copy()))
+                    token = Token(OP_LOGICAL_AND, '&&', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 else:
                     errors.append(LexicalError(pos_start, self.pos.copy(),
                                                'Invalid character "&" (did you mean "&&"?)'))
@@ -737,8 +1020,11 @@ class Lexer:
 
                 if self.current_char == '|':
                     self.advance()
-                    tokens.append(Token(OP_LOGICAL_OR, '||',
-                                  pos_start, self.pos.copy()))
+                    token = Token(OP_LOGICAL_OR, '||', pos_start, self.pos.copy())
+                    tokens.append(token)
+                    delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                    if delim_error:
+                        errors.append(delim_error)
                 else:
                     errors.append(LexicalError(pos_start, self.pos.copy(),
                                                'Invalid character "|" (did you mean "||"?)'))
@@ -748,71 +1034,98 @@ class Lexer:
             elif self.current_char == '(':
                 pos_start = self.pos.copy()
                 self.advance()
-                tokens.append(
-                    Token(DELIM_LEFT_PAREN, '(', pos_start, self.pos.copy()))
+                token = Token(DELIM_LEFT_PAREN, '(', pos_start, self.pos.copy())
+                tokens.append(token)
+                delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                if delim_error:
+                    errors.append(delim_error)
                 continue
 
             elif self.current_char == ')':
                 pos_start = self.pos.copy()
                 self.advance()
-                tokens.append(Token(DELIM_RIGHT_PAREN, ')',
-                              pos_start, self.pos.copy()))
+                token = Token(DELIM_RIGHT_PAREN, ')', pos_start, self.pos.copy())
+                tokens.append(token)
+                delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                if delim_error:
+                    errors.append(delim_error)
                 continue
 
             elif self.current_char == '[':
                 pos_start = self.pos.copy()
                 self.advance()
-                tokens.append(Token(DELIM_LEFT_BRACKET,
-                              '[', pos_start, self.pos.copy()))
+                token = Token(DELIM_LEFT_BRACKET, '[', pos_start, self.pos.copy())
+                tokens.append(token)
+                delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                if delim_error:
+                    errors.append(delim_error)
                 continue
 
             elif self.current_char == ']':
                 pos_start = self.pos.copy()
                 self.advance()
-                tokens.append(Token(DELIM_RIGHT_BRACKET, ']',
-                              pos_start, self.pos.copy()))
+                token = Token(DELIM_RIGHT_BRACKET, ']', pos_start, self.pos.copy())
+                tokens.append(token)
+                delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                if delim_error:
+                    errors.append(delim_error)
                 continue
 
             elif self.current_char == '{':
                 pos_start = self.pos.copy()
                 self.advance()
-                tokens.append(
-                    Token(DELIM_LEFT_BRACE, '{', pos_start, self.pos.copy()))
+                token = Token(DELIM_LEFT_BRACE, '{', pos_start, self.pos.copy())
+                tokens.append(token)
+                delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                if delim_error:
+                    errors.append(delim_error)
                 continue
 
             elif self.current_char == '}':
                 pos_start = self.pos.copy()
                 self.advance()
-                tokens.append(Token(DELIM_RIGHT_BRACE, '}',
-                              pos_start, self.pos.copy()))
+                token = Token(DELIM_RIGHT_BRACE, '}', pos_start, self.pos.copy())
+                tokens.append(token)
+                delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                if delim_error:
+                    errors.append(delim_error)
                 continue
 
             elif self.current_char == ';':
                 pos_start = self.pos.copy()
                 self.advance()
-                tokens.append(Token(DELIM_SEMICOLON, ';',
-                              pos_start, self.pos.copy()))
+                token = Token(DELIM_SEMICOLON, ';', pos_start, self.pos.copy())
+                tokens.append(token)
+                delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                if delim_error:
+                    errors.append(delim_error)
                 continue
 
             elif self.current_char == ':':
                 pos_start = self.pos.copy()
                 self.advance()
-                tokens.append(
-                    Token(DELIM_COLON, ':', pos_start, self.pos.copy()))
+                token = Token(DELIM_COLON, ':', pos_start, self.pos.copy())
+                tokens.append(token)
                 continue
 
             elif self.current_char == ',':
                 pos_start = self.pos.copy()
                 self.advance()
-                tokens.append(
-                    Token(DELIM_COMMA, ',', pos_start, self.pos.copy()))
+                token = Token(DELIM_COMMA, ',', pos_start, self.pos.copy())
+                tokens.append(token)
+                delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                if delim_error:
+                    errors.append(delim_error)
                 continue
 
             elif self.current_char == '.':
                 pos_start = self.pos.copy()
                 self.advance()
-                tokens.append(
-                    Token(DELIM_DOT, '.', pos_start, self.pos.copy()))
+                token = Token(DELIM_DOT, '.', pos_start, self.pos.copy())
+                tokens.append(token)
+                delim_error = self.check_delimiter(token.type, token.value, self.pos.copy())
+                if delim_error:
+                    errors.append(delim_error)
                 continue
 
             #unrecognized char
@@ -927,7 +1240,7 @@ class KuCodeLexerGUI:
         hsb = ttk.Scrollbar(table_frame, orient="horizontal")
         hsb.pack(side=tk.BOTTOM, fill=tk.X)
 
-        # Treeview - MODIFIED: Only Lexeme and Token columns
+        # Treeview
         self.token_table = ttk.Treeview(table_frame,
                                         columns=("Lexeme", "Token"),
                                         show="headings",
@@ -937,7 +1250,7 @@ class KuCodeLexerGUI:
         vsb.config(command=self.token_table.yview)
         hsb.config(command=self.token_table.xview)
 
-        # Configure columns - MODIFIED: Only 2 columns
+        # Configure columns
         self.token_table.heading("Lexeme", text="Lexeme")
         self.token_table.heading("Token", text="Token")
 
@@ -964,14 +1277,9 @@ class KuCodeLexerGUI:
             fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
 
     def update_line_numbers(self, event=None):
-        # Get the number of lines in the source text
         line_count = self.source_text.get("1.0", "end-1c").count('\n') + 1
-
-        # Generate line numbers
         line_numbers_string = "\n".join(str(i)
                                         for i in range(1, line_count + 1))
-
-        # Update line numbers text widget
         self.line_numbers.config(state='normal')
         self.line_numbers.delete(1.0, tk.END)
         self.line_numbers.insert(1.0, line_numbers_string)
@@ -987,11 +1295,9 @@ class KuCodeLexerGUI:
         self.update_line_numbers()
 
     def analyze(self):
-        # Clear previous results
         self.token_table.delete(*self.token_table.get_children())
         self.terminal_text.delete(1.0, tk.END)
 
-        # Get source code
         source = self.source_text.get(1.0, tk.END)
 
         if not source.strip():
@@ -999,18 +1305,15 @@ class KuCodeLexerGUI:
                 tk.END, "Error: No source code to analyze\n")
             return
 
-        # Create lexer and tokenize
         lexer = Lexer(source)
         tokens, errors = lexer.tokenize()
 
-        # Display tokens (skip only EOF) - MODIFIED: Only lexeme and token
         for token in tokens:
             if token.type not in [EOF]:
                 lexeme = token.value if token.value else "-"
                 self.token_table.insert("", tk.END,
                                         values=(lexeme, token.type))
 
-        # Display terminal message
         if errors:
             self.terminal_text.insert(
                 tk.END, "✗ Lexical analysis completed with errors:\n\n", "error")
@@ -1022,14 +1325,12 @@ class KuCodeLexerGUI:
                 tk.END, "✓ Lexically correct - no lexical errors detected.\n", "success")
             self.terminal_text.tag_config("success", foreground="#00ff00")
 
-        # Add summary (exclude only EOF from count)
         displayable_tokens = [t for t in tokens if t.type not in [EOF]]
         self.terminal_text.insert(
             tk.END, f"\nTotal Tokens: {len(displayable_tokens)}\n")
         self.terminal_text.insert(tk.END, f"Total Errors: {len(errors)}\n")
 
     def save_results(self):
-        # Ask user for save location
         file_path = filedialog.asksaveasfilename(
             defaultextension=".txt",
             filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
@@ -1040,14 +1341,12 @@ class KuCodeLexerGUI:
 
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
-                # Write source code
                 f.write("=" * 80 + "\n")
                 f.write("SOURCE CODE\n")
                 f.write("=" * 80 + "\n")
                 f.write(self.source_text.get(1.0, tk.END))
                 f.write("\n")
 
-                # Write tokens - MODIFIED: Only lexeme and token
                 f.write("=" * 80 + "\n")
                 f.write("TOKENS\n")
                 f.write("=" * 80 + "\n")
@@ -1060,7 +1359,6 @@ class KuCodeLexerGUI:
 
                 f.write("\n")
 
-                # Write terminal output
                 f.write("=" * 80 + "\n")
                 f.write("ANALYSIS RESULT\n")
                 f.write("=" * 80 + "\n")
