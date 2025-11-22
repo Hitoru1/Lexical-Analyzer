@@ -1119,7 +1119,7 @@ class Lexer:
                                                'Unterminated string literal - missing closing """'))
                     continue
 
-                token = Token(string_val, string_val, pos_start, pos_end)
+                token = Token(LIT_STRING, string_val, pos_start, pos_end)
                 tokens.append(token)
                 # Check delimiter
                 delim_error = self.check_delimiter(
@@ -1164,7 +1164,7 @@ class Lexer:
                                                f'Character literal must contain exactly one character, got "{char_val}"'))
                     continue
 
-                token = Token(char_val, char_val, pos_start, pos_end)
+                token = Token(LIT_CHARACTER, char_val, pos_start, pos_end)
                 tokens.append(token)
                 # Check delimiter
                 delim_error = self.check_delimiter(
@@ -1817,7 +1817,7 @@ class KuCodeLexerGUI:
             if token.type not in [EOF]:
                 lexeme = token.value if token.value else "-"
                 # Display the number value itself for number tokenss
-                if token.type in [LIT_NUMBER, LIT_DECIMAL]:
+                if token.type in [LIT_NUMBER, LIT_DECIMAL, LIT_STRING, LIT_CHARACTER]:
                     display_type = token.value
                 else:
                     display_type = token.type
