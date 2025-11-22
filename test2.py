@@ -1024,14 +1024,28 @@ class Lexer:
                     self.advance()
 
                 if self.current_char == '.':
+                    # FIRST decimal point
                     num_str += self.current_char
                     dot_count += 1
                     self.advance()
 
+                    # DIGITS after decimal
                     while self.current_char != None and self.current_char in NUM:
                         num_str += self.current_char
                         dec_dig_count += 1
                         self.advance()
+
+                    # CHECK FOR SECOND DECIMAL POINT
+                    if self.current_char == '.':
+                        pos_error = self.pos.copy()
+                        errors.append(LexicalError(
+                            pos_error,
+                            pos_error,
+                            f'Invalid number "{num_str}." – multiple decimal points are not allowed.'
+                        ))
+                        # consume the bad '.'
+                        self.advance()
+                        continue
 
                 pos_end = self.pos.copy()
 
