@@ -319,6 +319,7 @@ def check_semicolon_requirements(tokens):
                     break
                 elif tokens[j].type == OP_ASSIGNMENT:
                     found_assign = True
+
                 elif tokens[j].type in {LIT_NUMBER, LIT_DECIMAL, LIT_STRING,
                                         LIT_CHARACTER, LIT_BOOLEAN, IDENTIFIER,
                                         DELIM_RIGHT_PAREN, DELIM_RIGHT_BRACKET}:
@@ -1076,9 +1077,9 @@ class Lexer:
                     continue
 
                 if dot_count == 0:
-                    token = Token(num_str, num_str, pos_start, pos_end)
+                    token = Token(LIT_NUMBER, num_str, pos_start, pos_end)
                 else:
-                    token = Token(num_str, num_str, pos_start, pos_end)
+                    token = Token(LIT_DECIMAL, num_str, pos_start, pos_end)
 
                 tokens.append(token)
                 # Check delimiter
@@ -1269,10 +1270,10 @@ class Lexer:
                             continue
 
                         if dot_count == 0:
-                            token = Token(num_str, num_str,
+                            token = Token(LIT_NUMBER, num_str,
                                           num_start, num_end)
                         else:
-                            token = Token(num_str, num_str,
+                            token = Token(LIT_DECIMAL, num_str,
                                           num_start, num_end)
 
                         tokens.append(token)
@@ -1815,8 +1816,13 @@ class KuCodeLexerGUI:
         for token in tokens:
             if token.type not in [EOF]:
                 lexeme = token.value if token.value else "-"
+                # Display the number value itself for number tokens
+                if token.type in [LIT_NUMBER, LIT_DECIMAL]:
+                    display_type = token.value
+                else:
+                    display_type = token.type
                 self.token_table.insert("", tk.END,
-                                        values=(lexeme, token.type))
+                                        values=(lexeme, display_type))
 
         if errors:
             self.terminal_text.insert(
