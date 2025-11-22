@@ -1816,7 +1816,7 @@ class KuCodeLexerGUI:
         for token in tokens:
             if token.type not in [EOF]:
                 lexeme = token.value if token.value else "-"
-                # Display the number value itself for number tokens
+                # Display the number value itself for number tokenss
                 if token.type in [LIT_NUMBER, LIT_DECIMAL]:
                     display_type = token.value
                 else:
