@@ -178,7 +178,7 @@ DELIM_SETS = {
     # space_nline, null, }, ], ), ,, ;, mathop, relop, logicop, =
     'lit_delim': {' ', '\n', '}', ']', ')', ',', ';', '+', '-', '*', '/', '%', '=', '!', '<', '>', '&', '|', ':'},
     # space_nline, mathop, =, <, >, (, ), ], ,, ;, }, &, |, !
-    'identifier_del': {' ', '\n', '+', '-', '*', '/', '%', '=', '<', '>', '(', ')', ']', ',', ';', '}', '&', '|', '!'},
+    'identifier_del': {' ', '\n', '+', '-', '*', '/', '%', '=', '<', '>', '(', ')', ']', ',', ';', '}', '&', '|', '!', '.', '{'},
     # num only
     'num': set(NUM),
     # space, num
@@ -187,6 +187,7 @@ DELIM_SETS = {
     'ascii': set(string.printable),
     # = delimiter (special for assignment)
     'delim7': {' ', '\n', '"', "'"} | set(LETTERNUM),
+    'dot_delim': set(NUM) | set(LETTERS) | {'_'},
 }
 
 # Token to delimiter mapping
@@ -258,7 +259,7 @@ TOKEN_DELIMITERS = {
     DELIM_RIGHT_BRACE: 'space_nline',
     DELIM_LEFT_PAREN: 'openparen_delim',
     DELIM_RIGHT_PAREN: 'closeparen_delim',
-    DELIM_DOT: 'num',
+    DELIM_DOT: 'dot_delim',
     DELIM_COMMA: 'comma_delim',
     DELIM_SEMICOLON: 'space_nline',
     DELIM_COLON: 'space_nline',
@@ -319,6 +320,7 @@ def check_semicolon_requirements(tokens):
                     break
                 elif tokens[j].type == OP_ASSIGNMENT:
                     found_assign = True
+                    last_val_idx = -1
 
                 elif tokens[j].type in {LIT_NUMBER, LIT_DECIMAL, LIT_STRING,
                                         LIT_CHARACTER, LIT_BOOLEAN, IDENTIFIER,
@@ -387,9 +389,9 @@ def check_semicolon_requirements(tokens):
                                 f'Missing semicolon ";" after return value'
                             ))
                     break
-                elif tokens[j].type in {LIT_NUMBER, LIT_DECIMAL, LIT_STRING,
-                                        LIT_CHARACTER, LIT_BOOLEAN, IDENTIFIER,
-                                        DELIM_RIGHT_PAREN}:
+                elif found_assign and tokens[j].type in {LIT_NUMBER, LIT_DECIMAL, LIT_STRING,
+                                                         LIT_CHARACTER, LIT_BOOLEAN, IDENTIFIER,
+                                                         DELIM_RIGHT_PAREN}:
                     last_val_idx = j
                 elif tokens[j].type == DELIM_SEMICOLON:
                     break
@@ -438,6 +440,30 @@ def check_semicolon_requirements(tokens):
                     j += 1
 
         i += 1
+
+        if len(tokens) >= 2:
+            last_meaningful = None
+            for t in reversed(tokens):
+                if t.type not in {EOF, WHITESPACE_SPACE, WHITESPACE_TAB, NEWLINE}:
+                    last_meaningful = t
+                    break
+
+            if last_meaningful:
+                # If last token is something that should end with semicolon
+                if last_meaningful.type in {
+                    LIT_NUMBER, LIT_DECIMAL, LIT_STRING, LIT_CHARACTER,
+                    LIT_BOOLEAN, IDENTIFIER, DELIM_RIGHT_PAREN, DELIM_RIGHT_BRACKET
+                }:
+                    # Check if any semicolon exists after it before EOF
+                    has_semi = any(tok.type == DELIM_SEMICOLON for tok in tokens
+                                   if tok.pos_start.idx > last_meaningful.pos_start.idx)
+
+                    if not has_semi:
+                        errors.append(LexicalError(
+                            last_meaningful.pos_end,
+                            last_meaningful.pos_end,
+                            f'Missing semicolon ";" after "{last_meaningful.value}"'
+                        ))
 
     return errors
 
@@ -1803,7 +1829,7 @@ class KuCodeLexerGUI:
         self.token_table.delete(*self.token_table.get_children())
         self.terminal_text.delete(1.0, tk.END)
 
-        source = self.source_text.get(1.0, tk.END)
+        source = self.source_text.get(1.0, "end-1c")
 
         if not source.strip():
             self.terminal_text.insert(
