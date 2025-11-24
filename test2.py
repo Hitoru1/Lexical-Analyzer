@@ -1118,8 +1118,8 @@ class Lexer:
             # stringlit
             elif self.current_char == '"':
                 pos_start = self.pos.copy()
+                string_val = '"'  # Start with opening quote
                 self.advance()
-                string_val = ''
                 found_closing = False
 
                 while self.current_char != None and self.current_char != '"':
@@ -1136,6 +1136,7 @@ class Lexer:
 
                 if self.current_char == '"':
                     found_closing = True
+                    string_val += '"'  # Add closing quote
                     self.advance()
 
                 pos_end = self.pos.copy()
@@ -1157,8 +1158,8 @@ class Lexer:
             # charlit
             elif self.current_char == "'":
                 pos_start = self.pos.copy()
+                char_val = "'"  # Start with opening quote
                 self.advance()
-                char_val = ''
                 found_closing = False
 
                 while self.current_char != None and self.current_char != "'":
@@ -1175,6 +1176,7 @@ class Lexer:
 
                 if self.current_char == "'":
                     found_closing = True
+                    char_val += "'"  # Add closing quote
                     self.advance()
 
                 pos_end = self.pos.copy()
@@ -1184,8 +1186,10 @@ class Lexer:
                                                'Unterminated character literal - missing closing "\'"'))
                     continue
 
-                # Check if it's a single character (excluding escape sequences)
-                if len(char_val) > 2 or (len(char_val) == 2 and char_val[0] != '\\'):
+                # Check if it's a single character (excluding escape sequences and quotes)
+                # char_val now includes quotes, so 'a' has length 3, '\n' has length 4
+                inner_content = char_val[1:-1]  # Remove the surrounding quotes
+                if len(inner_content) > 2 or (len(inner_content) == 2 and inner_content[0] != '\\'):
                     errors.append(LexicalError(pos_start, pos_end,
                                                f'Character literal must contain exactly one character, got "{char_val}"'))
                     continue
@@ -1842,9 +1846,15 @@ class KuCodeLexerGUI:
         for token in tokens:
             if token.type not in [EOF]:
                 lexeme = token.value if token.value else "-"
-                # Display the number value itself for number tokenss
-                if token.type in [LIT_NUMBER, LIT_DECIMAL, LIT_STRING, LIT_CHARACTER]:
-                    display_type = token.value
+                # Map token types to display names
+                if token.type == LIT_STRING:
+                    display_type = "text_lit"
+                elif token.type == LIT_CHARACTER:
+                    display_type = "letter_lit"
+                elif token.type == LIT_NUMBER:
+                    display_type = "num_lit"
+                elif token.type == LIT_DECIMAL:
+                    display_type = "decimal_lit"
                 else:
                     display_type = token.type
                 self.token_table.insert("", tk.END,
