@@ -1037,45 +1037,62 @@ class Lexer:
                 continue
 
             # numbers
-            elif self.current_char in NUM:
+
+            elif self.current_char in NUM or (self.current_char == '.' and self.peek() and self.peek() in NUM):
                 pos_start = self.pos.copy()
                 num_str = ''
 
                 dot_count = 0
                 int_dig_count = 0
                 dec_dig_count = 0
+                starts_with_dot = False
 
-                while self.current_char != None and self.current_char in NUM:
-                    num_str += self.current_char
-                    int_dig_count += 1
-                    self.advance()
-
+                # Handle leading decimal point (e.g., .4)
                 if self.current_char == '.':
-                    # FIRST decimal point
+                    starts_with_dot = True
                     num_str += self.current_char
                     dot_count += 1
                     self.advance()
 
-                    # DIGITS after decimal
+                    # Get decimal digits
                     while self.current_char != None and self.current_char in NUM:
                         num_str += self.current_char
                         dec_dig_count += 1
                         self.advance()
-
-                    # CHECK FOR SECOND DECIMAL POINT
-                    if self.current_char == '.':
-                        pos_error = self.pos.copy()
-                        errors.append(LexicalError(
-                            pos_error,
-                            pos_error,
-                            f'Invalid number "{num_str}." – multiple decimal points are not allowed.'
-                        ))
-                        # consume the bad '.'
+                else:
+                    # Normal number starting with digit
+                    while self.current_char != None and self.current_char in NUM:
+                        num_str += self.current_char
+                        int_dig_count += 1
                         self.advance()
-                        continue
+
+                    if self.current_char == '.':
+                        # Check if next char is a digit (valid decimal point)
+                        if self.peek() and self.peek() in NUM:
+                            # FIRST decimal point
+                            num_str += self.current_char
+                            dot_count += 1
+                            self.advance()
+
+                            # DIGITS after decimal
+                            while self.current_char != None and self.current_char in NUM:
+                                num_str += self.current_char
+                                dec_dig_count += 1
+                                self.advance()
+
+                # CHECK FOR SECOND DECIMAL POINT (invalid delimiter)
+                if self.current_char == '.':
+                    pos_error = self.pos.copy()
+                    errors.append(LexicalError(
+                        pos_start,
+                        pos_error,
+                        f'Invalid delimiter after "{num_str}": expected space, newline, operator, delimiter or ";", got "."'
+                    ))
+                    continue
 
                 pos_end = self.pos.copy()
 
+                # Check for letters or underscore following number (invalid)
                 if self.current_char != None and (self.current_char in LETTERS or self.current_char == '_'):
                     error_str = num_str
                     while self.current_char != None and (self.current_char in LETTERNUM or self.current_char == '_'):
@@ -1087,21 +1104,19 @@ class Lexer:
                                                f'Invalid identifier "{error_str}" - identifier cannot start with a digit'))
                     continue
 
+                # Validation for integers
                 if dot_count == 0 and int_dig_count > 11:
                     errors.append(LexicalError(pos_start, pos_end,
                                                f'Integer exceeds maximum digits: {int_dig_count}/11'))
                     continue
 
-                if dot_count > 0 and dec_dig_count == 0:
-                    errors.append(LexicalError(pos_start, pos_end,
-                                               f'{num_str} must have digits after decimal point'))
-                    continue
-
+                # Validation for decimals
                 if dec_dig_count > 16:
                     errors.append(LexicalError(pos_start, pos_end,
                                                f'Decimal part exceeds maximum digits: {dec_dig_count}/16 (bigdecimal limit)'))
                     continue
 
+                # Create appropriate token
                 if dot_count == 0:
                     token = Token(LIT_NUMBER, num_str, pos_start, pos_end)
                 else:
@@ -1848,9 +1863,9 @@ class KuCodeLexerGUI:
                 lexeme = token.value if token.value else "-"
                 # Map token types to display names
                 if token.type == LIT_STRING:
-                    display_type = "text_lit"
+                    display_type = "string_lit"
                 elif token.type == LIT_CHARACTER:
-                    display_type = "letter_lit"
+                    display_type = "char_lit"
                 elif token.type == LIT_NUMBER:
                     display_type = "num_lit"
                 elif token.type == LIT_DECIMAL:
