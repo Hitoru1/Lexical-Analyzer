@@ -441,24 +441,45 @@ def check_semicolon_requirements(tokens):
 
         i += 1
 
-        if len(tokens) >= 2:
-            last_meaningful = None
-            for t in reversed(tokens):
-                if t.type not in {EOF, WHITESPACE_SPACE, WHITESPACE_TAB, NEWLINE}:
-                    last_meaningful = t
-                    break
+    # Check for missing semicolon at end of file (last statement before EOF)
+    if len(tokens) >= 2:
+        # Find last meaningful token before EOF
+        last_meaningful = None
+        last_meaningful_idx = -1
+        for idx in range(len(tokens) - 1, -1, -1):
+            t = tokens[idx]
+            if t.type not in {EOF, WHITESPACE_SPACE, WHITESPACE_TAB, NEWLINE, COMMENT_SINGLE, COMMENT_MULTI}:
+                last_meaningful = t
+                last_meaningful_idx = idx
+                break
 
-            if last_meaningful:
-                # If last token is something that should end with semicolon
-                if last_meaningful.type in {
-                    LIT_NUMBER, LIT_DECIMAL, LIT_STRING, LIT_CHARACTER,
-                    LIT_BOOLEAN, IDENTIFIER, DELIM_RIGHT_PAREN, DELIM_RIGHT_BRACKET
-                }:
-                    # Check if any semicolon exists after it before EOF
-                    has_semi = any(tok.type == DELIM_SEMICOLON for tok in tokens
-                                   if tok.pos_start.idx > last_meaningful.pos_start.idx)
+        if last_meaningful:
+            # Check if this token type requires a semicolon
+            if last_meaningful.type in {
+                LIT_NUMBER, LIT_DECIMAL, LIT_STRING, LIT_CHARACTER,
+                LIT_BOOLEAN, IDENTIFIER, DELIM_RIGHT_PAREN, DELIM_RIGHT_BRACKET,
+                OP_INCREMENT, OP_DECREMENT
+            }:
+                # Check if there's already a semicolon after it
+                has_semi = False
+                for idx in range(last_meaningful_idx + 1, len(tokens)):
+                    if tokens[idx].type == DELIM_SEMICOLON:
+                        has_semi = True
+                        break
+                    elif tokens[idx].type not in {WHITESPACE_SPACE, WHITESPACE_TAB, NEWLINE, EOF, COMMENT_SINGLE, COMMENT_MULTI}:
+                        # If we hit another meaningful token, stop
+                        break
 
-                    if not has_semi:
+                if not has_semi:
+                    # Make sure this error wasn't already reported
+                    error_already_exists = any(
+                        isinstance(e, LexicalError) and
+                        'Missing semicolon' in e.info and
+                        e.pos_start.idx >= last_meaningful.pos_start.idx
+                        for e in errors
+                    )
+
+                    if not error_already_exists:
                         errors.append(LexicalError(
                             last_meaningful.pos_end,
                             last_meaningful.pos_end,
