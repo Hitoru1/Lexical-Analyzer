@@ -1157,6 +1157,7 @@ class Lexer:
                 string_val = '"'  # Start with opening quote
                 self.advance()
                 found_closing = False
+                before_close_quote_pos = None
 
                 while self.current_char != None and self.current_char != '"':
                     if self.current_char == '\\':
@@ -1172,8 +1173,9 @@ class Lexer:
 
                 if self.current_char == '"':
                     found_closing = True
+                    before_close_quote_pos = self.pos.copy()  # Save position BEFORE closing quote
                     string_val += '"'  # Add closing quote
-                    self.advance()
+                    self.advance()  # Move past closing quote
 
                 pos_end = self.pos.copy()
 
@@ -1183,12 +1185,19 @@ class Lexer:
                     continue
 
                 token = Token(LIT_STRING, string_val, pos_start, pos_end)
-                tokens.append(token)
-                # Check delimiter
+
+                # Check delimiter BEFORE adding token
                 delim_error = self.check_delimiter(
                     token.type, token.value, pos_end)
                 if delim_error:
                     errors.append(delim_error)
+                    # Backtrack to BEFORE the closing quote so next iteration sees the closing quote as opening
+                    self.pos = before_close_quote_pos.copy()
+                    self.current_char = self.source[self.pos.idx] if self.pos.idx < len(
+                        self.source) else None
+                    continue  # Don't add token if delimiter is invalid
+
+                tokens.append(token)
                 continue
 
             # charlit
@@ -1197,6 +1206,7 @@ class Lexer:
                 char_val = "'"  # Start with opening quote
                 self.advance()
                 found_closing = False
+                before_close_quote_pos = None
 
                 while self.current_char != None and self.current_char != "'":
                     if self.current_char == '\\':
@@ -1212,8 +1222,9 @@ class Lexer:
 
                 if self.current_char == "'":
                     found_closing = True
+                    before_close_quote_pos = self.pos.copy()  # Save position BEFORE closing quote
                     char_val += "'"  # Add closing quote
-                    self.advance()
+                    self.advance()  # Move past closing quote
 
                 pos_end = self.pos.copy()
 
@@ -1223,7 +1234,6 @@ class Lexer:
                     continue
 
                 # Check if it's a single character (excluding escape sequences and quotes)
-                # char_val now includes quotes, so 'a' has length 3, '\n' has length 4
                 inner_content = char_val[1:-1]  # Remove the surrounding quotes
                 if len(inner_content) > 2 or (len(inner_content) == 2 and inner_content[0] != '\\'):
                     errors.append(LexicalError(pos_start, pos_end,
@@ -1231,12 +1241,19 @@ class Lexer:
                     continue
 
                 token = Token(LIT_CHARACTER, char_val, pos_start, pos_end)
-                tokens.append(token)
-                # Check delimiter
+
+                # Check delimiter BEFORE adding token
                 delim_error = self.check_delimiter(
                     token.type, token.value, pos_end)
                 if delim_error:
                     errors.append(delim_error)
+                    # Backtrack to BEFORE the closing quote so next iteration sees the closing quote as opening
+                    self.pos = before_close_quote_pos.copy()
+                    self.current_char = self.source[self.pos.idx] if self.pos.idx < len(
+                        self.source) else None
+                    continue  # Don't add token if delimiter is invalid
+
+                tokens.append(token)
                 continue
 
             # operators
