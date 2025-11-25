@@ -168,7 +168,7 @@ DELIM_SETS = {
     # space, ;, ,, =
     'close_list': {' ', ';', ',', '='},
     # space, letternum, ', ", ), !
-    'openparen_delim': {' ', "'", '"', ')', '!'} | set(LETTERNUM),
+    'openparen_delim': {' ', "'", '"', ')', '!', '-'} | set(LETTERNUM),
     # space, mathop, logicop, relop, ;, {, )
     'closeparen_delim': {' ', '+', '-', '*', '/', '%', '&', '|', '!', '=', '<', '>', ';', '{', ')'},
     # space, &, |, !, ;
@@ -1086,6 +1086,15 @@ class Lexer:
                         num_str += self.current_char
                         int_dig_count += 1
                         self.advance()
+
+                    if len(num_str) > 1 and num_str[0] == '0':
+                        pos_error = self.pos.copy()
+                        errors.append(LexicalError(
+                            pos_start,
+                            pos_error,
+                            f'Invalid number "{num_str}" - numbers cannot have leading zeros'
+                         ))
+                        continue
 
                     if self.current_char == '.':
                         # Check if next char is a digit (valid decimal point)
