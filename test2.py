@@ -1101,16 +1101,6 @@ class Lexer:
                                 dec_dig_count += 1
                                 self.advance()
 
-                # CHECK FOR SECOND DECIMAL POINT (invalid delimiter)
-                if self.current_char == '.':
-                    pos_error = self.pos.copy()
-                    errors.append(LexicalError(
-                        pos_start,
-                        pos_error,
-                        f'Invalid delimiter after "{num_str}": expected space, newline, operator, delimiter or ";", got "."'
-                    ))
-                    continue
-
                 pos_end = self.pos.copy()
 
                 # Check for letters or underscore following number (invalid)
@@ -1143,12 +1133,17 @@ class Lexer:
                 else:
                     token = Token(LIT_DECIMAL, num_str, pos_start, pos_end)
 
-                tokens.append(token)
-                # Check delimiter
+                # Check delimiter BEFORE adding token
                 delim_error = self.check_delimiter(
                     token.type, token.value, pos_end)
                 if delim_error:
                     errors.append(delim_error)
+                    # Invalid delimiter - discard this token, don't add it
+                    # Continue from current position (the invalid delimiter)
+                    continue
+
+                # Only add token if delimiter was valid
+                tokens.append(token)
                 continue
 
             # stringlit
@@ -1703,12 +1698,19 @@ class Lexer:
             elif self.current_char == '.':
                 pos_start = self.pos.copy()
                 self.advance()
-                token = Token(DELIM_DOT, '.', pos_start, self.pos.copy())
-                tokens.append(token)
+                pos_end = self.pos.copy()
+                token = Token(DELIM_DOT, '.', pos_start, pos_end)
+
+                # Check delimiter BEFORE adding token
                 delim_error = self.check_delimiter(
-                    token.type, token.value, self.pos.copy())
+                    token.type, token.value, pos_end)
                 if delim_error:
                     errors.append(delim_error)
+                    # Invalid delimiter - discard this token
+                    continue
+
+                # Only add token if delimiter was valid
+                tokens.append(token)
                 continue
 
             # unrecognized char
