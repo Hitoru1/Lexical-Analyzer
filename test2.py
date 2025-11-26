@@ -1753,6 +1753,27 @@ class KuCodeLexerGUI:
         style = ttk.Style()
         style.theme_use('clam')
 
+        style.configure("Treeview",
+                background="#152238",
+                foreground="#e0e0e0",
+                fieldbackground="#152238",
+                borderwidth=0,
+                rowheight=25)  
+
+        style.configure("Treeview.Heading",
+                background="#1e3a5f",
+                foreground="white",
+                borderwidth=1,
+                relief="flat",
+                font=("Arial", 10, "bold"))
+
+        style.map("Treeview.Heading",
+                    background=[('active', '#2d5a8a')])  # Lighter blue on hover
+
+        style.map("Treeview",
+                    background=[('selected', '#264f78')],  # Selection color
+                    foreground=[('selected', 'white')])
+
         # Configure colors
         bg_color = "#1e3a5f"  
         fg_color = "white"
@@ -1837,6 +1858,20 @@ class KuCodeLexerGUI:
         table_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
 
         # Scrollbars
+        
+        style.configure("Vertical.TScrollbar",
+                background="#1e3a5f",
+                troughcolor="#0d1b2a",
+                borderwidth=0,
+                arrowcolor="white")
+
+        style.configure("Horizontal.TScrollbar",
+                background="#1e3a5f",
+                troughcolor="#0d1b2a",
+                borderwidth=0,
+                arrowcolor="white")
+
+
         vsb = ttk.Scrollbar(table_frame, orient="vertical")
         vsb.pack(side=tk.RIGHT, fill=tk.Y)
 
@@ -1845,20 +1880,21 @@ class KuCodeLexerGUI:
 
         # Treeview
         self.token_table = ttk.Treeview(table_frame,
-                                        columns=("Lexeme", "Token"),
-                                        show="headings",
-                                        yscrollcommand=vsb.set,
-                                        xscrollcommand=hsb.set)
+                                columns=("Lexeme", "Token"),
+                                show="headings",
+                                yscrollcommand=vsb.set,
+                                xscrollcommand=hsb.set,
+                                style="Treeview")
 
         vsb.config(command=self.token_table.yview)
         hsb.config(command=self.token_table.xview)
 
         # Configure columns
-        self.token_table.heading("Lexeme", text="Lexeme")
-        self.token_table.heading("Token", text="Token")
+        self.token_table.heading("Lexeme", text="LEXEME", anchor="center")
+        self.token_table.heading("Token", text="TOKEN", anchor="center")
 
-        self.token_table.column("Lexeme", width=250)
-        self.token_table.column("Token", width=250)
+        self.token_table.column("Lexeme", width=250, anchor="center")
+        self.token_table.column("Token", width=250, anchor="center")
 
         self.token_table.pack(fill=tk.BOTH, expand=True)
 
