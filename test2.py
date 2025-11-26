@@ -1758,14 +1758,15 @@ class KuCodeLexerGUI:
                 foreground="#e0e0e0",
                 fieldbackground="#152238",
                 borderwidth=0,
-                rowheight=25)  
+                rowheight=25,
+                font=("Arial", 10))  
 
         style.configure("Treeview.Heading",
                 background="#1e3a5f",
                 foreground="white",
                 borderwidth=1,
                 relief="flat",
-                font=("Arial", 10, "bold"))
+                font=("Arial Black", 10, "bold"))
 
         style.map("Treeview.Heading",
                     background=[('active', '#2d5a8a')])  # Lighter blue on hover
@@ -1788,7 +1789,7 @@ class KuCodeLexerGUI:
 
         # Logo and Title
         title_label = tk.Label(header_frame, text="KuCode Lexical Analyzer",
-                             font=("Arial", 18, "bold"), bg=bg_color, fg=fg_color)
+                     font=("Courier New", 18, "bold"), bg=bg_color, fg=fg_color)
         title_label.pack(side=tk.LEFT, padx=20, pady=10)
 
         # Buttons
@@ -1796,19 +1797,19 @@ class KuCodeLexerGUI:
         btn_frame.pack(side=tk.RIGHT, padx=20)
 
         clear_btn = tk.Button(btn_frame, text="Clear", command=self.clear_all,
-                      bg="#3d6a9f", fg="white", font=("Arial", 10, "bold"),
+              bg="#3d6a9f", fg="white", font=("Courier New", 10, "bold"),
                       padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
                       activebackground="#4d7aaf")
         clear_btn.pack(side=tk.LEFT, padx=5)
 
         analyze_btn = tk.Button(btn_frame, text="Analyze", command=self.analyze,
-                        bg="#2d5a8a", fg="white", font=("Arial", 10, "bold"),
+                bg="#2d5a8a", fg="white", font=("Courier New", 10, "bold"),
                         padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
                         activebackground="#3d6a9a")
         analyze_btn.pack(side=tk.LEFT, padx=5)
 
         save_btn = tk.Button(btn_frame, text="Save", command=self.save_results,
-                     bg="#1d4a7a", fg="white", font=("Arial", 10, "bold"),
+             bg="#1d4a7a", fg="white", font=("Courier New", 10, "bold"),
                      padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
                      activebackground="#2d5a8a")
         save_btn.pack(side=tk.LEFT, padx=5)
@@ -1823,7 +1824,7 @@ class KuCodeLexerGUI:
         left_panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
 
         source_label = tk.Label(left_panel, text="Source Code",
-                                font=("Arial", 12, "bold"), bg=panel_bg, fg="white", anchor="w")
+                        font=("Courier New", 12, "bold"), bg=panel_bg, fg="white", anchor="w")
         source_label.pack(fill=tk.X, padx=10, pady=(10, 5))
         # Line numbers frame
         line_frame = tk.Frame(left_panel, bg="white")
@@ -1831,13 +1832,13 @@ class KuCodeLexerGUI:
 
         # Line numbers
         self.line_numbers = tk.Text(line_frame, width=4, padx=5, takefocus=0,
-                            border=0, background='#0d1b2a', fg='#6c757d',
-                            state='disabled', wrap='none', font=("Consolas", 10))
+                    border=0, background='#0d1b2a', fg='#6c757d',
+                    state='disabled', wrap='none', font=("Courier New", 10))
         self.line_numbers.pack(side=tk.LEFT, fill=tk.Y)
 
 # Source code text area
         self.source_text = scrolledtext.ScrolledText(line_frame, wrap=tk.NONE,
-                                             font=("Consolas", 10),
+                                             font=("Courier New", 10),
                                              bg=dark_blue, fg="#e0e0e0",
                                              insertbackground="white",
                                              selectbackground="#264f78")
@@ -1850,7 +1851,7 @@ class KuCodeLexerGUI:
         right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
 
         tokens_label = tk.Label(right_panel, text="Lexical Table",
-                        font=("Arial", 12, "bold"), bg=panel_bg, fg="white", anchor="w")
+                font=("Courier New", 12, "bold"), bg=panel_bg, fg="white", anchor="w")
         tokens_label.pack(fill=tk.X, padx=10, pady=(10, 5))
 
         # Tokens table
@@ -1904,11 +1905,11 @@ class KuCodeLexerGUI:
         terminal_frame.pack_propagate(False)
 
         terminal_label = tk.Label(terminal_frame, text="Terminal",
-                          font=("Arial", 12, "bold"), bg=panel_bg, fg="white", anchor="w")
+                  font=("Courier New", 12, "bold"), bg=panel_bg, fg="white", anchor="w")
         terminal_label.pack(fill=tk.X, padx=10, pady=(10, 5))
 
         self.terminal_text = scrolledtext.ScrolledText(terminal_frame, wrap=tk.WORD,
-                                               font=("Consolas", 9),
+                                               font=("Courier New", 9),
                                                bg=dark_blue, fg="#00ff00",
                                                height=6)
         self.terminal_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
