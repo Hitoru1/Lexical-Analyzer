@@ -178,7 +178,7 @@ DELIM_SETS = {
     # space_nline, null, }, ], ), ,, ;, mathop, relop, logicop, =
     'lit_delim': {' ', '\n', '}', ']', ')', ',', ';', '+', '-', '*', '/', '%', '=', '!', '<', '>', '&', '|', ':'},
     # space_nline, mathop, =, <, >, (, ), ], ,, ;, }, &, |, !
-    'identifier_del': {' ', '\n', '+', '-', '*', '/', '%', '=', '<', '>', '(', ')', ']', ',', ';', '}', '&', '|', '!', '.', '{'},
+    'identifier_del': {' ', '\n', '+', '-', '*', '/', '%', '=', '<', '>', '(', ')', ']', ',', ';', '}', '&', '|', '!', '.', '{', '['},
     # num only
     'num': set(NUM),
     # space, num
@@ -1093,7 +1093,7 @@ class Lexer:
                             pos_start,
                             pos_error,
                             f'Invalid number "{num_str}" - numbers cannot have leading zeros'
-                         ))
+                        ))
                         continue
 
                     if self.current_char == '.':
@@ -1754,33 +1754,33 @@ class KuCodeLexerGUI:
         style.theme_use('clam')
 
         style.configure("Treeview",
-                background="#152238",
-                foreground="#e0e0e0",
-                fieldbackground="#152238",
-                borderwidth=0,
-                rowheight=25,
-                font=("Arial", 10))  
+                        background="#152238",
+                        foreground="#e0e0e0",
+                        fieldbackground="#152238",
+                        borderwidth=0,
+                        rowheight=25,
+                        font=("Arial", 10))
 
         style.configure("Treeview.Heading",
-                background="#1e3a5f",
-                foreground="white",
-                borderwidth=1,
-                relief="flat",
-                font=("Arial Black", 10, "bold"))
+                        background="#1e3a5f",
+                        foreground="white",
+                        borderwidth=1,
+                        relief="flat",
+                        font=("Arial Black", 10, "bold"))
 
         style.map("Treeview.Heading",
-                    background=[('active', '#2d5a8a')])  # Lighter blue on hover
+                  background=[('active', '#2d5a8a')])  # Lighter blue on hover
 
         style.map("Treeview",
-                    background=[('selected', '#264f78')],  # Selection color
-                    foreground=[('selected', 'white')])
+                  background=[('selected', '#264f78')],  # Selection color
+                  foreground=[('selected', 'white')])
 
         # Configure colors
-        bg_color = "#1e3a5f"  
+        bg_color = "#1e3a5f"
         fg_color = "white"
-        accent_blue = "#2d5a8a"  
-        dark_blue = "#152238"  
-        panel_bg = "#1a1a2e"  
+        accent_blue = "#2d5a8a"
+        dark_blue = "#152238"
+        panel_bg = "#1a1a2e"
 
         # Header Frame
         header_frame = tk.Frame(root, bg=bg_color, height=60)
@@ -1789,7 +1789,7 @@ class KuCodeLexerGUI:
 
         # Logo and Title
         title_label = tk.Label(header_frame, text="KuCode Lexical Analyzer",
-                     font=("Courier New", 18, "bold"), bg=bg_color, fg=fg_color)
+                               font=("Courier New", 18, "bold"), bg=bg_color, fg=fg_color)
         title_label.pack(side=tk.LEFT, padx=20, pady=10)
 
         # Buttons
@@ -1797,21 +1797,21 @@ class KuCodeLexerGUI:
         btn_frame.pack(side=tk.RIGHT, padx=20)
 
         clear_btn = tk.Button(btn_frame, text="Clear", command=self.clear_all,
-              bg="#3d6a9f", fg="white", font=("Courier New", 10, "bold"),
-                      padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
-                      activebackground="#4d7aaf")
+                              bg="#3d6a9f", fg="white", font=("Courier New", 10, "bold"),
+                              padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
+                              activebackground="#4d7aaf")
         clear_btn.pack(side=tk.LEFT, padx=5)
 
         analyze_btn = tk.Button(btn_frame, text="Analyze", command=self.analyze,
-                bg="#2d5a8a", fg="white", font=("Courier New", 10, "bold"),
-                        padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
-                        activebackground="#3d6a9a")
+                                bg="#2d5a8a", fg="white", font=("Courier New", 10, "bold"),
+                                padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
+                                activebackground="#3d6a9a")
         analyze_btn.pack(side=tk.LEFT, padx=5)
 
         save_btn = tk.Button(btn_frame, text="Save", command=self.save_results,
-             bg="#1d4a7a", fg="white", font=("Courier New", 10, "bold"),
-                     padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
-                     activebackground="#2d5a8a")
+                             bg="#1d4a7a", fg="white", font=("Courier New", 10, "bold"),
+                             padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
+                             activebackground="#2d5a8a")
         save_btn.pack(side=tk.LEFT, padx=5)
 
         # Main container
@@ -1820,11 +1820,11 @@ class KuCodeLexerGUI:
 
         # Left Panel - Source Code
         left_panel = tk.Frame(main_container, bg=panel_bg,
-                                relief=tk.RAISED, bd=1)
+                              relief=tk.RAISED, bd=1)
         left_panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
 
         source_label = tk.Label(left_panel, text="Source Code",
-                        font=("Courier New", 12, "bold"), bg=panel_bg, fg="white", anchor="w")
+                                font=("Courier New", 12, "bold"), bg=panel_bg, fg="white", anchor="w")
         source_label.pack(fill=tk.X, padx=10, pady=(10, 5))
         # Line numbers frame
         line_frame = tk.Frame(left_panel, bg="white")
@@ -1832,26 +1832,27 @@ class KuCodeLexerGUI:
 
         # Line numbers
         self.line_numbers = tk.Text(line_frame, width=4, padx=5, takefocus=0,
-                    border=0, background='#0d1b2a', fg='#6c757d',
-                    state='disabled', wrap='none', font=("Courier New", 10))
+                                    border=0, background='#0d1b2a', fg='#6c757d',
+                                    state='disabled', wrap='none', font=("Courier New", 10))
         self.line_numbers.pack(side=tk.LEFT, fill=tk.Y)
 
 # Source code text area
         self.source_text = scrolledtext.ScrolledText(line_frame, wrap=tk.NONE,
-                                             font=("Courier New", 10),
-                                             bg=dark_blue, fg="#e0e0e0",
-                                             insertbackground="white",
-                                             selectbackground="#264f78")
+                                                     font=("Courier New", 10),
+                                                     bg=dark_blue, fg="#e0e0e0",
+                                                     insertbackground="white",
+                                                     selectbackground="#264f78")
         self.source_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.source_text.bind('<KeyRelease>', self.update_line_numbers)
         self.source_text.bind('<MouseWheel>', self.sync_scroll)
 
         # Right Panel - Tokens
-        right_panel = tk.Frame(main_container, bg=panel_bg, relief=tk.RAISED, bd=1)
+        right_panel = tk.Frame(
+            main_container, bg=panel_bg, relief=tk.RAISED, bd=1)
         right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
 
         tokens_label = tk.Label(right_panel, text="Lexical Table",
-                font=("Courier New", 12, "bold"), bg=panel_bg, fg="white", anchor="w")
+                                font=("Courier New", 12, "bold"), bg=panel_bg, fg="white", anchor="w")
         tokens_label.pack(fill=tk.X, padx=10, pady=(10, 5))
 
         # Tokens table
@@ -1859,19 +1860,18 @@ class KuCodeLexerGUI:
         table_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
 
         # Scrollbars
-        
+
         style.configure("Vertical.TScrollbar",
-                background="#1e3a5f",
-                troughcolor="#0d1b2a",
-                borderwidth=0,
-                arrowcolor="white")
+                        background="#1e3a5f",
+                        troughcolor="#0d1b2a",
+                        borderwidth=0,
+                        arrowcolor="white")
 
         style.configure("Horizontal.TScrollbar",
-                background="#1e3a5f",
-                troughcolor="#0d1b2a",
-                borderwidth=0,
-                arrowcolor="white")
-
+                        background="#1e3a5f",
+                        troughcolor="#0d1b2a",
+                        borderwidth=0,
+                        arrowcolor="white")
 
         vsb = ttk.Scrollbar(table_frame, orient="vertical")
         vsb.pack(side=tk.RIGHT, fill=tk.Y)
@@ -1881,11 +1881,11 @@ class KuCodeLexerGUI:
 
         # Treeview
         self.token_table = ttk.Treeview(table_frame,
-                                columns=("Lexeme", "Token"),
-                                show="headings",
-                                yscrollcommand=vsb.set,
-                                xscrollcommand=hsb.set,
-                                style="Treeview")
+                                        columns=("Lexeme", "Token"),
+                                        show="headings",
+                                        yscrollcommand=vsb.set,
+                                        xscrollcommand=hsb.set,
+                                        style="Treeview")
 
         vsb.config(command=self.token_table.yview)
         hsb.config(command=self.token_table.xview)
@@ -1900,30 +1900,32 @@ class KuCodeLexerGUI:
         self.token_table.pack(fill=tk.BOTH, expand=True)
 
         # Bottom Panel - Terminal
-        terminal_frame = tk.Frame(root, bg=panel_bg, relief=tk.RAISED, bd=1, height=150)
+        terminal_frame = tk.Frame(
+            root, bg=panel_bg, relief=tk.RAISED, bd=1, height=150)
         terminal_frame.pack(fill=tk.X, side=tk.BOTTOM, padx=10, pady=(0, 10))
         terminal_frame.pack_propagate(False)
 
         terminal_label = tk.Label(terminal_frame, text="Terminal",
-                  font=("Courier New", 12, "bold"), bg=panel_bg, fg="white", anchor="w")
+                                  font=("Courier New", 12, "bold"), bg=panel_bg, fg="white", anchor="w")
         terminal_label.pack(fill=tk.X, padx=10, pady=(10, 5))
 
         self.terminal_text = scrolledtext.ScrolledText(terminal_frame, wrap=tk.WORD,
-                                               font=("Courier New", 9),
-                                               bg=dark_blue, fg="#00ff00",
-                                               height=6)
-        self.terminal_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+                                                       font=("Courier New", 9),
+                                                       bg=dark_blue, fg="#00ff00",
+                                                       height=6)
+        self.terminal_text.pack(
+            fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
 
     def highlight_syntax(self, event=None):
-    
+
         self.source_text.tag_remove("keyword", "1.0", "end")
         self.source_text.tag_remove("string", "1.0", "end")
         self.source_text.tag_remove("comment", "1.0", "end")
         self.source_text.tag_remove("number", "1.0", "end")
         self.source_text.tag_remove("operator", "1.0", "end")
-    
+
         content = self.source_text.get("1.0", "end-1c")
-    
+
     # Keywords - purple/pink
         keywords_pattern = r'\b(' + '|'.join([
             'start', 'finish', 'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool',
@@ -1931,56 +1933,58 @@ class KuCodeLexerGUI:
             'fallback', 'select', 'option', 'each', 'during', 'from', 'to', 'step',
             'stop', 'skip', 'give', 'define', 'worldwide', 'fixed', 'list', 'group'
         ]) + r')\b'
-    
+
         import re
         for match in re.finditer(keywords_pattern, content):
             start_idx = f"1.0+{match.start()}c"
             end_idx = f"1.0+{match.end()}c"
             self.source_text.tag_add("keyword", start_idx, end_idx)
-    
+
     # Strings - green
         string_pattern = r'"[^"]*"|\'[^\']*\''
         for match in re.finditer(string_pattern, content):
             start_idx = f"1.0+{match.start()}c"
             end_idx = f"1.0+{match.end()}c"
             self.source_text.tag_add("string", start_idx, end_idx)
-    
+
     # Comments - gray
         comment_pattern = r'~[^\n]*|~~.*?~~'
         for match in re.finditer(comment_pattern, content, re.DOTALL):
             start_idx = f"1.0+{match.start()}c"
             end_idx = f"1.0+{match.end()}c"
             self.source_text.tag_add("comment", start_idx, end_idx)
-    
+
     # Numbers - orange
         number_pattern = r'\b\d+\.?\d*\b'
         for match in re.finditer(number_pattern, content):
             start_idx = f"1.0+{match.start()}c"
             end_idx = f"1.0+{match.end()}c"
             self.source_text.tag_add("number", start_idx, end_idx)
-    
+
     # Operators - light blue
         operator_pattern = r'[+\-*/%=<>!&|]+'
         for match in re.finditer(operator_pattern, content):
             start_idx = f"1.0+{match.start()}c"
             end_idx = f"1.0+{match.end()}c"
             self.source_text.tag_add("operator", start_idx, end_idx)
-    
+
     # Configure tag colors
         self.source_text.tag_config("keyword", foreground="#c678dd")  # Purple
         self.source_text.tag_config("string", foreground="#98c379")   # Green
         self.source_text.tag_config("comment", foreground="#5c6370")  # Gray
         self.source_text.tag_config("number", foreground="#d19a66")   # Orange
-        self.source_text.tag_config("operator", foreground="#61afef") # Light blue
+        self.source_text.tag_config(
+            "operator", foreground="#61afef")  # Light blue
 
     def update_line_numbers(self, event=None):
         line_count = self.source_text.get("1.0", "end-1c").count('\n') + 1
-        line_numbers_string = "\n".join(str(i) for i in range(1, line_count + 1))
+        line_numbers_string = "\n".join(str(i)
+                                        for i in range(1, line_count + 1))
         self.line_numbers.config(state='normal')
         self.line_numbers.delete(1.0, tk.END)
         self.line_numbers.insert(1.0, line_numbers_string)
         self.line_numbers.config(state='disabled')
-    
+
         self.highlight_syntax()
 
     def sync_scroll(self, event=None):
