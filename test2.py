@@ -164,7 +164,7 @@ DELIM_SETS = {
     # space, letternum, (, ", {, [
     'comma_delim': {' ', '(', '"', '{', '['} | set(LETTERNUM),
     # space, num, ", [, ]
-    'open_list': {' ', '"', '[', ']'} | set(NUM),
+    'open_list': {' ', '"', '[', ']'} | set(LETTERNUM),
     # space, ;, ,, =
     'close_list': {' ', ';', ',', '='},
     # space, letternum, ', ", ), !
