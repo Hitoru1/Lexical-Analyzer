@@ -808,14 +808,16 @@ class Lexer:
                             token = Token(token_type, matched_text,
                                           pos_start, pos_end)
 
-                        tokens.append(token)
+                        # Check delimiter BEFORE adding token
+                            delim_error = self.check_delimiter(
+                                token.type, token.value, pos_end)
+                            if delim_error:
+                                errors.append(delim_error)
+                                continue  # Drop token, don't add it
 
-                        # Check delimiter
-                        delim_error = self.check_delimiter(
-                            token.type, token.value, pos_end)
-                        if delim_error:
-                            errors.append(delim_error)
-                        continue
+                            # Only add if delimiter is valid
+                            tokens.append(token)
+                            continue
 
                 # Not a keyword, treat as identifier
                 id_str = ''
@@ -1464,102 +1466,134 @@ class Lexer:
             elif self.current_char == '(':
                 pos_start = self.pos.copy()
                 self.advance()
-                token = Token(DELIM_LEFT_PAREN,
-                              '(', pos_start, self.pos.copy())
-                tokens.append(token)
+                pos_end = self.pos.copy()
+
                 delim_error = self.check_delimiter(
-                    token.type, token.value, self.pos.copy())
+                    DELIM_LEFT_PAREN, '(', pos_end)
                 if delim_error:
                     errors.append(delim_error)
+                    continue
+
+                token = Token(DELIM_LEFT_PAREN, '(', pos_start, pos_end)
+                tokens.append(token)
                 continue
 
             elif self.current_char == ')':
                 pos_start = self.pos.copy()
                 self.advance()
-                token = Token(DELIM_RIGHT_PAREN, ')',
-                              pos_start, self.pos.copy())
-                tokens.append(token)
+                pos_end = self.pos.copy()
+
                 delim_error = self.check_delimiter(
-                    token.type, token.value, self.pos.copy())
+                    DELIM_RIGHT_PAREN, ')', pos_end)
                 if delim_error:
                     errors.append(delim_error)
+                    continue
+
+                token = Token(DELIM_RIGHT_PAREN, ')', pos_start, pos_end)
+                tokens.append(token)
                 continue
 
             elif self.current_char == '[':
                 pos_start = self.pos.copy()
                 self.advance()
-                token = Token(DELIM_LEFT_BRACKET,
-                              '[', pos_start, self.pos.copy())
-                tokens.append(token)
+                pos_end = self.pos.copy()
+
                 delim_error = self.check_delimiter(
-                    token.type, token.value, self.pos.copy())
+                    DELIM_LEFT_BRACKET, '[', pos_end)
                 if delim_error:
                     errors.append(delim_error)
+                    continue
+
+                token = Token(DELIM_LEFT_BRACKET, '[', pos_start, pos_end)
+                tokens.append(token)
                 continue
 
             elif self.current_char == ']':
                 pos_start = self.pos.copy()
                 self.advance()
-                token = Token(DELIM_RIGHT_BRACKET, ']',
-                              pos_start, self.pos.copy())
-                tokens.append(token)
+                pos_end = self.pos.copy()
+
                 delim_error = self.check_delimiter(
-                    token.type, token.value, self.pos.copy())
+                    DELIM_RIGHT_BRACKET, ']', pos_end)
                 if delim_error:
                     errors.append(delim_error)
+                    continue
+
+                token = Token(DELIM_RIGHT_BRACKET, ']', pos_start, pos_end)
+                tokens.append(token)
                 continue
 
             elif self.current_char == '{':
                 pos_start = self.pos.copy()
                 self.advance()
-                token = Token(DELIM_LEFT_BRACE,
-                              '{', pos_start, self.pos.copy())
-                tokens.append(token)
+                pos_end = self.pos.copy()
+
                 delim_error = self.check_delimiter(
-                    token.type, token.value, self.pos.copy())
+                    DELIM_LEFT_BRACE, '{', pos_end)
                 if delim_error:
                     errors.append(delim_error)
+                    continue
+
+                token = Token(DELIM_LEFT_BRACE, '{', pos_start, pos_end)
+                tokens.append(token)
                 continue
 
             elif self.current_char == '}':
                 pos_start = self.pos.copy()
                 self.advance()
-                token = Token(DELIM_RIGHT_BRACE, '}',
-                              pos_start, self.pos.copy())
-                tokens.append(token)
+                pos_end = self.pos.copy()
+
                 delim_error = self.check_delimiter(
-                    token.type, token.value, self.pos.copy())
+                    DELIM_RIGHT_BRACE, '}', pos_end)
                 if delim_error:
                     errors.append(delim_error)
+                    continue
+
+                token = Token(DELIM_RIGHT_BRACE, '}', pos_start, pos_end)
+                tokens.append(token)
                 continue
 
             elif self.current_char == ';':
                 pos_start = self.pos.copy()
                 self.advance()
-                token = Token(DELIM_SEMICOLON, ';', pos_start, self.pos.copy())
-                tokens.append(token)
+                pos_end = self.pos.copy()
+
                 delim_error = self.check_delimiter(
-                    token.type, token.value, self.pos.copy())
+                    DELIM_SEMICOLON, ';', pos_end)
                 if delim_error:
                     errors.append(delim_error)
+                    continue  # Drop semicolon token
+
+                token = Token(DELIM_SEMICOLON, ';', pos_start, pos_end)
+                tokens.append(token)
                 continue
 
             elif self.current_char == ':':
                 pos_start = self.pos.copy()
                 self.advance()
-                token = Token(DELIM_COLON, ':', pos_start, self.pos.copy())
+                pos_end = self.pos.copy()
+
+                delim_error = self.check_delimiter(DELIM_COLON, ':', pos_end)
+                if delim_error:
+                    errors.append(delim_error)
+                    continue
+
+                token = Token(DELIM_COLON, ':', pos_start, pos_end)
                 tokens.append(token)
                 continue
 
             elif self.current_char == ',':
                 pos_start = self.pos.copy()
                 self.advance()
-                token = Token(DELIM_COMMA, ',', pos_start, self.pos.copy())
-                tokens.append(token)
-                delim_error = self.check_delimiter(
-                    token.type, token.value, self.pos.copy())
+                pos_end = self.pos.copy()
+
+                delim_error = self.check_delimiter(DELIM_COMMA, ',', pos_end)
                 if delim_error:
                     errors.append(delim_error)
+                    continue
+
+                token = Token(DELIM_COMMA, ',', pos_start, pos_end)
+                tokens.append(token)
                 continue
 
             elif self.current_char == '.':
