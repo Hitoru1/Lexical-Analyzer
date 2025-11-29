@@ -901,13 +901,23 @@ class Lexer:
                         self.advance()
 
                     # Check for leading zeros
+                    # Check for leading zeros - invalid delimiter after 0
                     if len(num_str) > 1 and num_str[0] == '0':
-                        pos_error = self.pos.copy()
+                        # Drop the leading 0 and rewind to process remaining digits
                         errors.append(LexicalError(
                             pos_start,
-                            pos_error,
-                            f'Invalid number "{num_str}" - numbers cannot have leading zeros'
+                            pos_start,
+                            f'Invalid delimiter after "0": expected space, newline, operator, ".", ";", ")" or delimiter, got "{num_str[1]}"'
                         ))
+
+                        # Rewind position to the second digit (after the 0)
+                        self.pos = pos_start.copy()
+                        self.pos.advance()  # Move past the '0'
+                        if self.pos.idx < len(self.source):
+                            self.current_char = self.source[self.pos.idx]
+                        else:
+                            self.current_char = None
+
                         continue
 
                     # Check if there's a 12th digit (invalid delimiter for integer)
