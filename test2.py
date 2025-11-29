@@ -809,15 +809,15 @@ class Lexer:
                                           pos_start, pos_end)
 
                         # Check delimiter BEFORE adding token
-                            delim_error = self.check_delimiter(
-                                token.type, token.value, pos_end)
-                            if delim_error:
-                                errors.append(delim_error)
-                                continue  # Drop token, don't add it
+                        delim_error = self.check_delimiter(
+                            token.type, token.value, pos_end)
+                        if delim_error:
+                            errors.append(delim_error)
+                            continue  # Drop token, don't add it
 
                             # Only add if delimiter is valid
-                            tokens.append(token)
-                            continue
+                        tokens.append(token)
+                        continue
 
                 # Not a keyword, treat as identifier
                 id_str = ''
