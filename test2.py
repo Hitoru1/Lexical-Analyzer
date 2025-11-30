@@ -1150,6 +1150,66 @@ class Lexer:
                         int_dig_count = 0
                         dec_dig_count = 0
 
+                        # Special handling for -0
+                        if self.current_char == '0':
+                            num_str += '0'
+                            self.advance()
+
+                            # -0 can ONLY continue to decimal, not standalone
+                            if self.current_char == '.' and self.peek() and self.peek() in NUM:
+                                # Valid: -0.5
+                                num_str += self.current_char
+                                dot_count += 1
+                                self.advance()
+
+                                while self.current_char != None and self.current_char in NUM and dec_dig_count < 16:
+                                    num_str += self.current_char
+                                    dec_dig_count += 1
+                                    self.advance()
+
+                                # Check if there's a 17th decimal digit (invalid delimiter)
+                                if dec_dig_count == 16 and self.current_char != None and self.current_char in NUM:
+                                    pos_error = self.pos.copy()
+                                    errors.append(LexicalError(num_start, pos_error,
+                                                               f'Invalid delimiter after "{num_str}": expected space, newline, operator, delimiter or punctuation, got "{self.current_char}"'))
+                                    continue
+
+                                num_end = self.pos.copy()
+
+                                # Check for letters or underscore following number
+                                if self.current_char != None and (self.current_char in LETTERS or self.current_char == '_'):
+                                    error_str = num_str
+                                    while self.current_char != None and (self.current_char in LETTERNUM or self.current_char == '_'):
+                                        error_str += self.current_char
+                                        self.advance()
+                                    errors.append(LexicalError(num_start, self.pos.copy(),
+                                                               f'Invalid identifier "{error_str}" - identifier cannot start with a digit'))
+                                    continue
+
+                                # Create decimal token
+                                token = Token(LIT_DECIMAL, num_str,
+                                              num_start, num_end)
+
+                                # Check delimiter
+                                delim_error = self.check_delimiter(
+                                    token.type, token.value, num_end)
+                                if delim_error:
+                                    errors.append(delim_error)
+                                    continue
+
+                                tokens.append(token)
+                                continue
+                            else:
+                                # -0 NOT followed by .digit - incomplete number literal
+                                errors.append(LexicalError(
+                                    num_start,
+                                    self.pos.copy(),
+                                    'Incomplete number literal "-0" - expected decimal point and digits'
+                                ))
+                                # Position is already past -0, continue from here
+                                continue
+
+                        # Normal negative number (not starting with 0): -1, -2, -999, etc.
                         while self.current_char != None and self.current_char in NUM and int_dig_count < 10:
                             num_str += self.current_char
                             int_dig_count += 1
@@ -1162,6 +1222,7 @@ class Lexer:
                                                        f'Invalid delimiter after "{num_str}": expected space, newline, operator, delimiter or punctuation, got "{self.current_char}"'))
                             continue
 
+                        # Handle optional decimal point for non-zero numbers
                         if self.current_char == '.':
                             if self.peek() and self.peek() in NUM:
                                 num_str += self.current_char
@@ -1179,9 +1240,17 @@ class Lexer:
                                     errors.append(LexicalError(num_start, pos_error,
                                                                f'Invalid delimiter after "{num_str}": expected space, newline, operator, delimiter or punctuation, got "{self.current_char}"'))
                                     continue
+                            else:
+                                # Dot not followed by digit
+                                num_str += self.current_char
+                                self.advance()
+                                errors.append(LexicalError(num_start, self.pos.copy(),
+                                                           f'Invalid delimiter after "{num_str}": expected digit, got "{self.current_char if self.current_char else "EOF"}"'))
+                                continue
 
                         num_end = self.pos.copy()
 
+                        # Check for letters or underscore following number
                         if self.current_char != None and (self.current_char in LETTERS or self.current_char == '_'):
                             error_str = num_str
                             while self.current_char != None and (self.current_char in LETTERNUM or self.current_char == '_'):
@@ -1191,11 +1260,7 @@ class Lexer:
                                                        f'Invalid identifier "{error_str}" - identifier cannot start with a digit'))
                             continue
 
-                        if dot_count > 0 and dec_dig_count == 0:
-                            errors.append(LexicalError(num_start, num_end,
-                                                       f'Invalid delimiter after "{num_str}": expected digit, got "{self.current_char if self.current_char else "EOF"}"'))
-                            continue
-
+                        # Create token
                         if dot_count == 0:
                             token = Token(LIT_NUMBER, num_str,
                                           num_start, num_end)
@@ -1203,11 +1268,13 @@ class Lexer:
                             token = Token(LIT_DECIMAL, num_str,
                                           num_start, num_end)
 
+                        # Check delimiter
                         delim_error = self.check_delimiter(
                             token.type, token.value, num_end)
                         if delim_error:
                             errors.append(delim_error)
-                            continue  # Drop token
+                            continue
+
                         tokens.append(token)
                         continue
 
@@ -1218,7 +1285,7 @@ class Lexer:
                         OP_SUBTRACTION_ASSIGN, '-=', pos_end)
                     if delim_error:
                         errors.append(delim_error)
-                        continue  # Drop token
+                        continue
                     tokens.append(Token(OP_SUBTRACTION_ASSIGN,
                                   '-=', pos_start, pos_end))
                 elif self.current_char == '-':
@@ -1228,7 +1295,7 @@ class Lexer:
                         OP_DECREMENT, '--', pos_end)
                     if delim_error:
                         errors.append(delim_error)
-                        continue  # Drop token
+                        continue
                     tokens.append(
                         Token(OP_DECREMENT, '--', pos_start, pos_end))
                 else:
@@ -1237,7 +1304,7 @@ class Lexer:
                         OP_SUBTRACTION, '-', pos_end)
                     if delim_error:
                         errors.append(delim_error)
-                        continue  # Drop token
+                        continue
                     tokens.append(
                         Token(OP_SUBTRACTION, '-', pos_start, pos_end))
                 continue
