@@ -846,13 +846,16 @@ class Lexer:
                     continue
 
                 token = Token(IDENTIFIER, id_str, pos_start, pos_end)
-                tokens.append(token)
 
-                # Check delimiter
+                # Check delimiter BEFORE adding token
                 delim_error = self.check_delimiter(
                     token.type, token.value, pos_end)
                 if delim_error:
                     errors.append(delim_error)
+                    continue  # Drop token
+
+                # Only add if delimiter is valid
+                tokens.append(token)
                 continue
 
             # error for underscore
