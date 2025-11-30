@@ -166,7 +166,7 @@ DELIM_SETS = {
     # space, num, ", [, ]
     'open_list': {' ', '"', '[', ']'} | set(LETTERNUM),
     # space, ;, ,, =
-    'close_list': {' ', ';', ',', '='},
+    'close_list': {' ', ';', ',', '=', ']', '[', '+', '-', '*', '/', '%', '&', '|', '!', '<', '>', ')'},
     # space, letternum, ', ", ), !
     'openparen_delim': {' ', "'", '"', ')', '!', '-'} | set(LETTERNUM),
     # space, mathop, logicop, relop, ;, {, )
