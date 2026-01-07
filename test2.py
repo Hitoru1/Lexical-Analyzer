@@ -756,15 +756,26 @@ class Lexer:
                     # Multi-line comment
                     self.advance()
                     comment_val = ''
+                    found_closing = False
+
                     while self.current_char != None:
                         if self.current_char == '~' and self.peek() == '~':
+                            found_closing = True
                             self.advance()
                             self.advance()
                             break
                         comment_val += self.current_char
                         self.advance()
+
+                    pos_end = self.pos.copy()
+
+                    if not found_closing:
+                        errors.append(LexicalError(pos_start, pos_end,
+                                                   'Unterminated multi-line comment - missing closing "~~"'))
+                        continue
+
                     tokens.append(
-                        Token(COMMENT_MULTI, comment_val.strip(), pos_start, self.pos.copy()))
+                        Token(COMMENT_MULTI, comment_val.strip(), pos_start, pos_end))
                     continue
                 else:
                     # Single-line comment
