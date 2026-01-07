@@ -1754,17 +1754,17 @@ class KuCodeLexerGUI:
         btn_frame = tk.Frame(header_frame, bg=bg_color)
         btn_frame.pack(side=tk.RIGHT, padx=20)
 
-        clear_btn = tk.Button(btn_frame, text="Clear", command=self.clear_all,
-                              bg="#3d6a9f", fg="white", font=("Courier New", 10, "bold"),
-                              padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
-                              activebackground="#4d7aaf")
-        clear_btn.pack(side=tk.LEFT, padx=5)
-
         analyze_btn = tk.Button(btn_frame, text="Analyze", command=self.analyze,
                                 bg="#2d5a8a", fg="white", font=("Courier New", 10, "bold"),
                                 padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
                                 activebackground="#3d6a9a")
         analyze_btn.pack(side=tk.LEFT, padx=5)
+
+        clear_btn = tk.Button(btn_frame, text="Clear", command=self.clear_all,
+                              bg="#3d6a9f", fg="white", font=("Courier New", 10, "bold"),
+                              padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
+                              activebackground="#4d7aaf")
+        clear_btn.pack(side=tk.LEFT, padx=5)
 
         save_btn = tk.Button(btn_frame, text="Save", command=self.save_results,
                              bg="#1d4a7a", fg="white", font=("Courier New", 10, "bold"),
