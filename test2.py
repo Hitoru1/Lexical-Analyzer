@@ -47,7 +47,7 @@ RW_SHOW = 'show'
 # Reserved Words - Conditionals
 RW_CHECK = 'check'
 RW_OTHERWISE = 'otherwise'
-RW_OTHERWISECHECK = 'otherwise_check'
+
 
 # Reserved Words - Switch
 RW_FALLBACK = 'fallback'
@@ -213,7 +213,7 @@ TOKEN_DELIMITERS = {
     RW_NO: 'bool_delim',
     RW_OPTION: 'space',
     RW_OTHERWISE: 'delim1',
-    RW_OTHERWISECHECK: 'delim1',
+
     RW_READ: 'open_paren',
     RW_SELECT: 'delim2',
     RW_SHOW: 'open_paren',
@@ -617,15 +617,6 @@ class TransitionDFA:
                 break
 
         # Special handling for "otherwise check"
-        if last_accept_state == 117:  # "otherwise" was matched
-            temp_idx = last_accept_idx
-            # Skip whitespace
-            while temp_idx < len(source) and source[temp_idx] in ' \t':
-                temp_idx += 1
-
-            # Check if "check" follows
-            if temp_idx + 5 <= len(source) and source[temp_idx:temp_idx+5] == 'check':
-                return RW_OTHERWISECHECK, 'otherwise check', temp_idx + 5
 
         if last_accept_state is not None:
             token_type = self.accept_states[last_accept_state]
@@ -804,11 +795,6 @@ class Lexer:
                         for _ in range(len(matched_text)):
                             self.advance()
 
-                        # For "otherwise check", advance to end of "check"
-                        if token_type == RW_OTHERWISECHECK:
-                            while self.pos.idx < end_idx:
-                                self.advance()
-
                         pos_end = self.pos.copy()
 
                         # Create token
@@ -872,9 +858,10 @@ class Lexer:
             # error for underscore
             elif self.current_char == '_':
                 pos_start = self.pos.copy()
-                errors.append(LexicalError(pos_start, pos_start,
-                                           'Identifier cannot start with underscore "_"'))
+                char = self.current_char
                 self.advance()
+                errors.append(LexicalError(pos_start, self.pos.copy(),
+                                           f'Invalid character "{char}"'))
                 continue
 
             # numbers
@@ -974,17 +961,7 @@ class Lexer:
 
                 pos_end = self.pos.copy()
 
-                # Check for letters or underscore following number (invalid)
-                if self.current_char != None and (self.current_char in LETTERS or self.current_char == '_'):
-                    error_str = num_str
-                    while self.current_char != None and (self.current_char in LETTERNUM or self.current_char == '_'):
-                        error_str += self.current_char
-                        self.advance()
-
-                    pos_end = self.pos.copy()
-                    errors.append(LexicalError(pos_start, pos_end,
-                                               f'Invalid identifier "{error_str}" - identifier cannot start with a digit'))
-                    continue
+                pos_end = self.pos.copy()
 
                 # Create appropriate token
                 if dot_count == 0:
@@ -1052,52 +1029,64 @@ class Lexer:
 
             # charlit
             # charlit
+            # charlit
             elif self.current_char == "'":
                 pos_start = self.pos.copy()
                 char_val = "'"  # Start with opening quote
                 self.advance()
-                found_closing = False
 
-                while self.current_char != None and self.current_char != "'":
-                    if self.current_char == '\\':
-                        self.advance()
-                        if self.current_char in ['n', 't', '\\', '"', "'"]:
-                            char_val += '\\' + self.current_char
-                            self.advance()
-                        else:
-                            char_val += '\\'
-                    else:
-                        char_val += self.current_char
-                        self.advance()
-
-                if self.current_char == "'":
-                    found_closing = True
-                    char_val += "'"  # Add closing quote
-                    self.advance()  # Move past closing quote
-
-                pos_end = self.pos.copy()
-
-                if not found_closing:
-                    errors.append(LexicalError(pos_start, pos_end,
+                # Check for empty character literal or EOF
+                if self.current_char == None:
+                    errors.append(LexicalError(pos_start, self.pos.copy(),
                                                'Unterminated character literal - missing closing "\'"'))
                     continue
 
-                # Check if it's a single character (excluding escape sequences and quotes)
-                inner_content = char_val[1:-1]  # Remove the surrounding quotes
-                if len(inner_content) > 2 or (len(inner_content) == 2 and inner_content[0] != '\\'):
-                    errors.append(LexicalError(pos_start, pos_end,
-                                               f'Character literal must contain exactly one character, got "{char_val}"'))
+                if self.current_char == "'":
+                    # Empty character literal ''
+                    errors.append(LexicalError(pos_start, self.pos.copy(),
+                                               'Empty character literal - must contain exactly one character'))
+                    self.advance()  # Move past closing quote
                     continue
 
-                # Check delimiter after character
+                # Read exactly ONE character (or escape sequence) according to transition diagram
+                if self.current_char == '\\':
+                    # Escape sequence
+                    char_val += self.current_char
+                    self.advance()
+
+                    if self.current_char in ['n', 't', '\\', '"', "'"]:
+                        char_val += self.current_char
+                        self.advance()
+                    else:
+                        # Invalid escape sequence
+                        errors.append(LexicalError(pos_start, self.pos.copy(),
+                                                   f'Invalid escape sequence "\\{self.current_char if self.current_char else "EOF"}"'))
+                        continue
+                else:
+                    # Regular single character
+                    char_val += self.current_char
+                    self.advance()
+
+                # Now we MUST have closing quote ' (transition diagram requirement)
+                if self.current_char != "'":
+                    # More content before closing quote - invalid delimiter
+                    errors.append(LexicalError(pos_start, self.pos.copy(),
+                                               f'Invalid delimiter after "{char_val}": expected closing single quote "\'", got "{self.current_char if self.current_char else "EOF"}"'))
+                    continue
+
+                # Found closing quote
+                char_val += "'"
+                self.advance()
+                pos_end = self.pos.copy()
+
+                # Check delimiter after character literal
                 delim_error = self.check_delimiter(
                     LIT_CHARACTER, char_val, pos_end)
                 if delim_error:
                     errors.append(delim_error)
-                    # Drop the character token, continue from current position (invalid delimiter)
                     continue
 
-                # Valid delimiter - add token
+                # Valid character literal - add token
                 token = Token(LIT_CHARACTER, char_val, pos_start, pos_end)
                 tokens.append(token)
                 continue
@@ -1187,16 +1176,6 @@ class Lexer:
 
                                 num_end = self.pos.copy()
 
-                                # Check for letters or underscore following number
-                                if self.current_char != None and (self.current_char in LETTERS or self.current_char == '_'):
-                                    error_str = num_str
-                                    while self.current_char != None and (self.current_char in LETTERNUM or self.current_char == '_'):
-                                        error_str += self.current_char
-                                        self.advance()
-                                    errors.append(LexicalError(num_start, self.pos.copy(),
-                                                               f'Invalid identifier "{error_str}" - identifier cannot start with a digit'))
-                                    continue
-
                                 # Create decimal token
                                 token = Token(LIT_DECIMAL, num_str,
                                               num_start, num_end)
@@ -1260,16 +1239,6 @@ class Lexer:
                                 continue
 
                         num_end = self.pos.copy()
-
-                        # Check for letters or underscore following number
-                        if self.current_char != None and (self.current_char in LETTERS or self.current_char == '_'):
-                            error_str = num_str
-                            while self.current_char != None and (self.current_char in LETTERNUM or self.current_char == '_'):
-                                error_str += self.current_char
-                                self.advance()
-                            errors.append(LexicalError(num_start, self.pos.copy(),
-                                                       f'Invalid identifier "{error_str}" - identifier cannot start with a digit'))
-                            continue
 
                         # Create token
                         if dot_count == 0:
