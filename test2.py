@@ -11,7 +11,7 @@ WHITESPACE = '\n\t '
 # RESERVED WORDS - FROM OUR PAPER
 keywords = {
     'start', 'finish', 'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool',
-    'Yes', 'No', 'none', 'empty', 'read', 'show', 'check', 'otherwise', 'otherwise check',
+    'Yes', 'No', 'none', 'empty', 'read', 'show', 'check', 'otherwise', 'otherwisecheck',
     'fallback', 'select', 'option', 'each', 'during', 'from', 'to', 'step',
     'stop', 'skip', 'give', 'define', 'worldwide', 'fixed', 'list', 'group'
 }
@@ -47,7 +47,7 @@ RW_SHOW = 'show'
 # Reserved Words - Conditionals
 RW_CHECK = 'check'
 RW_OTHERWISE = 'otherwise'
-
+RW_OTHERWISECHECK = 'otherwisecheck'
 
 # Reserved Words - Switch
 RW_FALLBACK = 'fallback'
@@ -213,7 +213,7 @@ TOKEN_DELIMITERS = {
     RW_NO: 'bool_delim',
     RW_OPTION: 'space',
     RW_OTHERWISE: 'delim1',
-
+    RW_OTHERWISECHECK: 'delim2',
     RW_READ: 'open_paren',
     RW_SELECT: 'delim2',
     RW_SHOW: 'open_paren',
@@ -528,7 +528,12 @@ class TransitionDFA:
         trans[114] = {'i': 115}
         trans[115] = {'s': 116}
         trans[116] = {'e': 117}
-        trans[117] = {}  # accept: otherwise
+        trans[117] = {'c': 200}  # - continue to 'c'
+        trans[200] = {'h': 201}  # - continue to 'h'
+        trans[201] = {'e': 202}  # - continue to 'e'
+        trans[202] = {'c': 203}  # - continue to 'c'
+        trans[203] = {'k': 204}  # - continue to 'k'
+        trans[204] = {}  # accept: otherwisecheck
 
         # "read"
         trans[125] = {'e': 126}
@@ -576,6 +581,7 @@ class TransitionDFA:
             101: RW_NO,
             108: RW_OPTION,
             117: RW_OTHERWISE,
+            204: RW_OTHERWISECHECK,
             128: RW_READ,
             134: RW_SELECT,
             139: RW_SHOW,
@@ -1867,7 +1873,7 @@ class KuCodeLexerGUI:
     # Keywords - purple/pink
         keywords_pattern = r'\b(' + '|'.join([
             'start', 'finish', 'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool',
-            'Yes', 'No', 'none', 'empty', 'read', 'show', 'check', 'otherwise',
+            'Yes', 'No', 'none', 'empty', 'read', 'show', 'check', 'otherwise', 'otherwisecheck',
             'fallback', 'select', 'option', 'each', 'during', 'from', 'to', 'step',
             'stop', 'skip', 'give', 'define', 'worldwide', 'fixed', 'list', 'group'
         ]) + r')\b'
