@@ -705,7 +705,7 @@ class Lexer:
                 'closeparen_delim': 'space, operator, ";", "{" or ")"',
                 'bool_delim': 'space, "&", "|", "!" or ";"',
                 'string_char': 'space, newline, ",", "+", ")", "]", "}" or ";"',
-                'lit_delim': 'space, newline, operator or ";"',
+                'lit_delim': 'lit_delim',
                 'identifier_del': 'space, newline, operator, or punctuation',
                 'num': 'digit',
                 'id3': 'space or digit',
