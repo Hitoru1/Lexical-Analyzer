@@ -962,7 +962,7 @@ class Lexer:
                             self.advance()  # Move past the dot
                             pos_error = self.pos.copy()
                             errors.append(LexicalError(pos_start, pos_error,
-                                                       f'Invalid delimiter after "{num_str}": expected digit, got "{self.current_char if self.current_char else "EOF"}"'))
+                                                       f'Invalid character after "{num_str}": expected digit, got "{self.current_char if self.current_char else "EOF"}"'))
                             continue
 
                 pos_end = self.pos.copy()
@@ -1036,25 +1036,39 @@ class Lexer:
             # charlit
             # charlit
             # charlit
+            # Replace the character literal section (around line 1050) with this:
+
             elif self.current_char == "'":
                 pos_start = self.pos.copy()
                 char_val = "'"  # Start with opening quote
                 self.advance()
 
-                # Check for empty character literal or EOF
+                # Check for EOF immediately after opening quote
                 if self.current_char == None:
                     errors.append(LexicalError(pos_start, self.pos.copy(),
                                                'Unterminated character literal - missing closing "\'"'))
                     continue
 
+                # Check for immediate closing quote (empty literal) - accept it as valid
                 if self.current_char == "'":
-                    # Empty character literal ''
-                    errors.append(LexicalError(pos_start, self.pos.copy(),
-                                               'Empty character literal - must contain exactly one character'))
-                    self.advance()  # Move past closing quote
+                    # Empty character literal '' - this is VALID, tokenize it
+                    char_val += "'"
+                    self.advance()
+                    pos_end = self.pos.copy()
+
+                    # Check delimiter after character literal
+                    delim_error = self.check_delimiter(
+                        LIT_CHARACTER, char_val, pos_end)
+                    if delim_error:
+                        errors.append(delim_error)
+                        continue
+
+                    # Valid empty character literal - add token
+                    token = Token(LIT_CHARACTER, char_val, pos_start, pos_end)
+                    tokens.append(token)
                     continue
 
-                # Read exactly ONE character (or escape sequence) according to transition diagram
+                # Read exactly ONE character (or escape sequence)
                 if self.current_char == '\\':
                     # Escape sequence
                     char_val += self.current_char
@@ -1069,15 +1083,15 @@ class Lexer:
                                                    f'Invalid escape sequence "\\{self.current_char if self.current_char else "EOF"}"'))
                         continue
                 else:
-                    # Regular single character
+                    # Regular single character (including space ' ')
                     char_val += self.current_char
                     self.advance()
 
-                # Now we MUST have closing quote ' (transition diagram requirement)
+                # Now we MUST have closing quote '
                 if self.current_char != "'":
                     # More content before closing quote - invalid delimiter
                     errors.append(LexicalError(pos_start, self.pos.copy(),
-                                               f'Invalid delimiter after "{char_val}": expected closing single quote "\'", got "{self.current_char if self.current_char else "EOF"}"'))
+                                               f'Invalid character after "{char_val}": expected closing single quote "\'", got "{self.current_char if self.current_char else "EOF"}"'))
                     continue
 
                 # Found closing quote
@@ -1177,7 +1191,7 @@ class Lexer:
                                 if dec_dig_count == 16 and self.current_char != None and self.current_char in NUM:
                                     pos_error = self.pos.copy()
                                     errors.append(LexicalError(num_start, pos_error,
-                                                               f'Invalid delimiter after "{num_str}": expected space, newline, operator, or punctuation, got "{self.current_char}"'))
+                                                               f'Invalid delimiter after "{num_str}": expected lit_delim "{self.current_char}"'))
                                     continue
 
                                 num_end = self.pos.copy()
@@ -1200,7 +1214,7 @@ class Lexer:
                                 errors.append(LexicalError(
                                     num_start,
                                     self.pos.copy(),
-                                    'Incomplete number literal "-0" - expected decimal point and digits'
+                                    'Invalid character after "-0" - expected decimal point and digits'
                                 ))
                                 # Position is already past -0, continue from here
                                 continue
@@ -1215,7 +1229,7 @@ class Lexer:
                         if int_dig_count == 10 and self.current_char != None and self.current_char in NUM:
                             pos_error = self.pos.copy()
                             errors.append(LexicalError(num_start, pos_error,
-                                                       f'Invalid delimiter after "{num_str}": expected space, newline, operator, or punctuation, got "{self.current_char}"'))
+                                                       f'Invalid delimiter after "{num_str}": axel, got "{self.current_char}"'))
                             continue
 
                         # Handle optional decimal point for non-zero numbers
@@ -1234,7 +1248,7 @@ class Lexer:
                                 if dec_dig_count == 16 and self.current_char != None and self.current_char in NUM:
                                     pos_error = self.pos.copy()
                                     errors.append(LexicalError(num_start, pos_error,
-                                                               f'Invalid delimiter after "{num_str}": expected space, newline, operator, or punctuation, got "{self.current_char}"'))
+                                                               f'Invalid delimiter after "{num_str}": axel, got "{self.current_char}"'))
                                     continue
                             else:
                                 # Dot not followed by digit
@@ -1494,7 +1508,7 @@ class Lexer:
                     # Single & - invalid delimiter (expected another &)
                     pos_end = self.pos.copy()
                     errors.append(LexicalError(pos_start, pos_end,
-                                               f'Invalid delimiter after "&": expected "&", got "{self.current_char if self.current_char else "EOF"}"'))
+                                               f'Invalid character after "&": expected "&", got "{self.current_char if self.current_char else "EOF"}"'))
                 continue
 
             elif self.current_char == '|':
@@ -1515,7 +1529,7 @@ class Lexer:
                     # Single | - invalid delimiter (expected another |)
                     pos_end = self.pos.copy()
                     errors.append(LexicalError(pos_start, pos_end,
-                                               f'Invalid delimiter after "|": expected "|", got "{self.current_char if self.current_char else "EOF"}"'))
+                                               f'Invalid character after "|": expected "|", got "{self.current_char if self.current_char else "EOF"}"'))
                 continue
 
             # delimiters
