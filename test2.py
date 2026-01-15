@@ -226,6 +226,7 @@ TOKEN_DELIMITERS = {
     RW_WORLDWIDE: 'space',
     RW_YES: 'bool_delim',
     RW_LIST: 'space',
+    LIT_BOOLEAN: 'bool_delim',
 
     # Operators
     OP_ADDITION: 'delim3',
@@ -241,7 +242,7 @@ TOKEN_DELIMITERS = {
     OP_EXPONENTIATION: 'op_delim',
     OP_MODULUS: 'op_delim',
     OP_MODULUS_ASSIGN: 'op_delim',
-    OP_ASSIGNMENT: 'delim7',
+    OP_ASSIGNMENT: 'delim3',
     OP_EQUAL_TO: 'delim3',
     OP_LOGICAL_NOT: 'open_paren',
     OP_NOT_EQUAL: 'delim3',
@@ -693,9 +694,9 @@ class Lexer:
                 'space_nline': 'space or newline',
                 'delim1': 'space or "{"',
                 'delim2': 'space or "("',
-                'delim3': 'space, letter, digit, "(", """ or "\'"',
+                'delim3': 'delim3',
                 'sem_col': '";"',
-                'op_delim': 'space, letter, digit or "("',
+                'op_delim': 'op_delim',
                 'open_paren': '"("',
                 'comma_delim': 'space, letter, digit, "(", """, "{" or "["',
                 'open_list': 'space, digit, """, "[" or "]"',
@@ -708,7 +709,7 @@ class Lexer:
                 'identifier_del': 'space, newline, operator, or punctuation',
                 'num': 'digit',
                 'id3': 'space or digit',
-                'delim7': 'space, newline, letter, digit, """ or "\'"',
+                'delim7': 'delim3',
             }
 
             expected = delim_names.get(delimiter_type, delimiter_type)
