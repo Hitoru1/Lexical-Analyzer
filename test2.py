@@ -1153,7 +1153,7 @@ class Lexer:
                 self.advance()
 
                 # Check if this is a negative number (unary minus)
-                if self.current_char and self.current_char in NUM:
+                if self.current_char and (self.current_char in NUM or (self.current_char == '.' and self.peek() and self.peek() in NUM)):
                     if len(tokens) == 0 or tokens[-1].type in [
                         OP_ASSIGNMENT, OP_ADDITION_ASSIGN, OP_SUBTRACTION_ASSIGN,
                         OP_MULTIPLICATION_ASSIGN, OP_DIVISION_ASSIGN, OP_MODULUS_ASSIGN,
