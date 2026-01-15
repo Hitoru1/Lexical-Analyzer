@@ -1212,12 +1212,22 @@ class Lexer:
                                 continue
                             else:
                                 # -0 NOT followed by .digit - incomplete number literal
-                                errors.append(LexicalError(
-                                    num_start,
-                                    self.pos.copy(),
-                                    'Invalid character after "-0" - expected decimal point and digits'
-                                ))
-                                # Position is already past -0, continue from here
+                                if self.current_char == '.':
+                                    # Has dot but no digits after - advance past the dot
+                                    self.advance()  # Move past the '.'
+                                    errors.append(LexicalError(
+                                        num_start,
+                                        self.pos.copy(),
+                                        f'Invalid character after "-0.": expected digits, got "{self.current_char if self.current_char else "EOF"}"'
+                                    ))
+                                else:
+                                    # No dot at all
+                                    errors.append(LexicalError(
+                                        num_start,
+                                        self.pos.copy(),
+                                        f'Invalid character after "-0": expected decimal point and digits, got "{self.current_char if self.current_char else "EOF"}"'
+                                    ))
+                                # Position is now ready to continue from the invalid character
                                 continue
 
                         # Normal negative number (not starting with 0): -1, -2, -999, etc.
@@ -1230,7 +1240,7 @@ class Lexer:
                         if int_dig_count == 10 and self.current_char != None and self.current_char in NUM:
                             pos_error = self.pos.copy()
                             errors.append(LexicalError(num_start, pos_error,
-                                                       f'Invalid delimiter after "{num_str}": axel, got "{self.current_char}"'))
+                                                       f'Invalid delimiter after "{num_str}" expected lit_delim, got "{self.current_char}"'))
                             continue
 
                         # Handle optional decimal point for non-zero numbers
@@ -1249,7 +1259,7 @@ class Lexer:
                                 if dec_dig_count == 16 and self.current_char != None and self.current_char in NUM:
                                     pos_error = self.pos.copy()
                                     errors.append(LexicalError(num_start, pos_error,
-                                                               f'Invalid delimiter after "{num_str}": axel, got "{self.current_char}"'))
+                                                               f'Invalid delimiter after "{num_str}" expected lit_delim, got "{self.current_char}"'))
                                     continue
                             else:
                                 # Dot not followed by digit
