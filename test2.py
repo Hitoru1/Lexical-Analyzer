@@ -839,7 +839,7 @@ class Lexer:
 
                     # Report improper delimiter error
                     errors.append(LexicalError(pos_start, pos_error,
-                                               f'Invalid delimiter after "{id_str}": expected space, newline, operator, [ or punctuation, got "{self.current_char}"'))
+                                               f'Invalid delimiter after "{id_str}": expected identifier_del, got "{self.current_char}"'))
 
                     continue
 
@@ -899,7 +899,7 @@ class Lexer:
                     if dec_dig_count == 16 and self.current_char != None and self.current_char in NUM:
                         pos_error = self.pos.copy()
                         errors.append(LexicalError(pos_start, pos_error,
-                                                   f'Invalid delimiter after "{num_str}": expected space, newline, operator, or punctuation, got "{self.current_char}"'))
+                                                   f'Invalid delimiter after "{num_str}": lit_delim, got "{self.current_char}"'))
                         continue
                 else:
                     # Normal number starting with digit
@@ -916,7 +916,7 @@ class Lexer:
                         errors.append(LexicalError(
                             pos_start,
                             pos_start,
-                            f'Invalid delimiter after "0": expected space, newline, operator, ".", ";", ")" or, got "{num_str[1]}"'
+                            f'Invalid delimiter after "0": expected lit_delim, got "{num_str[1]}"'
                         ))
 
                         # Rewind position to the second digit (after the 0)
@@ -933,7 +933,7 @@ class Lexer:
                     if int_dig_count == 11 and self.current_char != None and self.current_char in NUM:
                         pos_error = self.pos.copy()
                         errors.append(LexicalError(pos_start, pos_error,
-                                                   f'Invalid delimiter after "{num_str}": expected space, newline, operator, or punctuation, got "{self.current_char}"'))
+                                                   f'Invalid delimiter after "{num_str}": expected lit_delim, got "{self.current_char}"'))
                         continue
 
                     if self.current_char == '.':
@@ -954,7 +954,7 @@ class Lexer:
                             if dec_dig_count == 16 and self.current_char != None and self.current_char in NUM:
                                 pos_error = self.pos.copy()
                                 errors.append(LexicalError(pos_start, pos_error,
-                                                           f'Invalid delimiter after "{num_str}": expected space, newline, operator, or punctuation, got "{self.current_char}"'))
+                                                           f'Invalid delimiter after "{num_str}": expected lit_delim, got "{self.current_char}"'))
                                 continue
                         else:
                             # Dot not followed by digit - invalid delimiter
