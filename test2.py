@@ -83,6 +83,7 @@ OP_MULTIPLICATION = '*'
 OP_DIVISION = '/'
 OP_MODULUS = '%'
 OP_EXPONENTIATION = '**'
+OP_EXPONENTIATION_ASSIGN = '**='
 
 # Assignment Operators
 OP_ASSIGNMENT = '='
@@ -152,7 +153,8 @@ DELIM_SETS = {
     # space, (
     'delim2': {' ', '('},
     # space, letternum, (, ", '
-    'delim3': {' ', '(', '"', "'"} | set(LETTERNUM),
+    # space, letternum, (, ", ', [
+    'delim3': {' ', '(', '"', "'", '['} | set(LETTERNUM),
     # space, id, "
     'escseq_delim': {' ', '"'} | set(LETTERNUM) | {'_'},
     # ;
@@ -161,14 +163,14 @@ DELIM_SETS = {
     'op_delim': {' ', '('} | set(LETTERNUM),
     # (
     'open_paren': {'('},
-    # space, letternum, (, ", {, [
-    'comma_delim': {' ', '(', '"', '{', '['} | set(LETTERNUM),
-    # space, num, ", [, ]
-    'open_list': {' ', '"', '[', ']'} | set(LETTERNUM),
+    # space, letternum, (, ", ', {, [
+    'comma_delim': {' ', '(', '"', "'", '{', '['} | set(LETTERNUM),
+    # space, num, ", ', [, ]
+    'open_list': {' ', '"', "'", '[', ']'} | set(LETTERNUM),
     # space, ;, ,, =
     'close_list': {' ', ';', ',', '=', ']', '[', '+', '-', '*', '/', '%', '&', '|', '!', '<', '>', ')'},
-    # space, letternum, ', ", ), !
-    'openparen_delim': {' ', "'", '"', ')', '!', '-'} | set(LETTERNUM),
+    # space, letternum, ', ", (, ), !
+    'openparen_delim': {' ', "'", '"', '(', ')', '!', '-'} | set(LETTERNUM),
     # space, mathop, logicop, relop, ;, {, )
     'closeparen_delim': {' ', '+', '-', '*', '/', '%', '&', '|', '!', '=', '<', '>', ';', '{', ')'},
     # space, &, |, !, ;
@@ -198,7 +200,7 @@ TOKEN_DELIMITERS = {
     RW_CHECK: 'delim2',
     RW_DECIMAL: 'space',
     RW_DEFINE: 'space',
-    RW_DURING: 'space',
+    RW_DURING: 'delim2',
     RW_EACH: 'delim2',
     RW_EMPTY: 'space',
     RW_FALLBACK: 'sem_col',
@@ -240,6 +242,7 @@ TOKEN_DELIMITERS = {
     OP_MULTIPLICATION: 'op_delim',
     OP_MULTIPLICATION_ASSIGN: 'op_delim',
     OP_EXPONENTIATION: 'op_delim',
+    OP_EXPONENTIATION_ASSIGN: 'op_delim',
     OP_MODULUS: 'op_delim',
     OP_MODULUS_ASSIGN: 'op_delim',
     OP_ASSIGNMENT: 'delim3',
@@ -365,7 +368,8 @@ class TransitionDFA:
 
         # "start", "select", "show", "skip", "step", "stop"
         trans[1] = {'t': 2, 'h': 137, 'k': 141, 'e': 130}
-        trans[2] = {'a': 3, 'o': 153}
+        # 'a' for start, 'o' for stop, 'e' for step
+        trans[2] = {'a': 3, 'o': 153, 'e': 150}
         trans[3] = {'r': 4}
         trans[4] = {'t': 5}
         trans[5] = {}  # accept: start
@@ -387,9 +391,8 @@ class TransitionDFA:
         trans[150] = {'p': 151}
         trans[151] = {}  # accept: step
 
-        trans[153] = {'o': 154}
-        trans[154] = {'p': 155}
-        trans[155] = {}  # accept: stop
+        trans[153] = {'p': 154}
+        trans[154] = {}  # accept: stop
 
         # "text", "to"
         trans[156] = {'e': 157, 'o': 161}
@@ -477,14 +480,11 @@ class TransitionDFA:
         trans[72] = {'d': 73}
         trans[73] = {}  # accept: fixed
 
-        # "give"
-        trans[75] = {'i': 76}
+        trans[80] = {'r': 81, 'i': 76}  # ADD 'i': 76 for "give"
         trans[76] = {'v': 77}
         trans[77] = {'e': 78}
         trans[78] = {}  # accept: give
 
-        # "group"
-        trans[80] = {'r': 81}
         trans[81] = {'o': 82}
         trans[82] = {'u': 83}
         trans[83] = {'p': 84}
@@ -587,7 +587,7 @@ class TransitionDFA:
             134: RW_SELECT,
             139: RW_SHOW,
             143: RW_SKIP,
-            155: RW_STOP,
+            154: RW_STOP,
             151: RW_STEP,
             159: RW_TEXT,
             161: RW_TO,
@@ -684,7 +684,7 @@ class Lexer:
         next_char = self.current_char if self.current_char else ''
 
         # EOF is valid for certain delimiters
-        if next_char == '' and delimiter_type in ['space_nline', 'lit_delim', 'identifier_del', 'closeparen_delim', 'string_char']:
+        if next_char == '' and delimiter_type in ['lit_delim', 'identifier_del', 'closeparen_delim', 'string_char']:
             return None
 
         if next_char not in expected_delims:
@@ -803,6 +803,9 @@ class Lexer:
                             self.advance()
 
                         pos_end = self.pos.copy()
+
+                        print(
+                            f"Matched keyword: {matched_text}, next char: '{self.current_char}', EOF: {self.current_char is None}")
 
                         # Create token
                         if matched_text in ['Yes', 'No']:
@@ -1326,14 +1329,26 @@ class Lexer:
 
                 if self.current_char == '*':
                     self.advance()
-                    pos_end = self.pos.copy()
-                    delim_error = self.check_delimiter(
-                        OP_EXPONENTIATION, '**', pos_end)
-                    if delim_error:
-                        errors.append(delim_error)
-                        continue  # Drop token
-                    tokens.append(
-                        Token(OP_EXPONENTIATION, '**', pos_start, pos_end))
+                    # Check for **=
+                    if self.current_char == '=':
+                        self.advance()
+                        pos_end = self.pos.copy()
+                        delim_error = self.check_delimiter(
+                            OP_EXPONENTIATION_ASSIGN, '**=', pos_end)
+                        if delim_error:
+                            errors.append(delim_error)
+                            continue  # Drop token
+                        tokens.append(
+                            Token(OP_EXPONENTIATION_ASSIGN, '**=', pos_start, pos_end))
+                    else:
+                        pos_end = self.pos.copy()
+                        delim_error = self.check_delimiter(
+                            OP_EXPONENTIATION, '**', pos_end)
+                        if delim_error:
+                            errors.append(delim_error)
+                            continue  # Drop token
+                        tokens.append(
+                            Token(OP_EXPONENTIATION, '**', pos_start, pos_end))
                 elif self.current_char == '=':
                     self.advance()
                     pos_end = self.pos.copy()
