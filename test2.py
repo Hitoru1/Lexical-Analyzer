@@ -680,13 +680,31 @@ class Lexer:
                                     f'Expected ":" after "{token_value}", got "{self.current_char if self.current_char else "EOF"}"')
             return None
 
-        # Check current character
-        next_char = self.current_char if self.current_char else ''
+        # Check current character (None means EOF)
+        next_char = self.current_char
 
-        # EOF is valid for certain delimiters
-        if next_char == '' and delimiter_type in ['lit_delim', 'identifier_del', 'closeparen_delim', 'string_char']:
-            return None
+        # Handle EOF - only these specific delimiter types accept EOF
+        if next_char is None:
+            eof_allowed_types = []
 
+            if delimiter_type not in eof_allowed_types:
+                # EOF not allowed for this delimiter type
+                delim_names = {
+                    'space': 'space',
+                    'space_nline': 'space or newline',
+                    'delim1': 'space or "{"',
+                    'delim2': 'space or "("',
+                    'sem_col': '";"',
+                    'id3': 'space or digit',
+                }
+                expected = delim_names.get(delimiter_type, delimiter_type)
+                return LexicalError(pos_end, pos_end,
+                                    f'Invalid delimiter after "{token_value}": expected {expected}, got EOF')
+            else:
+                # EOF is allowed for this type
+                return None
+
+        # Not EOF - check if current char is in expected delimiters
         if next_char not in expected_delims:
             # Build friendly error message
             delim_names = {
@@ -698,8 +716,8 @@ class Lexer:
                 'sem_col': '";"',
                 'op_delim': 'op_delim',
                 'open_paren': '"("',
-                'comma_delim': 'space, letter, digit, "(", """, "{" or "["',
-                'open_list': 'space, digit, """, "[" or "]"',
+                'comma_delim': 'space, letter, digit, "(", """, "{", "[", or "\'"',
+                'open_list': 'space, digit, """, "\'", "[" or "]"',
                 'close_list': 'space, ";", "," or "="',
                 'openparen_delim': 'space, letter, digit, "\'", """, ")" or "!"',
                 'closeparen_delim': 'space, operator, ";", "{" or ")"',
@@ -710,10 +728,11 @@ class Lexer:
                 'num': 'digit',
                 'id3': 'space or digit',
                 'delim7': 'delim3',
+                'dot_delim': 'digit or letter',
             }
 
             expected = delim_names.get(delimiter_type, delimiter_type)
-            actual = f'"{next_char}"' if next_char else 'EOF'
+            actual = f'"{next_char}"'
 
             return LexicalError(pos_end, pos_end,
                                 f'Invalid delimiter after "{token_value}": expected {expected}, got {actual}')
@@ -1156,7 +1175,7 @@ class Lexer:
                 self.advance()
 
                 # Check if this is a negative number (unary minus)
-                if self.current_char and (self.current_char in NUM or (self.current_char == '.' and self.peek() and self.peek() in NUM)):
+                if self.current_char and self.current_char != ' ' and (self.current_char in NUM or (self.current_char == '.' and self.peek() and self.peek() in NUM)):
                     if len(tokens) == 0 or tokens[-1].type in [
                         OP_ASSIGNMENT, OP_ADDITION_ASSIGN, OP_SUBTRACTION_ASSIGN,
                         OP_MULTIPLICATION_ASSIGN, OP_DIVISION_ASSIGN, OP_MODULUS_ASSIGN,
