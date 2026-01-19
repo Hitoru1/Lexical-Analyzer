@@ -332,6 +332,7 @@ class Token:
     def __init__(self, type, value=None, pos_start=None, pos_end=None):
         self.type = type
         self.value = value
+        self.lexeme = value
 
         if pos_start:
             self.pos_start = pos_start.copy()
@@ -347,7 +348,47 @@ class Token:
         return f'{self.type}'
 
 
+def map_token_type_for_parser(token_type):
+    """Map lexer token types to parser-expected types"""
+    mapping = {
+        LIT_NUMBER: 'NUM_LIT',
+        LIT_DECIMAL: 'DECIMAL_LIT',
+        LIT_STRING: 'STRING_LIT',
+        LIT_CHARACTER: 'CHAR_LIT',
+        LIT_BOOLEAN: token_type,  # Keep Yes/No as is
+        IDENTIFIER: 'IDENTIFIER',
+        DELIM_SEMICOLON: ';',
+        DELIM_COMMA: ',',
+        DELIM_LEFT_PAREN: '(',
+        DELIM_RIGHT_PAREN: ')',
+        DELIM_LEFT_BRACE: '{',
+        DELIM_RIGHT_BRACE: '}',
+        DELIM_LEFT_BRACKET: '[',
+        DELIM_RIGHT_BRACKET: ']',
+        DELIM_COLON: ':',
+        DELIM_DOT: '.',
+    }
+    return mapping.get(token_type, token_type)
+
+
+def prepare_tokens_for_parser(tokens):
+    """Filter out whitespace/comments and map token types"""
+    filtered = []
+    skip_types = [NEWLINE, WHITESPACE_SPACE,
+                  WHITESPACE_TAB, COMMENT_SINGLE, COMMENT_MULTI, EOF]
+
+    for token in tokens:
+        if token.type not in skip_types:
+            # Create new token with mapped type
+            mapped_type = map_token_type_for_parser(token.type)
+            filtered.append(Token(mapped_type, token.value,
+                            token.pos_start, token.pos_end))
+
+    return filtered
+
 # DFA for keyword recognition
+
+
 class TransitionDFA:
     """Implements the complete transition diagram as a DFA"""
 
@@ -2010,13 +2051,14 @@ class KuCodeLexerGUI:
                 tk.END, "Error: No source code to analyze\n")
             return
 
+        # LEXICAL ANALYSIS
         lexer = Lexer(source)
         tokens, errors = lexer.tokenize()
 
+        # Display tokens in table
         for token in tokens:
             if token.type not in [EOF]:
                 lexeme = token.value if token.value else "-"
-                # Map token types to display names
                 if token.type == LIT_STRING:
                     display_type = "string_lit"
                 elif token.type == LIT_CHARACTER:
@@ -2027,24 +2069,53 @@ class KuCodeLexerGUI:
                     display_type = "decimal_lit"
                 else:
                     display_type = token.type
-                self.token_table.insert("", tk.END,
-                                        values=(lexeme, display_type))
+                self.token_table.insert(
+                    "", tk.END, values=(lexeme, display_type))
 
+        # Check for lexical errors
         if errors:
             self.terminal_text.insert(
-                tk.END, "✗ Lexical analysis completed with errors:\n\n", "error")
+                tk.END, "✗ Lexical analysis failed:\n\n", "error")
             for error in errors:
                 self.terminal_text.insert(tk.END, str(error) + "\n", "error")
             self.terminal_text.tag_config("error", foreground="#ff6b6b")
-        else:
-            self.terminal_text.insert(
-                tk.END, "✓ Lexically correct - no lexical errors detected.\n", "success")
-            self.terminal_text.tag_config("success", foreground="#00ff00")
+            return  # Stop here if lexical errors exist
 
-        displayable_tokens = [t for t in tokens if t.type not in [EOF]]
+        # SYNTAX ANALYSIS (only if no lexical errors)
         self.terminal_text.insert(
-            tk.END, f"\nTotal Tokens: {len(displayable_tokens)}\n")
-        self.terminal_text.insert(tk.END, f"Total Errors: {len(errors)}\n")
+            tk.END, "✓ Lexical analysis passed.\n", "success")
+        self.terminal_text.insert(
+            tk.END, "\nStarting syntax analysis...\n\n", "info")
+
+        # Prepare tokens for parser
+        parser_tokens = prepare_tokens_for_parser(tokens)
+
+        # Import and run parser
+        from syntaxtest import Parser
+        parser = Parser(parser_tokens)
+
+        try:
+            result = parser.parse()
+            self.terminal_text.insert(
+                tk.END, "✓ Syntax analysis passed.\n", "success")
+            self.terminal_text.insert(
+                tk.END, f"\nResult: {result}\n", "success")
+        except SyntaxError as e:
+            self.terminal_text.insert(
+                tk.END, "✗ Syntax analysis failed:\n\n", "error")
+            self.terminal_text.insert(tk.END, str(e) + "\n", "error")
+
+        # Configure tags
+        self.terminal_text.tag_config("error", foreground="#ff6b6b")
+        self.terminal_text.tag_config("success", foreground="#00ff00")
+        self.terminal_text.tag_config("info", foreground="#61afef")
+
+        # Display statistics
+        displayable_tokens = [t for t in tokens if t.type not in [EOF]]
+        self.terminal_text.insert(tk.END, f"\n{'='*50}\n")
+        self.terminal_text.insert(
+            tk.END, f"Total Tokens: {len(displayable_tokens)}\n")
+        self.terminal_text.insert(tk.END, f"Lexical Errors: {len(errors)}\n")
 
     def save_results(self):
         file_path = filedialog.asksaveasfilename(
