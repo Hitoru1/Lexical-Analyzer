@@ -6,7 +6,13 @@ class Parser:
 
     def error(self, msg):
         token = self.current_token
-        raise SyntaxError(f"Syntax Error: {msg} at token '{token}'")
+        if token and hasattr(token, 'pos_start'):
+            line = token.pos_start.ln + 1  # Line numbers start at 0, so add 1
+            col = token.pos_start.col + 1   # Column numbers start at 0, so add 1
+            raise SyntaxError(
+                f"Syntax Error: {msg} at token '{token}'\nLine {line}, Column {col}")
+        else:
+            raise SyntaxError(f"Syntax Error: {msg} at token '{token}'")
 
     def advance(self):
         """Move to next token"""
@@ -193,7 +199,7 @@ class Parser:
     def parse_statements(self):
         # 55-56: <statement> <statements> | λ
         # stop when we hit closing brace or case keywords
-        while not self.match('}', 'option', 'fallback'):
+        while not self.match('}', 'option', 'fallback', 'stop', 'skip'):
             if self.current_token is None:
                 break
             self.parse_statement()
@@ -202,29 +208,53 @@ class Parser:
         # 57-61: control | assignment | function_call | declaration | io
         if self.match('check', 'select', 'each', 'during'):
             self.parse_control_statement()
-        elif self.match('show'):
+        elif self.match('show', 'read'):
             self.parse_io_statement()
         elif self.match('num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', 'fixed', 'list'):
             self.parse_declaration()
         elif self.match('IDENTIFIER'):
-            # Could be assignment or function call
-            # Look ahead to decide
-            self.parse_assignment_or_call()
+            # Look ahead to distinguish: "Student s1;" vs "s1.name = ..."
+            saved_pos = self.pos
+            self.advance()  # Move past first identifier
+
+            # If next token is IDENTIFIER, it's a declaration: "Student s1;"
+            if self.match('IDENTIFIER'):
+                self.pos = saved_pos
+                self.current_token = self.tokens[self.pos]
+                self.parse_declaration()
+            else:
+                # Otherwise it's assignment or function call: "s1.name = ...", "func()"
+                self.pos = saved_pos
+                self.current_token = self.tokens[self.pos]
+                self.parse_assignment_or_call()
         else:
             self.error(f"Unexpected token in statement")
 
     def parse_assignment_or_call(self):
         # Check if it's assignment or function call
+        # ADD THIS
+        print(
+            f"DEBUG parse_assignment_or_call: current = {self.current_token}")
         saved_pos = self.pos
         self.advance()  # consume identifier
+        # ADD THIS
+        print(f"DEBUG after advance: current = {self.current_token}")
 
         if self.match('('):
             # It's a function call
             self.pos = saved_pos
             self.current_token = self.tokens[self.pos]
             self.parse_function_call_statement()
+        elif self.match('.', '[', '=', '+=', '-=', '*=', '/=', '%=', '**=', '++', '--'):
+            # ADD THIS
+            print(f"DEBUG: Detected assignment with {self.current_token}")
+            # It's an assignment (includes group member access, list access, or direct assignment)
+            self.pos = saved_pos
+            self.current_token = self.tokens[self.pos]
+            self.parse_assignment_statement()
         else:
-            # It's an assignment
+            print(f"DEBUG: Default to assignment")  # ADD THIS
+            # Default to assignment for standalone identifier
             self.pos = saved_pos
             self.current_token = self.tokens[self.pos]
             self.parse_assignment_statement()
@@ -254,10 +284,30 @@ class Parser:
         self.expect('IDENTIFIER')
         self.expect('=')
         self.expect('[')
-        # Parse list content (simplified)
-        self.parse_list_elements()
+
+        # Check if 2D (next token is '[') or 1D
+        if self.match('['):
+            # 2D list: [ [elements], [elements] ]
+            self.parse_list_rows()
+        else:
+            # 1D list: [ elements ]
+            self.parse_list_elements()
+
         self.expect(']')
         self.expect(';')
+
+    def parse_list_rows(self):
+        # Parse 2D list rows: [row1], [row2], ...
+        if not self.match(']'):  # Not empty
+            self.expect('[')
+            self.parse_list_elements()
+            self.expect(']')
+
+            while self.match(','):
+                self.advance()
+                self.expect('[')
+                self.parse_list_elements()
+                self.expect(']')
 
     def parse_list_elements(self):
         # 46-47: <expression> <list_elements_tail> | λ
@@ -323,11 +373,11 @@ class Parser:
             self.parse_argument_list()
             self.expect(')')
             self.expect(';')
-        elif self.match('IDENTIFIER'):
-            self.expect('IDENTIFIER')
-            self.expect('=')
+        elif self.match('read'):
+            # read(identifier);
             self.expect('read')
             self.expect('(')
+            self.expect('IDENTIFIER')
             self.expect(')')
             self.expect(';')
 
@@ -357,27 +407,19 @@ class Parser:
 
     def parse_otherwise_chain(self):
         # 76-77: <otherwise_check> <otherwise_chain> | <optional_otherwise>
-        while self.match('otherwise'):
-            # Look ahead to see if it's "otherwise check" or just "otherwise"
-            saved_pos = self.pos
-            self.advance()  # consume 'otherwise'
-
-            if self.match('check'):
-                # otherwise check
-                self.pos = saved_pos
-                self.current_token = self.tokens[self.pos]
+        while self.match('otherwise', 'otherwisecheck'):  # <-- Add 'otherwisecheck'
+            # Check if it's "otherwisecheck" or just "otherwise"
+            if self.match('otherwisecheck'):
                 self.parse_otherwise_check()
-            else:
-                # just otherwise (final else block)
-                self.pos = saved_pos
-                self.current_token = self.tokens[self.pos]
+            elif self.match('otherwise'):
+                # Look ahead - is there a 'check' after? (shouldn't be, since we have otherwisecheck)
                 self.parse_otherwise_block()
                 break
 
     def parse_otherwise_check(self):
-        # 80. otherwise check ( <expression> ) { <statements> }
-        self.expect('otherwise')
-        self.expect('check')
+        # 80. otherwisecheck ( <expression> ) { <statements> }
+        # <-- Changed from 'otherwise' and 'check'
+        self.expect('otherwisecheck')
         self.expect('(')
         self.parse_expression()
         self.expect(')')
@@ -409,15 +451,14 @@ class Parser:
             self.parse_option_block()
 
     def parse_option_block(self):
-        # 85. option <literal> : { <statements> <control_flow> ; }
+        # 85. option <literal> : <statements> <control_flow> ;
         self.expect('option')
         self.parse_literal()
         self.expect(':')
-        self.expect('{')
+        # No braces - statements directly after colon
         self.parse_statements()
         self.parse_control_flow()
         self.expect(';')
-        self.expect('}')
 
     def parse_control_flow(self):
         # 86-87: stop | skip
@@ -581,7 +622,7 @@ class Parser:
 
     def parse_factor(self):
         # 132-134: <literal> | <variable_reference> | <function_call>
-        if self.match('NUM_LIT', 'DECIMAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'Yes', 'No'):
+        if self.match('NUM_LIT', 'DECIMAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'Yes', 'No', 'bool_literal'):  # Add 'bool_literal'
             self.parse_literal()
         elif self.match('IDENTIFIER'):
             # Could be variable or function call
@@ -623,7 +664,7 @@ class Parser:
 
     def parse_literal(self):
         # 153-157: num_lit | decimal_lit | string_lit | char_lit | bool
-        if self.match('NUM_LIT', 'DECIMAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'Yes', 'No'):
+        if self.match('NUM_LIT', 'DECIMAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'Yes', 'No', 'bool_literal'):
             self.advance()
         else:
             self.error("Expected literal")
