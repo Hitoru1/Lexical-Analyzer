@@ -3,37 +3,37 @@ class Parser:
         self.tokens = tokens
         self.pos = 0
         self.current_token = tokens[0] if tokens else None
+        self.context_stack = []  # Track parsing context for better errors
 
-    def error(self, expected_tokens):
+    def error(self, expected_tokens=None, context=None):
+        """Enhanced error with context-aware FOLLOW sets"""
         token = self.current_token
-
-        # Get previous token for context
         prev_token = self.tokens[self.pos - 1] if self.pos > 0 else None
 
+        # Format previous token
         if prev_token:
-            if prev_token.value:
-                prev_str = f"'{prev_token.value}'"
-            else:
-                prev_str = f"'{prev_token.type}'"
+            prev_str = f"'{prev_token.value}'" if prev_token.value else f"'{prev_token.type}'"
         else:
             prev_str = "start of file"
 
         # Format current token
         if token:
-            if token.value:
-                current_str = f"'{token.value}'"
-            else:
-                current_str = f"'{token.type}'"
+            current_str = f"'{token.value}'" if token.value else f"'{token.type}'"
         else:
             current_str = "EOF"
 
-        # Format expected tokens
-        if isinstance(expected_tokens, str):
-            expected_str = expected_tokens
-        elif isinstance(expected_tokens, (list, tuple)):
-            expected_str = ", ".join(f"'{t}'" for t in expected_tokens)
+        # Use context to determine proper FOLLOW set
+        if context:
+            expected_str = self._get_follow_set_string(context)
+        elif expected_tokens:
+            if isinstance(expected_tokens, str):
+                expected_str = expected_tokens
+            elif isinstance(expected_tokens, (list, tuple)):
+                expected_str = ", ".join(f"'{t}'" for t in expected_tokens)
+            else:
+                expected_str = str(expected_tokens)
         else:
-            expected_str = str(expected_tokens)
+            expected_str = "valid token"
 
         # Build error message
         error_msg = f"Unexpected token after {prev_str}\n"
@@ -47,6 +47,51 @@ class Parser:
                 f"Syntax Error at Line {line}, Column {col}\n{error_msg}")
         else:
             raise SyntaxError(f"Syntax Error\n{error_msg}")
+
+    def _get_follow_set_string(self, context):
+        """Return FOLLOW set as formatted string based on parsing context"""
+        follow_sets = {
+            # Expression contexts
+            'expression_in_statement': "';', '+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', or '||'",
+            'expression_in_paren': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', or ')'",
+            'expression_in_list': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', ',', or ']'",
+            'expression_in_argument': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', ',', or ')'",
+            'expression_in_assignment': "';', '+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', or '||'",
+            'expression_in_return': "';', '+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', or '||'",
+            'expression_in_condition': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', or ')'",
+            'expression_in_each': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', 'to', or 'step'",
+
+            # Statement contexts
+            'statement': "'check', 'select', 'each', 'during', 'show', 'read', 'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', 'fixed', 'list', 'identifier', or '}'",
+            'statements_in_function': "'check', 'select', 'each', 'during', 'show', 'read', 'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', 'fixed', 'list', 'identifier', 'give', or '}'",
+            'statements_in_block': "'check', 'select', 'each', 'during', 'show', 'read', 'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', 'fixed', 'list', 'identifier', or '}'",
+            'statements_in_option': "'check', 'select', 'each', 'during', 'show', 'read', 'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', 'fixed', 'list', 'identifier', 'stop', or 'skip'",
+
+            # Declaration contexts
+            'after_datatype': "identifier",
+            'after_identifier_in_declaration': "';', '=', or identifier",
+            'after_equals': "expression (identifier, literal, '(', '-', '!', or '[')",
+
+            # Function contexts
+            'parameter_list': "'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', ',', or ')'",
+            'argument_list': "expression, ',', or ')'",
+
+            # Control flow contexts
+            'after_check': "'('",
+            'after_condition': "')'",
+            'after_control_keyword': "'{'",
+            'option_block': "'option', 'fallback', or '}'",
+
+            # List contexts
+            'list_literal': "expression, ',', ']', or '['",
+
+            # General
+            'after_semicolon': "next statement or '}'",
+            'after_open_brace': "statement or '}'",
+            'after_close_brace': "next statement, 'otherwise', 'otherwisecheck', 'finish', or '}'",
+        }
+
+        return follow_sets.get(context, "valid token")
 
     def advance(self):
         """Move to next token"""
@@ -62,31 +107,29 @@ class Parser:
             return False
         return self.current_token.type in expected
 
-    def expect(self, token_type):
-        """Consume a token of expected type or error"""
+    def expect(self, token_type, context=None):
+        """Consume a token of expected type or error with context"""
         if not self.match(token_type):
-            self.error(f"'{token_type}'")
+            if context:
+                self.error(context=context)
+            else:
+                self.error(f"'{token_type}'")
         self.advance()
 
-    # ===== START PARSING FROM HERE =====
+    # ===== PARSING METHODS =====
 
     def parse(self):
         """Entry point - parse entire program"""
         self.parse_program()
-        # After 'finish', ignore all remaining tokens (follow set is null/empty)
-        # No error for tokens after program terminator
         return "SUCCESS"
 
     def parse_program(self):
-        # 1. <program> ⇒ <program_definitions> <main_program>
+        # Production 1
         self.parse_program_definitions()
         self.parse_main_program()
 
     def parse_program_definitions(self):
-        # 2. <program_definitions> ⇒ <group_definition> <global_declaration> <function_definition> <program_definitions>
-        # 3. <program_definitions> ⇒ λ
-
-        # Keep parsing definitions until we hit 'start' (main program)
+        # Productions 2-3
         while self.match('group', 'worldwide', 'define'):
             if self.match('group'):
                 self.parse_group_definition()
@@ -96,47 +139,45 @@ class Parser:
                 self.parse_function_definition()
 
     def parse_group_definition(self):
-        # 4. group identifier { <group_member_list> }
+        # Production 4-5
         if not self.match('group'):
-            return  # λ production
-
+            return
         self.expect('group')
-        self.expect('IDENTIFIER')
-        self.expect('{')
+        self.expect('IDENTIFIER', 'after_datatype')
+        self.expect('{', 'after_identifier_in_declaration')
         self.parse_group_member_list()
-        self.expect('}')
+        self.expect('}', 'after_close_brace')
 
     def parse_group_member_list(self):
-        # 6. <group_member> <group_member_tail>
+        # Production 6
         if self.match('num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool'):
             self.parse_group_member()
             self.parse_group_member_tail()
 
     def parse_group_member_tail(self):
-        # 7. <group_member> <group_member_tail> | 8. λ
+        # Productions 7-8
         while self.match('num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool'):
             self.parse_group_member()
 
     def parse_group_member(self):
-        # 9. <datatype> identifier;
+        # Production 9
         self.parse_datatype()
-        self.expect('IDENTIFIER')
-        self.expect(';')
+        self.expect('IDENTIFIER', 'after_datatype')
+        self.expect(';', 'after_identifier_in_declaration')
 
     def parse_global_declaration(self):
-        # 10. worldwide <datatype> identifier = <expression>;
+        # Production 10-11
         if not self.match('worldwide'):
-            return  # λ production
-
+            return
         self.expect('worldwide')
         self.parse_datatype()
-        self.expect('IDENTIFIER')
-        self.expect('=')
-        self.parse_expression()
-        self.expect(';')
+        self.expect('IDENTIFIER', 'after_datatype')
+        self.expect('=', 'after_identifier_in_declaration')
+        self.parse_expression('expression_in_assignment')
+        self.expect(';', 'expression_in_statement')
 
     def parse_datatype(self):
-        # 14-19: num | decimal | bigdecimal | letter | text | bool
+        # Productions 14-19
         if self.match('num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool'):
             self.advance()
         else:
@@ -144,24 +185,23 @@ class Parser:
                 "'num', 'decimal', 'bigdecimal', 'letter', 'text', or 'bool'")
 
     def parse_function_definition(self):
-        # 20. define <return_type> identifier ( <parameter_list> ) { <local_declarations> <statements> <optional_return> }
+        # Production 20-21
         if not self.match('define'):
-            return  # λ production
-
+            return
         self.expect('define')
         self.parse_return_type()
-        self.expect('IDENTIFIER')
-        self.expect('(')
+        self.expect('IDENTIFIER', 'after_datatype')
+        self.expect('(', 'after_identifier_in_declaration')
         self.parse_parameter_list()
-        self.expect(')')
-        self.expect('{')
+        self.expect(')', 'parameter_list')
+        self.expect('{', 'after_control_keyword')
         self.parse_local_declarations()
-        self.parse_statements()
+        self.parse_statements('statements_in_function')
         self.parse_optional_return()
-        self.expect('}')
+        self.expect('}', 'after_close_brace')
 
     def parse_return_type(self):
-        # 24-25: <datatype> | empty
+        # Productions 24-25
         if self.match('num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool'):
             self.parse_datatype()
         elif self.match('empty'):
@@ -171,77 +211,75 @@ class Parser:
                 "'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', or 'empty'")
 
     def parse_parameter_list(self):
-        # 26-27: <parameter> <parameter_list_tail> | λ
+        # Productions 26-27
         if self.match('num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool'):
             self.parse_parameter()
             self.parse_parameter_list_tail()
 
     def parse_parameter_list_tail(self):
-        # 28-29: , <parameter> <parameter_list_tail> | λ
+        # Productions 28-29
         while self.match(','):
             self.advance()
             self.parse_parameter()
 
     def parse_parameter(self):
-        # 30. <datatype> identifier
+        # Production 30
         self.parse_datatype()
-        self.expect('IDENTIFIER')
+        self.expect('IDENTIFIER', 'after_datatype')
 
     def parse_local_declarations(self):
-        # 22-23: <local_declaration> <local_declarations> | λ
+        # Productions 22-23
         while self.match('num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', 'IDENTIFIER'):
             self.parse_local_declaration()
 
     def parse_local_declaration(self):
-        # 40. <datatype> identifier = <expression>;
-        # 41. identifier identifier;
+        # Productions 40-41
         if self.match('num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool'):
             self.parse_datatype()
-            self.expect('IDENTIFIER')
-            self.expect('=')
-            self.parse_expression()
-            self.expect(';')
+            self.expect('IDENTIFIER', 'after_datatype')
+            self.expect('=', 'after_identifier_in_declaration')
+            self.parse_expression('expression_in_assignment')
+            self.expect(';', 'expression_in_statement')
         elif self.match('IDENTIFIER'):
-            self.advance()  # first identifier (type)
-            self.expect('IDENTIFIER')  # second identifier (variable name)
-            self.expect(';')
+            self.advance()
+            self.expect('IDENTIFIER', 'after_datatype')
+            self.expect(';', 'after_identifier_in_declaration')
 
     def parse_optional_return(self):
-        # 31-32: <return_statement> | λ
+        # Productions 31-32
         if self.match('give'):
             self.parse_return_statement()
 
     def parse_return_statement(self):
-        # 33. give <return_tail>
+        # Production 33
         self.expect('give')
         self.parse_return_tail()
 
     def parse_return_tail(self):
-        # 34. <expression>; | 35. ;
+        # Productions 34-35
         if self.match(';'):
             self.advance()
         else:
-            self.parse_expression()
-            self.expect(';')
+            self.parse_expression('expression_in_return')
+            self.expect(';', 'expression_in_statement')
 
     def parse_main_program(self):
-        # 36. start { <statements> } finish
+        # Production 36
         self.expect('start')
-        self.expect('{')
-        self.parse_statements()
-        self.expect('}')
+        self.expect('{', 'after_control_keyword')
+        self.parse_statements('statements_in_block')
+        self.expect('}', 'after_close_brace')
         self.expect('finish')
 
-    def parse_statements(self):
-        # 55-56: <statement> <statements> | λ
-        # stop when we hit closing brace or case keywords
+    def parse_statements(self, context='statements_in_block'):
+        # Productions 54-55
         while not self.match('}', 'option', 'fallback', 'stop', 'skip', 'give'):
             if self.current_token is None:
                 break
-            self.parse_statement()
+            self.parse_statement(context)
 
-    def parse_statement(self):
-        # 56-60: control | assignment | function_call | declaration | io
+    def parse_statement(self, context='statement'):
+        # Productions 56-60
         if self.match('check', 'select', 'each', 'during'):
             self.parse_control_statement()
         elif self.match('show', 'read'):
@@ -249,55 +287,39 @@ class Parser:
         elif self.match('num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', 'fixed', 'list'):
             self.parse_declaration()
         elif self.match('IDENTIFIER'):
-            # Look ahead to distinguish: "Student s1;" vs "s1.name = ..."
             saved_pos = self.pos
-            self.advance()  # Move past first identifier
+            self.advance()
 
-            # If next token is IDENTIFIER, it's a declaration: "Student s1;"
             if self.match('IDENTIFIER'):
                 self.pos = saved_pos
                 self.current_token = self.tokens[self.pos]
                 self.parse_declaration()
             else:
-                # Otherwise it's assignment or function call: "s1.name = ...", "func()"
                 self.pos = saved_pos
                 self.current_token = self.tokens[self.pos]
                 self.parse_assignment_or_call()
         else:
-            self.error(
-                "statement ('check', 'select', 'each', 'during', 'show', 'read', datatype, 'fixed', 'list', or identifier)")
+            self.error(context=context)
 
     def parse_assignment_or_call(self):
-        # Check if it's assignment or function call
-        # ADD THIS
-        print(
-            f"DEBUG parse_assignment_or_call: current = {self.current_token}")
         saved_pos = self.pos
-        self.advance()  # consume identifier
-        # ADD THIS
-        print(f"DEBUG after advance: current = {self.current_token}")
+        self.advance()
 
         if self.match('('):
-            # It's a function call
             self.pos = saved_pos
             self.current_token = self.tokens[self.pos]
             self.parse_function_call_statement()
         elif self.match('.', '[', '=', '+=', '-=', '*=', '/=', '%=', '**=', '++', '--'):
-            # ADD THIS
-            print(f"DEBUG: Detected assignment with {self.current_token}")
-            # It's an assignment (includes group member access, list access, or direct assignment)
             self.pos = saved_pos
             self.current_token = self.tokens[self.pos]
             self.parse_assignment_statement()
         else:
-            print(f"DEBUG: Default to assignment")  # ADD THIS
-            # Default to assignment for standalone identifier
             self.pos = saved_pos
             self.current_token = self.tokens[self.pos]
             self.parse_assignment_statement()
 
     def parse_declaration(self):
-        # 37-39: local | fixed | list
+        # Productions 37-39
         if self.match('fixed'):
             self.parse_fixed_declaration()
         elif self.match('list'):
@@ -306,120 +328,112 @@ class Parser:
             self.parse_local_declaration()
 
     def parse_fixed_declaration(self):
-        # 42. fixed <datatype> identifier = <expression>;
+        # Production 42
         self.expect('fixed')
         self.parse_datatype()
-        self.expect('IDENTIFIER')
-        self.expect('=')
-        self.parse_expression()
-        self.expect(';')
+        self.expect('IDENTIFIER', 'after_datatype')
+        self.expect('=', 'after_identifier_in_declaration')
+        self.parse_expression('expression_in_assignment')
+        self.expect(';', 'expression_in_statement')
 
     def parse_list_declaration(self):
-        # 43-44: list <datatype> identifier = <list_literal_1d/2d>;
+        # Productions 43-46
         self.expect('list')
         self.parse_datatype()
-        self.expect('IDENTIFIER')
-        self.expect('=')
-        self.expect('[')
+        self.expect('IDENTIFIER', 'after_datatype')
+        self.expect('=', 'after_identifier_in_declaration')
+        self.expect('[', 'after_equals')
 
-        # Check if 2D (next token is '[') or 1D
         if self.match('['):
-            # 2D list: [ [elements], [elements] ]
             self.parse_list_rows()
         else:
-            # 1D list: [ elements ]
-            self.parse_list_elements()
+            self.parse_list_elements('expression_in_list')
 
-        self.expect(']')
-        self.expect(';')
+        self.expect(']', 'list_literal')
+        self.expect(';', 'after_semicolon')
 
     def parse_list_rows(self):
-        # Parse 2D list rows: [row1], [row2], ...
-        if not self.match(']'):  # Not empty
+        if not self.match(']'):
             self.expect('[')
-            self.parse_list_elements()
-            self.expect(']')
+            self.parse_list_elements('expression_in_list')
+            self.expect(']', 'list_literal')
 
             while self.match(','):
                 self.advance()
                 self.expect('[')
-                self.parse_list_elements()
-                self.expect(']')
+                self.parse_list_elements('expression_in_list')
+                self.expect(']', 'list_literal')
 
-    def parse_list_elements(self):
-        # 46-47: <expression> <list_elements_tail> | λ
+    def parse_list_elements(self, context='expression_in_list'):
         if not self.match(']'):
-            self.parse_expression()
+            self.parse_expression(context)
             while self.match(','):
                 self.advance()
-                self.parse_expression()
+                self.parse_expression(context)
 
     def parse_assignment_statement(self):
-        # 63-64: <assignable> <assignment_op> <expression>; OR <assignable> <increment_op>;
+        # Productions 63-64
         self.parse_assignable()
 
         if self.match('=', '+=', '-=', '*=', '/=', '%=', '**='):
-            self.advance()  # assignment operator
-            self.parse_expression()
-            self.expect(';')
+            self.advance()
+            self.parse_expression('expression_in_assignment')
+            self.expect(';', 'expression_in_statement')
         elif self.match('++', '--'):
-            self.advance()  # increment operator
-            self.expect(';')
+            self.advance()
+            self.expect(';', 'after_semicolon')
         else:
             self.error(
                 "'=', '+=', '-=', '*=', '/=', '%=', '**=', '++', or '--'")
 
     def parse_assignable(self):
-        # 66-68: identifier | list_access | group_member_access
+        # Productions 65-67
         self.expect('IDENTIFIER')
 
         if self.match('['):
-            # List access
             self.advance()
-            self.parse_expression()
-            self.expect(']')
+            self.parse_expression('expression_in_list')
+            self.expect(']', 'list_literal')
         elif self.match('.'):
-            # Group member access
             self.advance()
-            self.expect('IDENTIFIER')
+            self.expect('IDENTIFIER', 'after_datatype')
 
     def parse_function_call_statement(self):
-        # 62-63: identifier ( <argument_list> )
+        # Production 61-62
         self.parse_function_call()
-        self.expect(';')
+        self.expect(';', 'after_semicolon')
 
     def parse_function_call(self):
         self.expect('IDENTIFIER')
         self.expect('(')
         self.parse_argument_list()
-        self.expect(')')
+        self.expect(')', 'argument_list')
 
     def parse_argument_list(self):
-        # 135-136: <expression> <argument_list_tail> | λ
+        # Productions 134-135
         if not self.match(')'):
-            self.parse_expression()
+            self.parse_expression('expression_in_argument')
             while self.match(','):
                 self.advance()
-                self.parse_expression()
+                self.parse_expression('expression_in_argument')
 
     def parse_io_statement(self):
-        # 69-70: show | read
+        # Productions 68-69
         if self.match('show'):
             self.expect('show')
-            self.expect('(')
+            self.expect('(', 'after_check')
             self.parse_argument_list()
-            self.expect(')')
-            self.expect(';')
+            self.expect(')', 'argument_list')
+            self.expect(';', 'after_semicolon')
         elif self.match('read'):
-            # read(identifier);
             self.expect('read')
-            self.expect('(')
-            self.expect('IDENTIFIER')
-            self.expect(')')
-            self.expect(';')
+            self.expect('(', 'after_check')
+            self.expect('IDENTIFIER', 'after_datatype')
+            self.expect(')', 'after_condition')
+            self.expect(';', 'after_semicolon')
 
     def parse_control_statement(self):
-        # 71-73: check | select | iterative
+        # Productions 70-72
         if self.match('check'):
             self.parse_check_structure()
         elif self.match('select'):
@@ -428,279 +442,268 @@ class Parser:
             self.parse_iterative_statement()
 
     def parse_check_structure(self):
-        # 74. <check_block> <otherwise_chain>
+        # Production 73
         self.parse_check_block()
         self.parse_otherwise_chain()
 
     def parse_check_block(self):
-        # 75. check ( <expression> ) { <statements> }
+        # Production 74
         self.expect('check')
-        self.expect('(')
-        self.parse_expression()
-        self.expect(')')
-        self.expect('{')
-        self.parse_statements()
-        self.expect('}')
+        self.expect('(', 'after_check')
+        self.parse_expression('expression_in_condition')
+        self.expect(')', 'expression_in_paren')
+        self.expect('{', 'after_control_keyword')
+        self.parse_statements('statements_in_block')
+        self.expect('}', 'after_close_brace')
 
     def parse_otherwise_chain(self):
-        # 76-77: <otherwise_check> <otherwise_chain> | <optional_otherwise>
-        while self.match('otherwise', 'otherwisecheck'):  # <-- Add 'otherwisecheck'
-            # Check if it's "otherwisecheck" or just "otherwise"
-            if self.match('otherwisecheck'):
-                self.parse_otherwise_check()
-            elif self.match('otherwise'):
-                # Look ahead - is there a 'check' after? (shouldn't be, since we have otherwisecheck)
-                self.parse_otherwise_block()
-                break
+        # Productions 75-76
+        while self.match('otherwisecheck'):
+            self.parse_otherwise_check()
+
+        if self.match('otherwise'):
+            self.parse_otherwise_block()
 
     def parse_otherwise_check(self):
-        # 80. otherwisecheck ( <expression> ) { <statements> }
-        # <-- Changed from 'otherwise' and 'check'
+        # Production 79
         self.expect('otherwisecheck')
-        self.expect('(')
-        self.parse_expression()
-        self.expect(')')
-        self.expect('{')
-        self.parse_statements()
-        self.expect('}')
+        self.expect('(', 'after_check')
+        self.parse_expression('expression_in_condition')
+        self.expect(')', 'expression_in_paren')
+        self.expect('{', 'after_control_keyword')
+        self.parse_statements('statements_in_block')
+        self.expect('}', 'after_close_brace')
 
     def parse_otherwise_block(self):
-        # 81. otherwise { <statements> }
+        # Production 80
         self.expect('otherwise')
-        self.expect('{')
-        self.parse_statements()
-        self.expect('}')
+        self.expect('{', 'after_control_keyword')
+        self.parse_statements('statements_in_block')
+        self.expect('}', 'after_close_brace')
 
     def parse_select_statement(self):
-        # 82. select ( <expression> ) { <option_blocks> <optional_fallback> }
+        # Production 81
         self.expect('select')
-        self.expect('(')
-        self.parse_expression()
-        self.expect(')')
-        self.expect('{')
+        self.expect('(', 'after_check')
+        self.parse_expression('expression_in_condition')
+        self.expect(')', 'expression_in_paren')
+        self.expect('{', 'after_control_keyword')
         self.parse_option_blocks()
         self.parse_optional_fallback()
-        self.expect('}')
+        self.expect('}', 'option_block')
 
     def parse_option_blocks(self):
-        # 83-84: <option_block> <option_blocks> | λ
+        # Productions 82-83
         while self.match('option'):
             self.parse_option_block()
 
     def parse_option_block(self):
-        # 85. option <literal> : <statements> <control_flow> ;
+        # Production 84
         self.expect('option')
         self.parse_literal()
-        self.expect(':')
-        # No braces - statements directly after colon
-        self.parse_statements()
+        self.expect(':', 'after_identifier_in_declaration')
+        self.parse_statements('statements_in_option')
         self.parse_control_flow()
-        self.expect(';')
+        self.expect(';', 'after_semicolon')
 
     def parse_control_flow(self):
-        # 85-86: stop | skip
+        # Productions 85-86
         if self.match('stop', 'skip'):
             self.advance()
         else:
             self.error("'stop' or 'skip'")
 
     def parse_optional_fallback(self):
-        # 88-89: <fallback_block> | λ
+        # Productions 87-88
         if self.match('fallback'):
             self.parse_fallback_block()
 
     def parse_fallback_block(self):
-        # 90. fallback : { <statements> }
+        # Production 89
         self.expect('fallback')
-        self.expect(':')
-        self.expect('{')
-        self.parse_statements()
-        self.expect('}')
+        self.expect(':', 'after_identifier_in_declaration')
+        self.expect('{', 'after_control_keyword')
+        self.parse_statements('statements_in_block')
+        self.expect('}', 'after_close_brace')
 
     def parse_iterative_statement(self):
-        # 91-92: each | during
+        # Productions 90-91
         if self.match('each'):
             self.parse_each_loop()
         elif self.match('during'):
             self.parse_during_loop()
 
     def parse_each_loop(self):
-        # 93. each identifier from <expression> to <expression> <step_clause> { <statements> }
+        # Production 92
         self.expect('each')
-        self.expect('IDENTIFIER')
+        self.expect('IDENTIFIER', 'after_datatype')
         self.expect('from')
-        self.parse_expression()
-        self.expect('to')
-        self.parse_expression()
+        self.parse_expression('expression_in_each')
+        self.expect('to', 'expression_in_each')
+        self.parse_expression('expression_in_each')
         self.parse_step_clause()
-        self.expect('{')
-        self.parse_statements()
-        self.expect('}')
+        self.expect('{', 'after_control_keyword')
+        self.parse_statements('statements_in_block')
+        self.expect('}', 'after_close_brace')
 
     def parse_step_clause(self):
-        # 94-95: step <expression> | λ
+        # Productions 93-94
         if self.match('step'):
             self.advance()
-            self.parse_expression()
+            self.parse_expression('expression_in_statement')
 
     def parse_during_loop(self):
-        # 96. during ( <expression> ) { <statements> }
+        # Production 95
         self.expect('during')
-        self.expect('(')
-        self.parse_expression()
-        self.expect(')')
-        self.expect('{')
-        self.parse_statements()
-        self.expect('}')
+        self.expect('(', 'after_check')
+        self.parse_expression('expression_in_condition')
+        self.expect(')', 'expression_in_paren')
+        self.expect('{', 'after_control_keyword')
+        self.parse_statements('statements_in_block')
+        self.expect('}', 'after_close_brace')
 
-    # ===== EXPRESSIONS (The tricky part) =====
+    # ===== EXPRESSION PARSING =====
 
-    def parse_expression(self):
-        # 97. <expression> ⇒ <logical_or_expression>
-        return self.parse_logical_or()
+    def parse_expression(self, context='expression_in_statement'):
+        # Production 96
+        return self.parse_logical_or(context)
 
-    def parse_logical_or(self):
-        # 98-99: Handle || operator (left-associative)
-        left = self.parse_logical_and()
+    def parse_logical_or(self, context):
+        # Productions 97-98
+        left = self.parse_logical_and(context)
 
         while self.match('||'):
             self.advance()
-            right = self.parse_logical_and()
-            # left = BinaryOp(left, '||', right)  # if building AST
+            right = self.parse_logical_and(context)
 
         return left
 
-    def parse_logical_and(self):
-        # 100-101: Handle && operator
-        left = self.parse_equality()
+    def parse_logical_and(self, context):
+        # Productions 99-100
+        left = self.parse_equality(context)
 
         while self.match('&&'):
             self.advance()
-            right = self.parse_equality()
+            right = self.parse_equality(context)
 
         return left
 
-    def parse_equality(self):
-        # 102-103: Handle == and !=
-        left = self.parse_relational()
+    def parse_equality(self, context):
+        # Productions 101-104
+        left = self.parse_relational(context)
 
         while self.match('==', '!='):
             self.advance()
-            right = self.parse_relational()
+            right = self.parse_relational(context)
 
         return left
 
-    def parse_relational(self):
-        # 106-107: Handle >, <, >=, <=
-        left = self.parse_additive()
+    def parse_relational(self, context):
+        # Productions 105-110
+        left = self.parse_additive(context)
 
         while self.match('>', '<', '>=', '<='):
             self.advance()
-            right = self.parse_additive()
+            right = self.parse_additive(context)
 
         return left
 
-    def parse_additive(self):
-        # 112-113: Handle + and -
-        left = self.parse_multiplicative()
+    def parse_additive(self, context):
+        # Productions 111-114
+        left = self.parse_multiplicative(context)
 
         while self.match('+', '-'):
             self.advance()
-            right = self.parse_multiplicative()
+            right = self.parse_multiplicative(context)
 
         return left
 
-    def parse_multiplicative(self):
-        # 116-117: Handle *, /, %
-        left = self.parse_exponentiation()
+    def parse_multiplicative(self, context):
+        # Productions 115-119
+        left = self.parse_exponentiation(context)
 
         while self.match('*', '/', '%'):
             self.advance()
-            right = self.parse_exponentiation()
+            right = self.parse_exponentiation(context)
 
         return left
 
-    def parse_exponentiation(self):
-        # 121-122: Handle ** (right-associative)
-        left = self.parse_unary()
+    def parse_exponentiation(self, context):
+        # Productions 120-121
+        left = self.parse_unary(context)
 
         if self.match('**'):
             self.advance()
-            right = self.parse_exponentiation()  # Right-associative recursion
+            right = self.parse_exponentiation(context)
 
         return left
 
-    def parse_unary(self):
-        # 123-124: Handle unary - and !
+    def parse_unary(self, context):
+        # Productions 122-125
         if self.match('-', '!'):
             self.advance()
-            return self.parse_postfix()
+            return self.parse_postfix(context)
         else:
-            return self.parse_postfix()
+            return self.parse_postfix(context)
 
-    def parse_postfix(self):
-        # 127-128: Handle ++ and --
-        expr = self.parse_primary()
+    def parse_postfix(self, context):
+        # Productions 126-128
+        expr = self.parse_primary(context)
 
         if self.match('++', '--'):
             self.advance()
 
         return expr
 
-    def parse_primary(self):
-        # 130-131: ( <expression> ) | <factor>
+    def parse_primary(self, context):
+        # Productions 129-130
         if self.match('('):
             self.advance()
-            expr = self.parse_expression()
-            self.expect(')')
+            expr = self.parse_expression('expression_in_paren')
+            self.expect(')', 'expression_in_paren')
             return expr
         else:
-            return self.parse_factor()
+            return self.parse_factor(context)
 
-    def parse_factor(self):
-        # 131-133: <literal> | <variable_reference> | <function_call>
+    def parse_factor(self, context):
+        # Productions 131-133
         if self.match('NUM_LIT', 'DECIMAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'Yes', 'No', 'bool_literal'):
             self.parse_literal()
         elif self.match('IDENTIFIER'):
-            # Could be variable or function call
             saved_pos = self.pos
             self.advance()
 
             if self.match('('):
-                # Function call
                 self.pos = saved_pos
                 self.current_token = self.tokens[self.pos]
                 self.parse_function_call()
             elif self.match('['):
-                # List access
                 self.pos = saved_pos
                 self.current_token = self.tokens[self.pos]
                 self.parse_variable_reference()
             elif self.match('.'):
-                # Group member access
                 self.pos = saved_pos
                 self.current_token = self.tokens[self.pos]
                 self.parse_variable_reference()
             else:
-                # Just identifier
-                pass  # Already consumed
+                pass  # Just identifier
         else:
-            self.error("literal, identifier, or function call")
+            self.error(context='after_equals')
 
     def parse_variable_reference(self):
-        # 139-141: identifier | list_access | group_member_access
+        # Productions 138-142
         self.expect('IDENTIFIER')
 
         if self.match('['):
             self.advance()
-            self.parse_expression()
-            self.expect(']')
+            self.parse_expression('expression_in_list')
+            self.expect(']', 'list_literal')
         elif self.match('.'):
             self.advance()
-            self.expect('IDENTIFIER')
+            self.expect('IDENTIFIER', 'after_datatype')
 
     def parse_literal(self):
-        # 152-156: num_lit | decimal_lit | string_lit | char_lit | bool
+        # Productions 152-158
         if self.match('NUM_LIT', 'DECIMAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'Yes', 'No', 'bool_literal'):
             self.advance()
         else:
@@ -708,29 +711,7 @@ class Parser:
                 "'NUM_LIT', 'DECIMAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'Yes', or 'No'")
 
 
-# ===== USAGE =====
-def test_parser():
-    # Assume you have tokens from your lexer
-    tokens = [
-        Token('start', 'start'),
-        Token('{', '{'),
-        Token('num', 'num'),
-        Token('IDENTIFIER', 'x'),
-        Token('=', '='),
-        Token('NUM_LIT', '5'),
-        Token(';', ';'),
-        Token('}', '}'),
-        Token('finish', 'finish'),
-    ]
-
-    parser = Parser(tokens)
-    try:
-        result = parser.parse()
-        print(result)  # "SUCCESS"
-    except SyntaxError as e:
-        print(f"Syntax Error: {e}")
-
-
+# For compatibility with existing code
 class Token:
     def __init__(self, type, value):
         self.type = type
