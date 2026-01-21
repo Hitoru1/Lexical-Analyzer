@@ -4,15 +4,49 @@ class Parser:
         self.pos = 0
         self.current_token = tokens[0] if tokens else None
 
-    def error(self, msg):
+    def error(self, expected_tokens):
         token = self.current_token
-        if token and hasattr(token, 'pos_start'):
-            line = token.pos_start.ln + 1  # Line numbers start at 0, so add 1
-            col = token.pos_start.col + 1   # Column numbers start at 0, so add 1
-            raise SyntaxError(
-                f"Syntax Error: {msg} at token '{token}'\nLine {line}, Column {col}")
+
+        # Get previous token for context
+        prev_token = self.tokens[self.pos - 1] if self.pos > 0 else None
+
+        if prev_token:
+            if prev_token.value:
+                prev_str = f"'{prev_token.value}'"
+            else:
+                prev_str = f"'{prev_token.type}'"
         else:
-            raise SyntaxError(f"Syntax Error: {msg} at token '{token}'")
+            prev_str = "start of file"
+
+        # Format current token
+        if token:
+            if token.value:
+                current_str = f"'{token.value}'"
+            else:
+                current_str = f"'{token.type}'"
+        else:
+            current_str = "EOF"
+
+        # Format expected tokens
+        if isinstance(expected_tokens, str):
+            expected_str = expected_tokens
+        elif isinstance(expected_tokens, (list, tuple)):
+            expected_str = ", ".join(f"'{t}'" for t in expected_tokens)
+        else:
+            expected_str = str(expected_tokens)
+
+        # Build error message
+        error_msg = f"Unexpected token after {prev_str}\n"
+        error_msg += f"Expected: {expected_str}\n"
+        error_msg += f"Got: {current_str}"
+
+        if token and hasattr(token, 'pos_start'):
+            line = token.pos_start.ln + 1
+            col = token.pos_start.col + 1
+            raise SyntaxError(
+                f"Syntax Error at Line {line}, Column {col}\n{error_msg}")
+        else:
+            raise SyntaxError(f"Syntax Error\n{error_msg}")
 
     def advance(self):
         """Move to next token"""
@@ -31,7 +65,7 @@ class Parser:
     def expect(self, token_type):
         """Consume a token of expected type or error"""
         if not self.match(token_type):
-            self.error(f"Expected {token_type}")
+            self.error(f"'{token_type}'")
         self.advance()
 
     # ===== START PARSING FROM HERE =====
@@ -106,7 +140,8 @@ class Parser:
         if self.match('num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool'):
             self.advance()
         else:
-            self.error("Expected datatype")
+            self.error(
+                "'num', 'decimal', 'bigdecimal', 'letter', 'text', or 'bool'")
 
     def parse_function_definition(self):
         # 20. define <return_type> identifier ( <parameter_list> ) { <local_declarations> <statements> <optional_return> }
@@ -132,7 +167,8 @@ class Parser:
         elif self.match('empty'):
             self.advance()
         else:
-            self.error("Expected return type")
+            self.error(
+                "'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', or 'empty'")
 
     def parse_parameter_list(self):
         # 26-27: <parameter> <parameter_list_tail> | λ
@@ -205,7 +241,7 @@ class Parser:
             self.parse_statement()
 
     def parse_statement(self):
-        # 57-61: control | assignment | function_call | declaration | io
+        # 56-60: control | assignment | function_call | declaration | io
         if self.match('check', 'select', 'each', 'during'):
             self.parse_control_statement()
         elif self.match('show', 'read'):
@@ -228,7 +264,8 @@ class Parser:
                 self.current_token = self.tokens[self.pos]
                 self.parse_assignment_or_call()
         else:
-            self.error(f"Unexpected token in statement")
+            self.error(
+                "statement ('check', 'select', 'each', 'during', 'show', 'read', datatype, 'fixed', 'list', or identifier)")
 
     def parse_assignment_or_call(self):
         # Check if it's assignment or function call
@@ -318,8 +355,7 @@ class Parser:
                 self.parse_expression()
 
     def parse_assignment_statement(self):
-        # 64. <assignable> <assignment_op> <expression>;
-        # 65. <assignable> <increment_op>;
+        # 63-64: <assignable> <assignment_op> <expression>; OR <assignable> <increment_op>;
         self.parse_assignable()
 
         if self.match('=', '+=', '-=', '*=', '/=', '%=', '**='):
@@ -330,7 +366,8 @@ class Parser:
             self.advance()  # increment operator
             self.expect(';')
         else:
-            self.error("Expected assignment or increment operator")
+            self.error(
+                "'=', '+=', '-=', '*=', '/=', '%=', '**=', '++', or '--'")
 
     def parse_assignable(self):
         # 66-68: identifier | list_access | group_member_access
@@ -461,11 +498,11 @@ class Parser:
         self.expect(';')
 
     def parse_control_flow(self):
-        # 86-87: stop | skip
+        # 85-86: stop | skip
         if self.match('stop', 'skip'):
             self.advance()
         else:
-            self.error("Expected 'stop' or 'skip'")
+            self.error("'stop' or 'skip'")
 
     def parse_optional_fallback(self):
         # 88-89: <fallback_block> | λ
@@ -621,8 +658,8 @@ class Parser:
             return self.parse_factor()
 
     def parse_factor(self):
-        # 132-134: <literal> | <variable_reference> | <function_call>
-        if self.match('NUM_LIT', 'DECIMAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'Yes', 'No', 'bool_literal'):  # Add 'bool_literal'
+        # 131-133: <literal> | <variable_reference> | <function_call>
+        if self.match('NUM_LIT', 'DECIMAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'Yes', 'No', 'bool_literal'):
             self.parse_literal()
         elif self.match('IDENTIFIER'):
             # Could be variable or function call
@@ -648,7 +685,7 @@ class Parser:
                 # Just identifier
                 pass  # Already consumed
         else:
-            self.error("Expected expression")
+            self.error("literal, identifier, or function call")
 
     def parse_variable_reference(self):
         # 139-141: identifier | list_access | group_member_access
@@ -663,11 +700,12 @@ class Parser:
             self.expect('IDENTIFIER')
 
     def parse_literal(self):
-        # 153-157: num_lit | decimal_lit | string_lit | char_lit | bool
+        # 152-156: num_lit | decimal_lit | string_lit | char_lit | bool
         if self.match('NUM_LIT', 'DECIMAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'Yes', 'No', 'bool_literal'):
             self.advance()
         else:
-            self.error("Expected literal")
+            self.error(
+                "'NUM_LIT', 'DECIMAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'Yes', or 'No'")
 
 
 # ===== USAGE =====
