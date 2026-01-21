@@ -39,8 +39,8 @@ class Parser:
     def parse(self):
         """Entry point - parse entire program"""
         self.parse_program()
-        if self.current_token is not None:
-            self.error("Unexpected tokens after program end")
+        # After 'finish', ignore all remaining tokens (follow set is null/empty)
+        # No error for tokens after program terminator
         return "SUCCESS"
 
     def parse_program(self):
@@ -199,7 +199,7 @@ class Parser:
     def parse_statements(self):
         # 55-56: <statement> <statements> | λ
         # stop when we hit closing brace or case keywords
-        while not self.match('}', 'option', 'fallback', 'stop', 'skip'):
+        while not self.match('}', 'option', 'fallback', 'stop', 'skip', 'give'):
             if self.current_token is None:
                 break
             self.parse_statement()

@@ -1790,7 +1790,7 @@ class Lexer:
 class KuCodeLexerGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("KuCode Lexical Analyzer")
+        self.root.title("KuCode Lexical & Syntax Analyzer")
         self.root.geometry("1400x800")
 
         # Configure style
@@ -1832,7 +1832,7 @@ class KuCodeLexerGUI:
         header_frame.pack_propagate(False)
 
         # Logo and Title
-        title_label = tk.Label(header_frame, text="KuCode Lexical Analyzer",
+        title_label = tk.Label(header_frame, text="KuCode Lexical & Syntax Analyzer",
                                font=("Courier New", 18, "bold"), bg=bg_color, fg=fg_color)
         title_label.pack(side=tk.LEFT, padx=20, pady=10)
 
@@ -1859,8 +1859,19 @@ class KuCodeLexerGUI:
         save_btn.pack(side=tk.LEFT, padx=5)
 
         # Main container
-        main_container = tk.Frame(root, bg="#0d1b2a")
-        main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Container for everything below header (for PanedWindow)
+        content_container = tk.Frame(root, bg="#0d1b2a")
+        content_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # Create PanedWindow for draggable divider
+        paned_window = tk.PanedWindow(content_container, orient=tk.VERTICAL,
+                                      bg="#0d1b2a", sashwidth=8,
+                                      sashrelief=tk.RAISED, bd=0)
+        paned_window.pack(fill=tk.BOTH, expand=True)
+
+        # Main container (source code + tokens)
+        main_container = tk.Frame(paned_window, bg="#0d1b2a")
+        paned_window.add(main_container, minsize=200)
 
         # Left Panel - Source Code
         left_panel = tk.Frame(main_container, bg=panel_bg,
@@ -1943,11 +1954,11 @@ class KuCodeLexerGUI:
 
         self.token_table.pack(fill=tk.BOTH, expand=True)
 
-        # Bottom Panel - Terminal
+        # Bottom Panel - Terminal (resizable)
+        # Bottom Panel - Terminal (in PanedWindow for draggable resize)
         terminal_frame = tk.Frame(
-            root, bg=panel_bg, relief=tk.RAISED, bd=1, height=150)
-        terminal_frame.pack(fill=tk.X, side=tk.BOTTOM, padx=10, pady=(0, 10))
-        terminal_frame.pack_propagate(False)
+            paned_window, bg=panel_bg, relief=tk.RAISED, bd=1)
+        paned_window.add(terminal_frame, minsize=100)
 
         terminal_label = tk.Label(terminal_frame, text="Terminal",
                                   font=("Courier New", 12, "bold"), bg=panel_bg, fg="white", anchor="w")
