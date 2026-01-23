@@ -72,8 +72,9 @@ class Parser:
             'after_identifier_in_declaration': "';', '=', or identifier",
             'after_equals': "expression (identifier, literal, '(', '-', '!', or '[')",
 
-            # Function contexts
-            'parameter_list': "'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', ',', or ')'",
+            # Function contexts - SPLIT INTO TWO
+            'parameter_list_start': "'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', or ')'",
+            'parameter_list_tail': "',', or ')'",
             'argument_list': "expression, ',', or ')'",
 
             # Control flow contexts
@@ -90,6 +91,8 @@ class Parser:
             'after_open_brace': "statement or '}'",
             'after_close_brace': "next statement, 'otherwise', 'otherwisecheck', 'finish', or '}'",
         }
+
+        return follow_sets.get(context, "valid token")
 
         return follow_sets.get(context, "valid token")
 
@@ -193,7 +196,7 @@ class Parser:
         self.expect('IDENTIFIER', 'after_datatype')
         self.expect('(', 'after_identifier_in_declaration')
         self.parse_parameter_list()
-        self.expect(')', 'parameter_list')
+        self.expect(')', 'parameter_list_tail')
         self.expect('{', 'after_control_keyword')
         self.parse_local_declarations()
         self.parse_statements('statements_in_function')
@@ -215,12 +218,19 @@ class Parser:
         if self.match('num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool'):
             self.parse_parameter()
             self.parse_parameter_list_tail()
+        elif not self.match(')'):
+            # Error: expected parameter or closing paren
+            self.error(context='parameter_list_start')
 
     def parse_parameter_list_tail(self):
         # Productions 28-29
         while self.match(','):
             self.advance()
             self.parse_parameter()
+
+        # After all parameters, we must see ')'
+        if not self.match(')'):
+            self.error(context='parameter_list_tail')
 
     def parse_parameter(self):
         # Production 30
@@ -372,7 +382,7 @@ class Parser:
                 self.parse_expression(context)
 
     def parse_assignment_statement(self):
-        # Productions 63-64
+        # Productions 61-63
         self.parse_assignable()
 
         if self.match('=', '+=', '-=', '*=', '/=', '%=', '**='):
@@ -382,32 +392,48 @@ class Parser:
         elif self.match('++', '--'):
             self.advance()
             self.expect(';', 'after_semicolon')
+        elif self.match(';'):
+            # Production 63: <assignment_statement> ⇒ <assignable>;
+            self.advance()
         else:
+            # Proper error when none of the expected tokens are found
             self.error(
-                "'=', '+=', '-=', '*=', '/=', '%=', '**=', '++', or '--'")
+                "';', '=', '+=', '-=', '*=', '/=', '%=', '**=', '++', or '--'")
 
     def parse_assignable(self):
-        # Productions 65-67
+        # Productions 64-66: identifier | <list_access> | <group_member_access>
+        # Productions 140-143: <list_access> handles 1D and 2D
         self.expect('IDENTIFIER')
 
+        # Production 142: <list_access_1d> ⇒ identifier [ <expression> ]
         if self.match('['):
             self.advance()
             self.parse_expression('expression_in_list')
             self.expect(']', 'list_literal')
+
+            # Production 143: <list_access_2d> ⇒ <list_access_1d> [ <expression> ]
+            if self.match('['):
+                self.advance()
+                self.parse_expression('expression_in_list')
+                self.expect(']', 'list_literal')
+
+        # Production 144: <group_member_access> ⇒ identifier . identifier
         elif self.match('.'):
             self.advance()
             self.expect('IDENTIFIER', 'after_datatype')
 
     def parse_function_call_statement(self):
-        # Production 61-62
+        # Production 59: <function_call_statement> ⇒ <function_call> ;
         self.parse_function_call()
-        self.expect(';', 'after_semicolon')
+        self.expect(';')  # Semicolon is part of the STATEMENT, not the call
 
     def parse_function_call(self):
+        # Production 60: <function_call> ⇒ identifier ( <argument_list> )
         self.expect('IDENTIFIER')
-        self.expect('(')
+        self.expect('(', 'after_check')
         self.parse_argument_list()
         self.expect(')', 'argument_list')
+        # NO semicolon here - it's added by function_call_statement or not needed in expressions
 
     def parse_argument_list(self):
         # Productions 134-135
@@ -691,13 +717,22 @@ class Parser:
             self.error(context='after_equals')
 
     def parse_variable_reference(self):
-        # Productions 138-142
+        # Productions 137-144: identifier | <list_access> | <group_member_access>
         self.expect('IDENTIFIER')
 
+        # Production 142: <list_access_1d> ⇒ identifier [ <expression> ]
         if self.match('['):
             self.advance()
             self.parse_expression('expression_in_list')
             self.expect(']', 'list_literal')
+
+            # Production 143: <list_access_2d> ⇒ <list_access_1d> [ <expression> ]
+            if self.match('['):
+                self.advance()
+                self.parse_expression('expression_in_list')
+                self.expect(']', 'list_literal')
+
+        # Production 144: <group_member_access> ⇒ identifier . identifier
         elif self.match('.'):
             self.advance()
             self.expect('IDENTIFIER', 'after_datatype')
