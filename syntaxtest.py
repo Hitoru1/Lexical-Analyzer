@@ -70,6 +70,10 @@ class Parser:
             # Declaration contexts
             'after_datatype': "identifier",
             'after_identifier_in_declaration': "';', '=', or identifier",
+            # Production 18: function definition requires '('
+            'after_identifier_in_function': "'('",
+            # Production 4: group definition requires '{'
+            'after_identifier_in_group': "'{'",
             'after_equals': "expression (identifier, literal, '(', '-', or '!')",
             'after_equals_in_list': "'['",
 
@@ -167,7 +171,7 @@ class Parser:
         # Production 9
         self.parse_datatype()
         self.expect('IDENTIFIER', 'after_datatype')
-        self.expect(';', 'after_identifier_in_declaration')
+        self.expect(';', 'after_identifier_in_group')
 
     def parse_global_declaration(self):
         # Production 10-11
@@ -195,7 +199,7 @@ class Parser:
         self.expect('define')
         self.parse_return_type()
         self.expect('IDENTIFIER', 'after_datatype')
-        self.expect('(', 'after_identifier_in_declaration')
+        self.expect('(', 'after_identifier_in_function')
         self.parse_parameter_list()
         self.expect(')', 'parameter_list_tail')
         self.expect('{', 'after_control_keyword')

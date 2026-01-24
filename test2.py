@@ -145,6 +145,7 @@ EOF = 'EOF'
 # Delimiter sets based on regular definitions
 DELIM_SETS = {
     # space only
+    'space_semcol': {' ', ';'},
     'space': {' '},
     # space, newline
     'space_nline': {' ', '\n', '{', },
@@ -208,7 +209,7 @@ TOKEN_DELIMITERS = {
     RW_FINISH: 'space_nline',
     RW_FROM: 'space',
     RW_FIXED: 'space',
-    RW_GIVE: 'space',
+    RW_GIVE: 'space_semcol',
     RW_GROUP: 'space',
     RW_LETTER: 'space',
     RW_NUM: 'space',
