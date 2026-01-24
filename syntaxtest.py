@@ -54,7 +54,8 @@ class Parser:
             # Expression contexts
             'expression_in_statement': "';', '+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', or '||'",
             'expression_in_paren': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', or ')'",
-            'expression_in_list': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', ',', or ']'",
+            'expression_in_list_literal': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', ',', or ']'",
+            'expression_in_list_access': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', or ']'",
             'expression_in_argument': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', ',', or ')'",
             'expression_in_assignment': "';', '+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', or '||'",
             'expression_in_return': "';', '+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', or '||'",
@@ -76,6 +77,9 @@ class Parser:
             'after_identifier_in_group': "'{'",
             'after_equals': "expression (identifier, literal, '(', '-', or '!')",
             'after_equals_in_list': "'['",
+
+            'after_expression_in_list_access': "']'",
+            'after_list_content': "']'",
 
             # Function contexts - SPLIT INTO TWO
             'parameter_list_start': "'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', or ')'",
@@ -152,7 +156,7 @@ class Parser:
             return
         self.expect('group')
         self.expect('IDENTIFIER', 'after_datatype')
-        self.expect('{', 'after_identifier_in_declaration')
+        self.expect('{', 'after_identifier_in_group')
         self.parse_group_member_list()
         self.expect('}', 'after_close_brace')
 
@@ -171,7 +175,7 @@ class Parser:
         # Production 9
         self.parse_datatype()
         self.expect('IDENTIFIER', 'after_datatype')
-        self.expect(';', 'after_identifier_in_group')
+        self.expect(';', 'after_identifier_in_declaration')
 
     def parse_global_declaration(self):
         # Production 10-11
@@ -352,7 +356,7 @@ class Parser:
         self.expect(';', 'expression_in_statement')
 
     def parse_list_declaration(self):
-        # Productions 43-46
+        # Productions 41-44
         self.expect('list')
         self.parse_datatype()
         self.expect('IDENTIFIER', 'after_datatype')
@@ -362,9 +366,9 @@ class Parser:
         if self.match('['):
             self.parse_list_rows()
         else:
-            self.parse_list_elements('expression_in_list')
+            self.parse_list_elements('expression_in_list_literal')
 
-        self.expect(']', 'list_literal')
+        self.expect(']', 'after_list_content')
         self.expect(';', 'after_semicolon')
 
     def parse_list_rows(self):
@@ -379,7 +383,7 @@ class Parser:
                 self.parse_list_elements('expression_in_list')
                 self.expect(']', 'list_literal')
 
-    def parse_list_elements(self, context='expression_in_list'):
+    def parse_list_elements(self, context='expression_in_list_literal'):
         if not self.match(']'):
             self.parse_expression(context)
             while self.match(','):
@@ -413,14 +417,15 @@ class Parser:
         # Production 142: <list_access_1d> ⇒ identifier [ <expression> ]
         if self.match('['):
             self.advance()
-            self.parse_expression('expression_in_list')
-            self.expect(']', 'list_literal')
+            self.parse_expression('expression_in_list_access')  # ← CORRECT
+            self.expect(']', 'after_expression_in_list_access')  # ← CORRECT
 
             # Production 143: <list_access_2d> ⇒ <list_access_1d> [ <expression> ]
             if self.match('['):
                 self.advance()
-                self.parse_expression('expression_in_list')
-                self.expect(']', 'list_literal')
+                self.parse_expression('expression_in_list_access')  # ← CORRECT
+                # ← CORRECT
+                self.expect(']', 'after_expression_in_list_access')
 
         # Production 144: <group_member_access> ⇒ identifier . identifier
         elif self.match('.'):
@@ -482,7 +487,7 @@ class Parser:
         self.expect('check')
         self.expect('(', 'after_check')
         self.parse_expression('expression_in_condition')
-        self.expect(')', 'expression_in_paren')
+        self.expect(')', 'after_condition')
         self.expect('{', 'after_control_keyword')
         self.parse_statements('statements_in_block')
         self.expect('}', 'after_close_brace')
@@ -500,7 +505,7 @@ class Parser:
         self.expect('otherwisecheck')
         self.expect('(', 'after_check')
         self.parse_expression('expression_in_condition')
-        self.expect(')', 'expression_in_paren')
+        self.expect(')', 'after_condition')
         self.expect('{', 'after_control_keyword')
         self.parse_statements('statements_in_block')
         self.expect('}', 'after_close_brace')
@@ -517,7 +522,7 @@ class Parser:
         self.expect('select')
         self.expect('(', 'after_check')
         self.parse_expression('expression_in_condition')
-        self.expect(')', 'expression_in_paren')
+        self.expect(')', 'after_condition')
         self.expect('{', 'after_control_keyword')
         self.parse_option_blocks()
         self.parse_optional_fallback()
@@ -578,17 +583,17 @@ class Parser:
         self.expect('}', 'after_close_brace')
 
     def parse_step_clause(self):
-        # Productions 93-94
+        # Productions 92-93
         if self.match('step'):
             self.advance()
-            self.parse_expression('expression_in_statement')
+            self.parse_expression('expression_in_each')  # ← CORRECT
 
     def parse_during_loop(self):
         # Production 95
         self.expect('during')
         self.expect('(', 'after_check')
         self.parse_expression('expression_in_condition')
-        self.expect(')', 'expression_in_paren')
+        self.expect(')', 'after_condition')
         self.expect('{', 'after_control_keyword')
         self.parse_statements('statements_in_block')
         self.expect('}', 'after_close_brace')
@@ -728,14 +733,15 @@ class Parser:
         # Production 142: <list_access_1d> ⇒ identifier [ <expression> ]
         if self.match('['):
             self.advance()
-            self.parse_expression('expression_in_list')
-            self.expect(']', 'list_literal')
+            self.parse_expression('expression_in_list_access')  # ← CORRECT
+            self.expect(']', 'after_expression_in_list_access')  # ← CORRECT
 
             # Production 143: <list_access_2d> ⇒ <list_access_1d> [ <expression> ]
             if self.match('['):
                 self.advance()
-                self.parse_expression('expression_in_list')
-                self.expect(']', 'list_literal')
+                self.parse_expression('expression_in_list_access')  # ← CORRECT
+                # ← CORRECT
+                self.expect(']', 'after_expression_in_list_access')
 
         # Production 144: <group_member_access> ⇒ identifier . identifier
         elif self.match('.'):
