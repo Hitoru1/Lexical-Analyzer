@@ -174,9 +174,9 @@ DELIM_SETS = {
     # space, mathop, logicop, relop, ;, {, )
     'closeparen_delim': {' ', '+', '-', '*', '/', '%', '&', '|', '!', '=', '<', '>', ';', '{', ')'},
     # space, &, |, !, ;
-    'bool_delim': {' ', '&', '|', '!', ';', ')'},
+    'bool_delim': {' ', '&', '|', '!', ';', ')', ':'},
     # space_nline, ,, +, ), ], }, ;
-    'string_char': {' ', '\n', ',', '+', ')', ']', '}', ';'},
+    'string_char': {' ', '\n', ',', '+', ')', ']', '}', ';', ':'},
     # space_nline, null, }, ], ), ,, ;, mathop, relop, logicop, =
     'lit_delim': {' ', '\n', '}', ']', ')', ',', ';', '+', '-', '*', '/', '%', '=', '!', '<', '>', '&', '|', ':'},
     # space_nline, mathop, =, <, >, (, ), ], ,, ;, }, &, |, !
@@ -190,6 +190,7 @@ DELIM_SETS = {
     # = delimiter (special for assignment)
     'delim7': {' ', '\n', '"', "'"} | set(LETTERNUM),
     'dot_delim': set(NUM) | set(LETTERS),
+    'not_delim': {'(', '-'} | set(LETTERNUM) | {'"', "'"},
 }
 
 # Token to delimiter mapping
@@ -247,7 +248,7 @@ TOKEN_DELIMITERS = {
     OP_MODULUS_ASSIGN: 'op_delim',
     OP_ASSIGNMENT: 'delim3',
     OP_EQUAL_TO: 'delim3',
-    OP_LOGICAL_NOT: 'open_paren',
+    OP_LOGICAL_NOT: 'not_delim',
     OP_NOT_EQUAL: 'delim3',
     OP_GREATER_THAN: 'op_delim',
     OP_GREATER_EQUAL: 'op_delim',

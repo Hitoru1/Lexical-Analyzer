@@ -70,7 +70,8 @@ class Parser:
             # Declaration contexts
             'after_datatype': "identifier",
             'after_identifier_in_declaration': "';', '=', or identifier",
-            'after_equals': "expression (identifier, literal, '(', '-', '!', or '[')",
+            'after_equals': "expression (identifier, literal, '(', '-', or '!')",
+            'after_equals_in_list': "'['",
 
             # Function contexts - SPLIT INTO TWO
             'parameter_list_start': "'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', or ')'",
@@ -352,7 +353,7 @@ class Parser:
         self.parse_datatype()
         self.expect('IDENTIFIER', 'after_datatype')
         self.expect('=', 'after_identifier_in_declaration')
-        self.expect('[', 'after_equals')
+        self.expect('[', 'after_equals_in_list')
 
         if self.match('['):
             self.parse_list_rows()
