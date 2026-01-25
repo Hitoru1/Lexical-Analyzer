@@ -99,9 +99,17 @@ class Parser:
             'after_semicolon': "next statement or '}'",
             'after_open_brace': "statement or '}'",
             'after_close_brace': "next statement, 'otherwise', 'otherwisecheck', 'finish', or '}'",
+            'after_identifier_in_group_member': "';'",
+            'after_identifier_in_function_call': "'('",
+            'after_assignable': "';', '=', '+=', '-=', '*=', '/=', '%=', '**=', '++', or '--'",
+            'control_flow': "'stop' or 'skip'",
+            'datatype': "'num', 'decimal', 'bigdecimal', 'letter', 'text', or 'bool'",
+            'return_type': "'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', or 'empty'",
+            'literal': "'NUM_LIT', 'DECIMAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'Yes', or 'No'",
+            'factor': "literal, identifier, or function call",
+            'after_identifier_in_local_declaration': "'='",
+            'after_identifier_in_custom_type_declaration': "';'",
         }
-
-        return follow_sets.get(context, "valid token")
 
         return follow_sets.get(context, "valid token")
 
@@ -175,7 +183,7 @@ class Parser:
         # Production 9
         self.parse_datatype()
         self.expect('IDENTIFIER', 'after_datatype')
-        self.expect(';', 'after_identifier_in_declaration')
+        self.expect(';', 'after_identifier_in_group_member')
 
     def parse_global_declaration(self):
         # Production 10-11
@@ -189,12 +197,11 @@ class Parser:
         self.expect(';', 'expression_in_statement')
 
     def parse_datatype(self):
-        # Productions 14-19
+        # Productions 12-17
         if self.match('num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool'):
             self.advance()
         else:
-            self.error(
-                "'num', 'decimal', 'bigdecimal', 'letter', 'text', or 'bool'")
+            self.error(context='datatype')
 
     def parse_function_definition(self):
         # Production 20-21
@@ -213,14 +220,13 @@ class Parser:
         self.expect('}', 'after_close_brace')
 
     def parse_return_type(self):
-        # Productions 24-25
+        # Productions 22-23
         if self.match('num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool'):
             self.parse_datatype()
         elif self.match('empty'):
             self.advance()
         else:
-            self.error(
-                "'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', or 'empty'")
+            self.error(context='return_type')
 
     def parse_parameter_list(self):
         # Productions 26-27
@@ -247,22 +253,39 @@ class Parser:
         self.expect('IDENTIFIER', 'after_datatype')
 
     def parse_local_declarations(self):
-        # Productions 22-23
-        while self.match('num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', 'IDENTIFIER'):
+        # Productions 20-21
+        while self.match('num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool'):
             self.parse_local_declaration()
+
+        # Check for custom type declarations (identifier identifier;)
+        if self.match('IDENTIFIER'):
+            saved_pos = self.pos
+            self.advance()
+
+            if self.match('IDENTIFIER'):
+                # Custom type declaration
+                self.pos = saved_pos
+                self.current_token = self.tokens[self.pos]
+                self.parse_local_declaration()
+                # Recursively check for more declarations
+                self.parse_local_declarations()
+            else:
+                # Not a declaration, rewind
+                self.pos = saved_pos
+                self.current_token = self.tokens[self.pos]
 
     def parse_local_declaration(self):
         # Productions 40-41
         if self.match('num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool'):
             self.parse_datatype()
             self.expect('IDENTIFIER', 'after_datatype')
-            self.expect('=', 'after_identifier_in_declaration')
+            self.expect('=', 'after_identifier_in_local_declaration')
             self.parse_expression('expression_in_assignment')
             self.expect(';', 'expression_in_statement')
         elif self.match('IDENTIFIER'):
             self.advance()
             self.expect('IDENTIFIER', 'after_datatype')
-            self.expect(';', 'after_identifier_in_declaration')
+            self.expect(';', 'after_identifier_in_custom_type_declaration')
 
     def parse_optional_return(self):
         # Productions 31-32
@@ -405,9 +428,7 @@ class Parser:
             # Production 63: <assignment_statement> ⇒ <assignable>;
             self.advance()
         else:
-            # Proper error when none of the expected tokens are found
-            self.error(
-                "';', '=', '+=', '-=', '*=', '/=', '%=', '**=', '++', or '--'")
+            self.error(context='after_assignable')
 
     def parse_assignable(self):
         # Productions 64-66: identifier | <list_access> | <group_member_access>
@@ -435,15 +456,15 @@ class Parser:
     def parse_function_call_statement(self):
         # Production 59: <function_call_statement> ⇒ <function_call> ;
         self.parse_function_call()
-        self.expect(';')  # Semicolon is part of the STATEMENT, not the call
+        # Semicolon is part of the STATEMENT, not the call
+        self.expect(';', 'after_semicolon')
 
     def parse_function_call(self):
         # Production 60: <function_call> ⇒ identifier ( <argument_list> )
         self.expect('IDENTIFIER')
-        self.expect('(', 'after_check')
+        self.expect('(', 'after_identifier_in_function_call')  # New context
         self.parse_argument_list()
         self.expect(')', 'argument_list')
-        # NO semicolon here - it's added by function_call_statement or not needed in expressions
 
     def parse_argument_list(self):
         # Productions 134-135
@@ -543,11 +564,11 @@ class Parser:
         self.expect(';', 'after_semicolon')
 
     def parse_control_flow(self):
-        # Productions 85-86
+        # Productions 84-85
         if self.match('stop', 'skip'):
             self.advance()
         else:
-            self.error("'stop' or 'skip'")
+            self.error(context='control_flow')
 
     def parse_optional_fallback(self):
         # Productions 87-88
@@ -702,8 +723,8 @@ class Parser:
             return self.parse_factor(context)
 
     def parse_factor(self, context):
-        # Productions 131-133
-        if self.match('NUM_LIT', 'DECIMAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'Yes', 'No', 'bool_literal'):
+        # Productions 130-132
+        if self.match('NUM_LIT', 'DECIMAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'Yes', 'No'):
             self.parse_literal()
         elif self.match('IDENTIFIER'):
             saved_pos = self.pos
@@ -724,7 +745,7 @@ class Parser:
             else:
                 pass  # Just identifier
         else:
-            self.error(context='after_equals')
+            self.error(context='factor')
 
     def parse_variable_reference(self):
         # Productions 137-144: identifier | <list_access> | <group_member_access>
@@ -749,12 +770,11 @@ class Parser:
             self.expect('IDENTIFIER', 'after_datatype')
 
     def parse_literal(self):
-        # Productions 152-158
-        if self.match('NUM_LIT', 'DECIMAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'Yes', 'No', 'bool_literal'):
+        # Productions 154-160
+        if self.match('NUM_LIT', 'DECIMAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'Yes', 'No'):
             self.advance()
         else:
-            self.error(
-                "'NUM_LIT', 'DECIMAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'Yes', or 'No'")
+            self.error(context='literal')
 
 
 # For compatibility with existing code
