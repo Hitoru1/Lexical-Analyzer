@@ -109,6 +109,8 @@ class Parser:
             'factor': "literal, identifier, or function call",
             'after_identifier_in_local_declaration': "'='",
             'after_identifier_in_custom_type_declaration': "';'",
+            'after_function_call_for_statement': "';'",
+            'after_option_literal': "':'",
         }
 
         return follow_sets.get(context, "valid token")
@@ -457,7 +459,7 @@ class Parser:
         # Production 59: <function_call_statement> ⇒ <function_call> ;
         self.parse_function_call()
         # Semicolon is part of the STATEMENT, not the call
-        self.expect(';', 'after_semicolon')
+        self.expect(';', 'after_function_call_for_statement')
 
     def parse_function_call(self):
         # Production 60: <function_call> ⇒ identifier ( <argument_list> )
@@ -558,7 +560,7 @@ class Parser:
         # Production 84
         self.expect('option')
         self.parse_literal()
-        self.expect(':', 'after_identifier_in_declaration')
+        self.expect(':', 'after_option_literal')
         self.parse_statements('statements_in_option')
         self.parse_control_flow()
         self.expect(';', 'after_semicolon')
