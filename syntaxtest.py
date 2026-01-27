@@ -69,13 +69,12 @@ class Parser:
             'statements_in_option': "'check', 'select', 'each', 'during', 'show', 'read', 'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', 'fixed', 'list', 'identifier', 'stop', or 'skip'",
 
             # Declaration contexts
-            'after_datatype': "identifier",
+            'after_datatype': "'IDENTIFIER'",
             'after_identifier_in_declaration': "';', '=', or identifier",
             # Production 18: function definition requires '('
             'after_identifier_in_function': "'('",
             # Production 4: group definition requires '{'
             'after_identifier_in_group': "'{'",
-            'after_equals': "expression (identifier, literal, '(', '-', or '!')",
             'after_equals_in_list': "'['",
 
             'after_expression_in_list_access': "']'",
@@ -84,7 +83,7 @@ class Parser:
             # Function contexts - SPLIT INTO TWO
             'parameter_list_start': "'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', or ')'",
             'parameter_list_tail': "',', or ')'",
-            'argument_list': "expression, ',', or ')'",
+            'argument_list': "')'",
 
             # Control flow contexts
             'after_check': "'('",
@@ -93,12 +92,12 @@ class Parser:
             'option_block': "'option', 'fallback', or '}'",
 
             # List contexts
-            'list_literal': "expression, ',', ']', or '['",
+            'list_literal': "']'",
 
-            # General
-            'after_semicolon': "next statement or '}'",
-            'after_open_brace': "statement or '}'",
-            'after_close_brace': "next statement, 'otherwise', 'otherwisecheck', 'finish', or '}'",
+            # General - contexts for expect() calls
+            'after_semicolon': "';'",
+            'after_open_brace': "'{'",
+            'after_close_brace': "'}'",
             'after_identifier_in_group_member': "';'",
             'after_identifier_in_function_call': "'('",
             'after_assignable': "';', '=', '+=', '-=', '*=', '/=', '%=', '**=', '++', or '--'",
@@ -106,7 +105,7 @@ class Parser:
             'datatype': "'num', 'decimal', 'bigdecimal', 'letter', 'text', or 'bool'",
             'return_type': "'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', or 'empty'",
             'literal': "'NUM_LIT', 'DECIMAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'Yes', or 'No'",
-            'factor': "literal, identifier, or function call",
+            'factor': "'NUM_LIT', 'DECIMAL_LIT', 'STRING_LIT', 'CHAR_LIT', 'Yes', 'No', or 'IDENTIFIER'",
             'after_identifier_in_local_declaration': "'='",
             'after_identifier_in_custom_type_declaration': "';'",
             'after_function_call_for_statement': "';'",
