@@ -1982,7 +1982,39 @@ class KuCodeLexerGUI:
 
         content = self.source_text.get("1.0", "end-1c")
 
-    # Keywords - purple/pink
+        import re
+
+        # First, find all strings and comments to exclude them from other highlighting
+        string_ranges = []
+        comment_ranges = []
+
+    # Strings - green (APPLY FIRST)
+        string_pattern = r'"[^"]*"|\'[^\']*\''
+        for match in re.finditer(string_pattern, content):
+            start_idx = f"1.0+{match.start()}c"
+            end_idx = f"1.0+{match.end()}c"
+            self.source_text.tag_add("string", start_idx, end_idx)
+            string_ranges.append((match.start(), match.end()))
+
+    # Comments - gray (APPLY SECOND)
+        comment_pattern = r'~[^\n]*|~~.*?~~'
+        for match in re.finditer(comment_pattern, content, re.DOTALL):
+            start_idx = f"1.0+{match.start()}c"
+            end_idx = f"1.0+{match.end()}c"
+            self.source_text.tag_add("comment", start_idx, end_idx)
+            comment_ranges.append((match.start(), match.end()))
+
+        # Helper function to check if position is inside string or comment
+        def is_inside_string_or_comment(pos):
+            for start, end in string_ranges:
+                if start <= pos < end:
+                    return True
+            for start, end in comment_ranges:
+                if start <= pos < end:
+                    return True
+            return False
+
+    # Keywords - purple/pink (SKIP if inside string/comment)
         keywords_pattern = r'\b(' + '|'.join([
             'start', 'finish', 'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool',
             'Yes', 'No', 'none', 'empty', 'read', 'show', 'check', 'otherwise', 'otherwisecheck',
@@ -1990,39 +2022,27 @@ class KuCodeLexerGUI:
             'stop', 'skip', 'give', 'define', 'worldwide', 'fixed', 'list', 'group'
         ]) + r')\b'
 
-        import re
         for match in re.finditer(keywords_pattern, content):
-            start_idx = f"1.0+{match.start()}c"
-            end_idx = f"1.0+{match.end()}c"
-            self.source_text.tag_add("keyword", start_idx, end_idx)
+            if not is_inside_string_or_comment(match.start()):
+                start_idx = f"1.0+{match.start()}c"
+                end_idx = f"1.0+{match.end()}c"
+                self.source_text.tag_add("keyword", start_idx, end_idx)
 
-    # Strings - green
-        string_pattern = r'"[^"]*"|\'[^\']*\''
-        for match in re.finditer(string_pattern, content):
-            start_idx = f"1.0+{match.start()}c"
-            end_idx = f"1.0+{match.end()}c"
-            self.source_text.tag_add("string", start_idx, end_idx)
-
-    # Comments - gray
-        comment_pattern = r'~[^\n]*|~~.*?~~'
-        for match in re.finditer(comment_pattern, content, re.DOTALL):
-            start_idx = f"1.0+{match.start()}c"
-            end_idx = f"1.0+{match.end()}c"
-            self.source_text.tag_add("comment", start_idx, end_idx)
-
-    # Numbers - orange
+    # Numbers - orange (SKIP if inside string/comment)
         number_pattern = r'\b\d+\.?\d*\b'
         for match in re.finditer(number_pattern, content):
-            start_idx = f"1.0+{match.start()}c"
-            end_idx = f"1.0+{match.end()}c"
-            self.source_text.tag_add("number", start_idx, end_idx)
+            if not is_inside_string_or_comment(match.start()):
+                start_idx = f"1.0+{match.start()}c"
+                end_idx = f"1.0+{match.end()}c"
+                self.source_text.tag_add("number", start_idx, end_idx)
 
-    # Operators - light blue
+    # Operators - light blue (SKIP if inside string/comment)
         operator_pattern = r'[+\-*/%=<>!&|]+'
         for match in re.finditer(operator_pattern, content):
-            start_idx = f"1.0+{match.start()}c"
-            end_idx = f"1.0+{match.end()}c"
-            self.source_text.tag_add("operator", start_idx, end_idx)
+            if not is_inside_string_or_comment(match.start()):
+                start_idx = f"1.0+{match.start()}c"
+                end_idx = f"1.0+{match.end()}c"
+                self.source_text.tag_add("operator", start_idx, end_idx)
 
     # Configure tag colors
         self.source_text.tag_config("keyword", foreground="#c678dd")  # Purple
