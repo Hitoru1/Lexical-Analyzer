@@ -52,15 +52,15 @@ class Parser:
         """Return FOLLOW set as formatted string based on parsing context"""
         follow_sets = {
             # Expression contexts
-            'expression_in_statement': "';', '+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', or '||'",
-            'expression_in_paren': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', or ')'",
-            'expression_in_list_literal': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', ',', or ']'",
-            'expression_in_list_access': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', or ']'",
-            'expression_in_argument': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', ',', or ')'",
-            'expression_in_assignment': "';', '+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', or '||'",
-            'expression_in_return': "';', '+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', or '||'",
-            'expression_in_condition': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', or ')'",
-            'expression_in_each': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', 'to', or 'step'",
+            'expression_in_statement': "';', '+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', '++', '--', '(', '[', or '.'",
+            'expression_in_paren': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', '++', '--', '(', '[', '.', or ')'",
+            'expression_in_list_literal': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', '++', '--', '(', '[', '.', ',', or ']'",
+            'expression_in_list_access': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', '++', '--', '(', '[', '.', or ']'",
+            'expression_in_argument': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', '++', '--', '(', '[', '.', ',', or ')'",
+            'expression_in_assignment': "';', '+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', '++', '--', '(', '[', or '.'",
+            'expression_in_return': "';', '+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', '++', '--', '(', '[', or '.'",
+            'expression_in_condition': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', '++', '--', '(', '[', '.', or ')'",
+            'expression_in_each': "'+', '-', '*', '/', '%', '**', '>', '<', '>=', '<=', '==', '!=', '&&', '||', '++', '--', '(', '[', '.', 'to', or 'step'",
 
             # Statement contexts
             'statement': "'check', 'select', 'each', 'during', 'show', 'read', 'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool', 'fixed', 'list', 'identifier', or '}'",
@@ -100,6 +100,7 @@ class Parser:
             'after_close_brace': "'}'",
             'after_identifier_in_group_member': "';'",
             'after_identifier_in_function_call': "'('",
+            'after_identifier_in_statement': "'IDENTIFIER', '(', '[', '.', ';', '=', '+=', '-=', '*=', '/=', '%=', '**=', '++', or '--'",
             'after_assignable': "';', '=', '+=', '-=', '*=', '/=', '%=', '**=', '++', or '--'",
             'control_flow': "'stop' or 'skip'",
             'datatype': "'num', 'decimal', 'bigdecimal', 'letter', 'text', or 'bool'",
@@ -363,14 +364,14 @@ class Parser:
             self.pos = saved_pos
             self.current_token = self.tokens[self.pos]
             self.parse_function_call_statement()
-        elif self.match('.', '[', '=', '+=', '-=', '*=', '/=', '%=', '**=', '++', '--'):
+        elif self.match('.', '[', '=', '+=', '-=', '*=', '/=', '%=', '**=', '++', '--', ';'):
             self.pos = saved_pos
             self.current_token = self.tokens[self.pos]
             self.parse_assignment_statement()
         else:
-            self.pos = saved_pos
-            self.current_token = self.tokens[self.pos]
-            self.parse_assignment_statement()
+            # Invalid token after identifier - could have been custom type declaration
+            # or assignment, so show all possibilities
+            self.error(context='after_identifier_in_statement')
 
     def parse_declaration(self):
         # Productions 37-39
@@ -476,15 +477,17 @@ class Parser:
         self.expect('IDENTIFIER')
         self.expect('(', 'after_identifier_in_function_call')  # New context
         self.parse_argument_list()
-        self.expect(')', 'argument_list')
+        self.expect(')', 'expression_in_argument')
 
     def parse_argument_list(self):
         # Productions 134-135
         if not self.match(')'):
+            # ← Make sure this context is used
             self.parse_expression('expression_in_argument')
             while self.match(','):
                 self.advance()
-                self.parse_expression('expression_in_argument')
+                self.parse_expression(
+                    'expression_in_argument')  # ← And here too
 
     def parse_io_statement(self):
         # Productions 68-69
@@ -492,7 +495,7 @@ class Parser:
             self.expect('show')
             self.expect('(', 'after_check')
             self.parse_argument_list()
-            self.expect(')', 'argument_list')
+            self.expect(')', 'expression_in_argument')
             self.expect(';', 'after_semicolon')
         elif self.match('read'):
             self.expect('read')
@@ -520,7 +523,7 @@ class Parser:
         self.expect('check')
         self.expect('(', 'after_check')
         self.parse_expression('expression_in_condition')
-        self.expect(')', 'after_condition')
+        self.expect(')', 'expression_in_condition')
         self.expect('{', 'after_control_keyword')
         self.parse_statements('statements_in_block')
         self.expect('}', 'after_close_brace')
@@ -538,7 +541,7 @@ class Parser:
         self.expect('otherwisecheck')
         self.expect('(', 'after_check')
         self.parse_expression('expression_in_condition')
-        self.expect(')', 'after_condition')
+        self.expect(')', 'expression_in_condition')
         self.expect('{', 'after_control_keyword')
         self.parse_statements('statements_in_block')
         self.expect('}', 'after_close_brace')
@@ -555,7 +558,7 @@ class Parser:
         self.expect('select')
         self.expect('(', 'after_check')
         self.parse_expression('expression_in_condition')
-        self.expect(')', 'after_condition')
+        self.expect(')', 'expression_in_condition')
         self.expect('{', 'after_control_keyword')
         self.parse_option_blocks()
         self.parse_optional_fallback()
@@ -590,10 +593,8 @@ class Parser:
     def parse_fallback_block(self):
         # Production 89
         self.expect('fallback')
-        self.expect(':', 'after_identifier_in_declaration')
-        self.expect('{', 'after_control_keyword')
-        self.parse_statements('statements_in_block')
-        self.expect('}', 'after_close_brace')
+        self.expect(':', 'after_option_literal')
+        self.parse_statements('statements_in_option')
 
     def parse_iterative_statement(self):
         # Productions 90-91
@@ -626,7 +627,7 @@ class Parser:
         self.expect('during')
         self.expect('(', 'after_check')
         self.parse_expression('expression_in_condition')
-        self.expect(')', 'after_condition')
+        self.expect(')', 'expression_in_condition')
         self.expect('{', 'after_control_keyword')
         self.parse_statements('statements_in_block')
         self.expect('}', 'after_close_brace')
