@@ -317,7 +317,18 @@ class Parser:
 
     def parse_statements(self, context='statements_in_block'):
         # Productions 54-55
-        while not self.match('}', 'option', 'fallback', 'stop', 'skip', 'give'):
+        # Determine stop tokens based on context to align with CFG FOLLOW sets
+        if context == 'statements_in_function':
+            # Inside function: can have statements followed by optional 'give' or '}'
+            stop_tokens = ['}', 'give']
+        elif context == 'statements_in_option':
+            # Inside option block: can have statements followed by 'stop', 'skip', or end of options
+            stop_tokens = ['}', 'stop', 'skip', 'option', 'fallback']
+        else:  # statements_in_block (default)
+            # Inside regular blocks (check, otherwise, during, each, main): only stops at '}'
+            stop_tokens = ['}']
+
+        while not self.match(*stop_tokens):
             if self.current_token is None:
                 break
             self.parse_statement(context)

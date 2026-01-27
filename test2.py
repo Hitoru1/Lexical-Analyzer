@@ -357,7 +357,6 @@ def map_token_type_for_parser(token_type):
         LIT_DECIMAL: 'DECIMAL_LIT',
         LIT_STRING: 'STRING_LIT',
         LIT_CHARACTER: 'CHAR_LIT',
-        LIT_BOOLEAN: token_type,  # Keep Yes/No as is
         IDENTIFIER: 'IDENTIFIER',
         DELIM_SEMICOLON: ';',
         DELIM_COMMA: ',',
@@ -872,7 +871,7 @@ class Lexer:
                         # Create token
                         if matched_text in ['Yes', 'No']:
                             token = Token(
-                                LIT_BOOLEAN, matched_text, pos_start, pos_end)
+                                matched_text, matched_text, pos_start, pos_end)  # Use value as type
                         else:
                             token = Token(token_type, matched_text,
                                           pos_start, pos_end)
