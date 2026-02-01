@@ -1,12 +1,18 @@
 """
 OPTIMIZED CONTEXT-SPECIFIC TABLE-DRIVEN LL(1) PARSER FOR KUCODE
 
-391 Productions - 5 Expression Hierarchies
+374 Productions - 5 Expression Hierarchies + Boolean Enforcement
 - <stmt_value>: declarations, assignments, returns (FOLLOW = {';'})
 - <arg_value>: function args, list elements (FOLLOW = {',', ')', ']'})
 - <cond_value>: conditions (FOLLOW = {')'})
 - <index_value>: array indices (FOLLOW = {']'})
 - <from_primary>, <to_primary>, <step_primary>: loop bounds (PRIMARY ONLY)
+
+BOOLEAN ENFORCEMENT:
+- Removed λ from <cond_rel_tail> (production 276)
+- Arithmetic in conditions MUST have comparison operator
+- check(x + 5) → SYNTAX ERROR (must be check(x + 5 > 0))
+- check(flag) → SYNTAX ERROR (must be check(flag == Yes))
 """
 
 
@@ -26,7 +32,7 @@ class TableDrivenParser:
         self.derivations = []
 
     def _init_grammar(self):
-        """Define the complete 391-production CFG"""
+        """Define the complete 374-production CFG with boolean enforcement"""
 
         self.productions = {
             # ============================================================
@@ -677,11 +683,12 @@ class TableDrivenParser:
 
             '<cond_rel_tail>': [
                 # 272 - Second operand can't have another comparison
+                # NO λ - comparison is REQUIRED (enforces boolean expressions)
                 ['>', '<cond_arith_no_rel>'],
                 ['<', '<cond_arith_no_rel>'],  # 273
                 ['>=', '<cond_arith_no_rel>'],  # 274
-                ['<=', '<cond_arith_no_rel>'],  # 275
-                ['λ']  # 276
+                ['<=', '<cond_arith_no_rel>']  # 275
+                # Production 276 (λ) REMOVED - check(x + 5) now INVALID
             ],
 
             # Arithmetic without relational tail (used as second operand in comparisons)
