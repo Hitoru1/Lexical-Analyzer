@@ -2123,7 +2123,7 @@ class KuCodeLexerGUI:
         parser_tokens = prepare_tokens_for_parser(tokens)
 
         # Import and run parser
-        from syntaxtest import Parser
+        from table_driven_parser import TableDrivenParser as Parser
         parser = Parser(parser_tokens)
 
         try:
