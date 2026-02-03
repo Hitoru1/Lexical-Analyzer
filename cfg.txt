@@ -375,13 +375,14 @@
 265. <cond_base> ⇒ <cond_arith> <cond_rel_tail>
 
 # Relational tail now REQUIRED (no λ) - enforces boolean expressions
+# Uses <cond_arith_no_rel> on RHS to prevent chaining (a < b == c is invalid)
 266. <cond_rel_tail> ⇒ > <cond_arith_no_rel>
 267. <cond_rel_tail> ⇒ < <cond_arith_no_rel>
 268. <cond_rel_tail> ⇒ >= <cond_arith_no_rel>
 269. <cond_rel_tail> ⇒ <= <cond_arith_no_rel>
-# Production 270 (λ) REMOVED - arithmetic must have comparison!
-
-# Production 270 (λ) REMOVED - arithmetic must have comparison!
+270. <cond_rel_tail> ⇒ == <cond_arith_no_rel>
+271. <cond_rel_tail> ⇒ != <cond_arith_no_rel>
+# λ REMOVED - arithmetic must have comparison!
 
 # Regular arithmetic (first operand)
 270. <cond_arith> ⇒ <cond_add>

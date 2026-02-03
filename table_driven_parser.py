@@ -67,7 +67,7 @@ class TableDrivenParser:
             # ============================================================
 
             '<group_definitions>': [
-                ['group', 'id', '{', '<group_body>', '}']  # 9
+                ['group', 'identifier', '{', '<group_body>', '}']  # 9
             ],
 
             '<group_body>': [
@@ -684,13 +684,15 @@ class TableDrivenParser:
             ],
 
             '<cond_rel_tail>': [
-                # 272 - Second operand can't have another comparison
+                # Second operand uses <cond_arith_no_rel> to prevent chaining (a < b == c)
                 # NO λ - comparison is REQUIRED (enforces boolean expressions)
-                ['>', '<cond_arith_no_rel>'],
-                ['<', '<cond_arith_no_rel>'],  # 273
+                ['>', '<cond_arith_no_rel>'],   # 272
+                ['<', '<cond_arith_no_rel>'],   # 273
                 ['>=', '<cond_arith_no_rel>'],  # 274
-                ['<=', '<cond_arith_no_rel>']  # 275
-                # Production 276 (λ) REMOVED - check(x + 5) now INVALID
+                ['<=', '<cond_arith_no_rel>'],  # 275
+                ['==', '<cond_arith_no_rel>'],  # 276 - equality
+                ['!=', '<cond_arith_no_rel>']   # 277 - inequality
+                # λ REMOVED - check(x + 5) now INVALID
             ],
 
             # Arithmetic without relational tail (used as second operand in comparisons)
