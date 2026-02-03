@@ -357,11 +357,11 @@ class Token:
 def map_token_type_for_parser(token_type):
     """Map lexer token types to parser-expected types"""
     mapping = {
-        LIT_NUMBER: 'NUM_LIT',
-        LIT_DECIMAL: 'DECIMAL_LIT',
-        LIT_STRING: 'STRING_LIT',
-        LIT_CHARACTER: 'CHAR_LIT',
-        IDENTIFIER: 'IDENTIFIER',
+        LIT_NUMBER: 'num_lit',
+        LIT_DECIMAL: 'decimal_lit',
+        LIT_STRING: 'string_lit',
+        LIT_CHARACTER: 'char_lit',
+        IDENTIFIER: 'identifier',
         DELIM_SEMICOLON: ';',
         DELIM_COMMA: ',',
         DELIM_LEFT_PAREN: '(',
