@@ -67,7 +67,7 @@ class TableDrivenParser:
             # ============================================================
 
             '<group_definitions>': [
-                ['group', 'IDENTIFIER', '{', '<group_body>', '}']  # 9
+                ['group', 'id', '{', '<group_body>', '}']  # 9
             ],
 
             '<group_body>': [
@@ -543,7 +543,8 @@ class TableDrivenParser:
             '<stmt_prim>': [
                 ['(', '<stmt_value>', ')'],  # 201
                 ['<literal>'],  # 202
-                ['IDENTIFIER', '<stmt_id_suffix>']  # 203
+                ['IDENTIFIER', '<stmt_id_suffix>'],  # 203
+                ['<size_call>']  # 204 - size(IDENTIFIER) or size(IDENTIFIER, 0)
             ],
 
             '<stmt_id_suffix>': [
@@ -626,7 +627,8 @@ class TableDrivenParser:
             '<arg_prim>': [
                 ['(', '<arg_value>', ')'],  # 246
                 ['<literal>'],  # 247
-                ['IDENTIFIER', '<arg_id_suffix>']  # 248
+                ['IDENTIFIER', '<arg_id_suffix>'],  # 248
+                ['<size_call>']  # 249 - size(IDENTIFIER) or size(IDENTIFIER, 0)
             ],
 
             '<arg_id_suffix>': [
@@ -730,7 +732,8 @@ class TableDrivenParser:
                 ['(', '<cond_value>', ')'],  # 296
                 ['NUM_LIT'],  # 297
                 ['DECIMAL_LIT'],  # 298
-                ['IDENTIFIER', '<cond_id_suffix_no_rel>']  # 299
+                ['IDENTIFIER', '<cond_id_suffix_no_rel>'],  # 299
+                ['<size_call>']  # 300 - size(IDENTIFIER) or size(IDENTIFIER, 0)
             ],
 
             '<cond_id_suffix_no_rel>': [
@@ -781,7 +784,8 @@ class TableDrivenParser:
                 ['(', '<cond_value>', ')'],  # 296
                 ['NUM_LIT'],  # 297
                 ['DECIMAL_LIT'],  # 298
-                ['IDENTIFIER', '<cond_id_suffix>']  # 299
+                ['IDENTIFIER', '<cond_id_suffix>'],  # 299
+                ['<size_call>']  # 300 - size(IDENTIFIER) or size(IDENTIFIER, 0)
             ],
 
             '<cond_id_suffix>': [
@@ -836,7 +840,8 @@ class TableDrivenParser:
                 ['(', '<index_value>', ')'],  # 325
                 ['NUM_LIT'],  # 326
                 ['DECIMAL_LIT'],  # 327
-                ['IDENTIFIER', '<index_id_suffix>']  # 328
+                ['IDENTIFIER', '<index_id_suffix>'],  # 328
+                ['<size_call>']  # 329 - size(IDENTIFIER) or size(IDENTIFIER, 0)
             ],
 
             '<index_id_suffix>': [
@@ -861,7 +866,8 @@ class TableDrivenParser:
             '<from_primary>': [
                 ['NUM_LIT'],  # 365
                 ['DECIMAL_LIT'],  # 366
-                ['IDENTIFIER', '<from_id_suffix>']  # 367
+                ['IDENTIFIER', '<from_id_suffix>'],  # 367
+                ['<size_call>']  # 368 - size(IDENTIFIER) or size(IDENTIFIER, 0)
             ],
 
             '<from_id_suffix>': [
@@ -886,7 +892,8 @@ class TableDrivenParser:
             '<to_primary>': [
                 ['NUM_LIT'],  # 374
                 ['DECIMAL_LIT'],  # 375
-                ['IDENTIFIER', '<to_id_suffix>']  # 376
+                ['IDENTIFIER', '<to_id_suffix>'],  # 376
+                ['<size_call>']  # 377 - size(IDENTIFIER) or size(IDENTIFIER, 0)
             ],
 
             '<to_id_suffix>': [
@@ -911,7 +918,8 @@ class TableDrivenParser:
             '<step_primary>': [
                 ['NUM_LIT'],  # 383
                 ['DECIMAL_LIT'],  # 384
-                ['IDENTIFIER', '<step_id_suffix>']  # 385
+                ['IDENTIFIER', '<step_id_suffix>'],  # 385
+                ['<size_call>']  # 386 - size(IDENTIFIER) or size(IDENTIFIER, 0)
             ],
 
             '<step_id_suffix>': [
@@ -924,6 +932,20 @@ class TableDrivenParser:
             '<step_var_2d>': [
                 ['[', '<index_value>', ']'],  # 390
                 ['λ']  # 391
+            ],
+
+            # ============================================================
+            # SIZE BUILT-IN FUNCTION (375-377)
+            # Returns size of array. 1D: total elements. 2D: rows (default) or columns (with ,0)
+            # ============================================================
+
+            '<size_call>': [
+                ['size', '(', 'IDENTIFIER', '<size_second_arg>', ')']  # 375
+            ],
+
+            '<size_second_arg>': [
+                [',', 'NUM_LIT'],  # 376
+                ['λ']  # 377
             ],
         }
 

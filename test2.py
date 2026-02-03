@@ -13,7 +13,7 @@ keywords = {
     'start', 'finish', 'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool',
     'Yes', 'No', 'none', 'empty', 'read', 'show', 'check', 'otherwise', 'otherwisecheck',
     'fallback', 'select', 'option', 'each', 'during', 'from', 'to', 'step',
-    'stop', 'skip', 'give', 'define', 'worldwide', 'fixed', 'list', 'group'
+    'stop', 'skip', 'give', 'define', 'worldwide', 'fixed', 'list', 'group', 'size'
 }
 
 
@@ -43,6 +43,9 @@ RW_FIXED = 'fixed'
 # Reserved Words - Input/Output
 RW_READ = 'read'
 RW_SHOW = 'show'
+
+# Reserved Words - Built-in Functions
+RW_SIZE = 'size'
 
 # Reserved Words - Conditionals
 RW_CHECK = 'check'
@@ -127,14 +130,14 @@ COMMENT_SINGLE = '~'
 COMMENT_MULTI = '~~'
 
 # Literals
-LIT_NUMBER = 'num_literal'
-LIT_DECIMAL = 'decimal_literal'
-LIT_STRING = 'text_literal'
-LIT_CHARACTER = 'letter_literal'
+LIT_NUMBER = 'NUM_LIT'
+LIT_DECIMAL = 'DECIMAL_LIT'
+LIT_STRING = 'STRING_LIT'
+LIT_CHARACTER = 'CHAR_LIT'
 LIT_BOOLEAN = 'bool_literal'
 
 # Identifier
-IDENTIFIER = 'id'
+IDENTIFIER = 'IDENTIFIER'
 
 # Special
 WHITESPACE_SPACE = 'space'
@@ -221,6 +224,7 @@ TOKEN_DELIMITERS = {
     RW_READ: 'open_paren',
     RW_SELECT: 'delim2',
     RW_SHOW: 'open_paren',
+    RW_SIZE: 'open_paren',
     RW_SKIP: 'sem_col',
     RW_START: 'delim1',
     RW_STEP: 'id3',
@@ -408,8 +412,8 @@ class TransitionDFA:
             'r': 125, 'c': 16, 'o': 103, 'g': 80, 'N': 100
         }
 
-        # "start", "select", "show", "skip", "step", "stop"
-        trans[1] = {'t': 2, 'h': 137, 'k': 141, 'e': 130}
+        # "start", "select", "show", "skip", "step", "stop", "size"
+        trans[1] = {'t': 2, 'h': 137, 'k': 141, 'e': 130, 'i': 195}
         # 'a' for start, 'o' for stop, 'e' for step
         trans[2] = {'a': 3, 'o': 153, 'e': 150}
         trans[3] = {'r': 4}
@@ -429,6 +433,11 @@ class TransitionDFA:
         trans[141] = {'i': 142}
         trans[142] = {'p': 143}
         trans[143] = {}  # accept: skip
+
+        # "size"
+        trans[195] = {'z': 196}
+        trans[196] = {'e': 197}
+        trans[197] = {}  # accept: size
 
         trans[150] = {'p': 151}
         trans[151] = {}  # accept: step
@@ -628,6 +637,7 @@ class TransitionDFA:
             128: RW_READ,
             134: RW_SELECT,
             139: RW_SHOW,
+            197: RW_SIZE,
             143: RW_SKIP,
             154: RW_STOP,
             151: RW_STEP,
