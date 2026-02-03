@@ -81,7 +81,7 @@ class TableDrivenParser:
             ],
 
             '<group_member>': [
-                ['<datatype>', 'IDENTIFIER', ';']  # 14
+                ['<datatype>', 'identifier', ';']  # 14
             ],
 
             # ============================================================
@@ -106,12 +106,12 @@ class TableDrivenParser:
             ],
 
             '<global_typed_decl>': [
-                ['num', 'IDENTIFIER', '=', '<stmt_value>', ';'],  # 22
-                ['decimal', 'IDENTIFIER', '=', '<stmt_value>', ';'],  # 23
-                ['bigdecimal', 'IDENTIFIER', '=', '<stmt_value>', ';'],  # 24
-                ['bool', 'IDENTIFIER', '=', '<stmt_value>', ';'],  # 25
-                ['text', 'IDENTIFIER', '=', '<stmt_value>', ';'],  # 26
-                ['letter', 'IDENTIFIER', '=', '<stmt_value>', ';']  # 27
+                ['num', 'identifier', '=', '<stmt_value>', ';'],  # 22
+                ['decimal', 'identifier', '=', '<stmt_value>', ';'],  # 23
+                ['bigdecimal', 'identifier', '=', '<stmt_value>', ';'],  # 24
+                ['bool', 'identifier', '=', '<stmt_value>', ';'],  # 25
+                ['text', 'identifier', '=', '<stmt_value>', ';'],  # 26
+                ['letter', 'identifier', '=', '<stmt_value>', ';']  # 27
             ],
 
             # ============================================================
@@ -119,7 +119,7 @@ class TableDrivenParser:
             # ============================================================
 
             '<function_definitions>': [
-                ['define', '<return_type>', 'IDENTIFIER', '(', '<parameter_list>', ')',
+                ['define', '<return_type>', 'identifier', '(', '<parameter_list>', ')',
                  '{', '<local_declarations>', '<statements>', '<optional_return>', '}']  # 28
             ],
 
@@ -144,7 +144,7 @@ class TableDrivenParser:
             ],
 
             '<parameter>': [
-                ['<datatype>', 'IDENTIFIER']  # 40
+                ['<datatype>', 'identifier']  # 40
             ],
 
             '<optional_return>': [
@@ -173,13 +173,13 @@ class TableDrivenParser:
             ],
 
             '<local_declaration>': [
-                ['IDENTIFIER', 'IDENTIFIER', ';'],  # 50 - custom type
-                ['num', 'IDENTIFIER', '=', '<stmt_value>', ';'],  # 51
-                ['decimal', 'IDENTIFIER', '=', '<stmt_value>', ';'],  # 52
-                ['bigdecimal', 'IDENTIFIER', '=', '<stmt_value>', ';'],  # 53
-                ['bool', 'IDENTIFIER', '=', '<stmt_value>', ';'],  # 54
-                ['text', 'IDENTIFIER', '=', '<stmt_value>', ';'],  # 55
-                ['letter', 'IDENTIFIER', '=', '<stmt_value>', ';']  # 56
+                ['identifier', 'identifier', ';'],  # 50 - custom type
+                ['num', 'identifier', '=', '<stmt_value>', ';'],  # 51
+                ['decimal', 'identifier', '=', '<stmt_value>', ';'],  # 52
+                ['bigdecimal', 'identifier', '=', '<stmt_value>', ';'],  # 53
+                ['bool', 'identifier', '=', '<stmt_value>', ';'],  # 54
+                ['text', 'identifier', '=', '<stmt_value>', ';'],  # 55
+                ['letter', 'identifier', '=', '<stmt_value>', ';']  # 56
             ],
 
             '<fixed_declaration>': [
@@ -187,12 +187,12 @@ class TableDrivenParser:
             ],
 
             '<fixed_typed_decl>': [
-                ['num', 'IDENTIFIER', '=', '<stmt_value>', ';'],  # 58
-                ['decimal', 'IDENTIFIER', '=', '<stmt_value>', ';'],  # 59
-                ['bigdecimal', 'IDENTIFIER', '=', '<stmt_value>', ';'],  # 60
-                ['bool', 'IDENTIFIER', '=', '<stmt_value>', ';'],  # 61
-                ['text', 'IDENTIFIER', '=', '<stmt_value>', ';'],  # 62
-                ['letter', 'IDENTIFIER', '=', '<stmt_value>', ';']  # 63
+                ['num', 'identifier', '=', '<stmt_value>', ';'],  # 58
+                ['decimal', 'identifier', '=', '<stmt_value>', ';'],  # 59
+                ['bigdecimal', 'identifier', '=', '<stmt_value>', ';'],  # 60
+                ['bool', 'identifier', '=', '<stmt_value>', ';'],  # 61
+                ['text', 'identifier', '=', '<stmt_value>', ';'],  # 62
+                ['letter', 'identifier', '=', '<stmt_value>', ';']  # 63
             ],
 
             '<list_declaration>': [
@@ -200,12 +200,12 @@ class TableDrivenParser:
             ],
 
             '<list_typed_decl>': [
-                ['num', 'IDENTIFIER', '=', '<num_list>', ';'],  # 65
-                ['decimal', 'IDENTIFIER', '=', '<num_list>', ';'],  # 66
-                ['bigdecimal', 'IDENTIFIER', '=', '<num_list>', ';'],  # 67
-                ['bool', 'IDENTIFIER', '=', '<bool_list>', ';'],  # 68
-                ['text', 'IDENTIFIER', '=', '<expr_list>', ';'],  # 69
-                ['letter', 'IDENTIFIER', '=', '<expr_list>', ';']  # 70
+                ['num', 'identifier', '=', '<num_list>', ';'],  # 65
+                ['decimal', 'identifier', '=', '<num_list>', ';'],  # 66
+                ['bigdecimal', 'identifier', '=', '<num_list>', ';'],  # 67
+                ['bool', 'identifier', '=', '<bool_list>', ';'],  # 68
+                ['text', 'identifier', '=', '<expr_list>', ';'],  # 69
+                ['letter', 'identifier', '=', '<expr_list>', ';']  # 70
             ],
 
             # List literals - use <arg_value>
@@ -346,12 +346,12 @@ class TableDrivenParser:
             ],
 
             '<assignable>': [
-                ['IDENTIFIER', '<assignable_suffix>']  # 124
+                ['identifier', '<assignable_suffix>']  # 124
             ],
 
             '<assignable_suffix>': [
                 ['[', '<index_value>', ']', '<assignable_2d>'],  # 125
-                ['.', 'IDENTIFIER'],  # 126
+                ['.', 'identifier'],  # 126
                 ['λ']  # 127
             ],
 
@@ -369,7 +369,7 @@ class TableDrivenParser:
             ],
 
             '<function_call>': [
-                ['IDENTIFIER', '(', '<arg_list>', ')']  # 131
+                ['identifier', '(', '<arg_list>', ')']  # 131
             ],
 
             '<arg_list>': [
@@ -388,7 +388,7 @@ class TableDrivenParser:
 
             '<io_statement>': [
                 ['show', '(', '<arg_list>', ')', ';'],  # 136
-                ['read', '(', 'IDENTIFIER', ')', ';']  # 137
+                ['read', '(', 'identifier', ')', ';']  # 137
             ],
 
             # ============================================================
@@ -448,7 +448,7 @@ class TableDrivenParser:
 
             # EACH - uses <from_primary>, <to_primary>, <step_primary>
             '<each_loop>': [
-                ['each', 'IDENTIFIER', 'from', '<from_primary>', 'to',
+                ['each', 'identifier', 'from', '<from_primary>', 'to',
                     # 155
                     '<to_primary>', '<step_clause>', '{', '<statements>', '}']
             ],
@@ -466,10 +466,10 @@ class TableDrivenParser:
 
             # LITERALS
             '<literal>': [
-                ['NUM_LIT'],  # 159
-                ['DECIMAL_LIT'],  # 160
-                ['STRING_LIT'],  # 161
-                ['CHAR_LIT'],  # 162
+                ['num_lit'],  # 159
+                ['decimal_lit'],  # 160
+                ['string_lit'],  # 161
+                ['char_lit'],  # 162
                 ['Yes'],  # 163
                 ['No']  # 164
             ],
@@ -543,14 +543,14 @@ class TableDrivenParser:
             '<stmt_prim>': [
                 ['(', '<stmt_value>', ')'],  # 201
                 ['<literal>'],  # 202
-                ['IDENTIFIER', '<stmt_id_suffix>'],  # 203
+                ['identifier', '<stmt_id_suffix>'],  # 203
                 ['<size_call>']  # 204 - size(IDENTIFIER) or size(IDENTIFIER, 0)
             ],
 
             '<stmt_id_suffix>': [
                 ['(', '<arg_list>', ')'],  # 204
                 ['[', '<index_value>', ']', '<stmt_var_2d>'],  # 205
-                ['.', 'IDENTIFIER'],  # 206
+                ['.', 'identifier'],  # 206
                 ['λ']  # 207
             ],
 
@@ -627,14 +627,14 @@ class TableDrivenParser:
             '<arg_prim>': [
                 ['(', '<arg_value>', ')'],  # 246
                 ['<literal>'],  # 247
-                ['IDENTIFIER', '<arg_id_suffix>'],  # 248
+                ['identifier', '<arg_id_suffix>'],  # 248
                 ['<size_call>']  # 249 - size(IDENTIFIER) or size(IDENTIFIER, 0)
             ],
 
             '<arg_id_suffix>': [
                 ['(', '<arg_list>', ')'],  # 249
                 ['[', '<index_value>', ']', '<arg_var_2d>'],  # 250
-                ['.', 'IDENTIFIER'],  # 251
+                ['.', 'identifier'],  # 251
                 ['λ']  # 252
             ],
 
@@ -730,16 +730,16 @@ class TableDrivenParser:
 
             '<cond_prim_no_rel>': [
                 ['(', '<cond_value>', ')'],  # 296
-                ['NUM_LIT'],  # 297
-                ['DECIMAL_LIT'],  # 298
-                ['IDENTIFIER', '<cond_id_suffix_no_rel>'],  # 299
+                ['num_lit'],  # 297
+                ['decimal_lit'],  # 298
+                ['identifier', '<cond_id_suffix_no_rel>'],  # 299
                 ['<size_call>']  # 300 - size(IDENTIFIER) or size(IDENTIFIER, 0)
             ],
 
             '<cond_id_suffix_no_rel>': [
                 ['(', '<arg_list>', ')'],  # 300
                 ['[', '<index_value>', ']', '<cond_var_2d_no_rel>'],  # 301
-                ['.', 'IDENTIFIER'],  # 302
+                ['.', 'identifier'],  # 302
                 ['λ']  # 303
             ],
 
@@ -782,16 +782,16 @@ class TableDrivenParser:
 
             '<cond_prim>': [
                 ['(', '<cond_value>', ')'],  # 296
-                ['NUM_LIT'],  # 297
-                ['DECIMAL_LIT'],  # 298
-                ['IDENTIFIER', '<cond_id_suffix>'],  # 299
+                ['num_lit'],  # 297
+                ['decimal_lit'],  # 298
+                ['identifier', '<cond_id_suffix>'],  # 299
                 ['<size_call>']  # 300 - size(IDENTIFIER) or size(IDENTIFIER, 0)
             ],
 
             '<cond_id_suffix>': [
                 ['(', '<arg_list>', ')'],  # 300
                 ['[', '<index_value>', ']', '<cond_var_2d>'],  # 301
-                ['.', 'IDENTIFIER'],  # 302
+                ['.', 'identifier'],  # 302
                 ['λ']  # 303
             ],
 
@@ -838,16 +838,16 @@ class TableDrivenParser:
 
             '<index_prim>': [
                 ['(', '<index_value>', ')'],  # 325
-                ['NUM_LIT'],  # 326
-                ['DECIMAL_LIT'],  # 327
-                ['IDENTIFIER', '<index_id_suffix>'],  # 328
+                ['num_lit'],  # 326
+                ['decimal_lit'],  # 327
+                ['identifier', '<index_id_suffix>'],  # 328
                 ['<size_call>']  # 329 - size(IDENTIFIER) or size(IDENTIFIER, 0)
             ],
 
             '<index_id_suffix>': [
                 ['(', '<arg_list>', ')'],  # 329
                 ['[', '<index_value>', ']', '<index_var_2d>'],  # 330
-                ['.', 'IDENTIFIER'],  # 331
+                ['.', 'identifier'],  # 331
                 ['λ']  # 332
             ],
 
@@ -864,16 +864,16 @@ class TableDrivenParser:
             # ============================================================
 
             '<from_primary>': [
-                ['NUM_LIT'],  # 365
-                ['DECIMAL_LIT'],  # 366
-                ['IDENTIFIER', '<from_id_suffix>'],  # 367
+                ['num_lit'],  # 365
+                ['decimal_lit'],  # 366
+                ['identifier', '<from_id_suffix>'],  # 367
                 ['<size_call>']  # 368 - size(IDENTIFIER) or size(IDENTIFIER, 0)
             ],
 
             '<from_id_suffix>': [
                 ['(', '<arg_list>', ')'],  # 368
                 ['[', '<index_value>', ']', '<from_var_2d>'],  # 369
-                ['.', 'IDENTIFIER'],  # 370
+                ['.', 'identifier'],  # 370
                 ['λ']  # 371
             ],
 
@@ -890,16 +890,16 @@ class TableDrivenParser:
             # ============================================================
 
             '<to_primary>': [
-                ['NUM_LIT'],  # 374
-                ['DECIMAL_LIT'],  # 375
-                ['IDENTIFIER', '<to_id_suffix>'],  # 376
+                ['num_lit'],  # 374
+                ['decimal_lit'],  # 375
+                ['identifier', '<to_id_suffix>'],  # 376
                 ['<size_call>']  # 377 - size(IDENTIFIER) or size(IDENTIFIER, 0)
             ],
 
             '<to_id_suffix>': [
                 ['(', '<arg_list>', ')'],  # 377
                 ['[', '<index_value>', ']', '<to_var_2d>'],  # 378
-                ['.', 'IDENTIFIER'],  # 379
+                ['.', 'identifier'],  # 379
                 ['λ']  # 380
             ],
 
@@ -916,16 +916,16 @@ class TableDrivenParser:
             # ============================================================
 
             '<step_primary>': [
-                ['NUM_LIT'],  # 383
-                ['DECIMAL_LIT'],  # 384
-                ['IDENTIFIER', '<step_id_suffix>'],  # 385
+                ['num_lit'],  # 383
+                ['decimal_lit'],  # 384
+                ['identifier', '<step_id_suffix>'],  # 385
                 ['<size_call>']  # 386 - size(IDENTIFIER) or size(IDENTIFIER, 0)
             ],
 
             '<step_id_suffix>': [
                 ['(', '<arg_list>', ')'],  # 386
                 ['[', '<index_value>', ']', '<step_var_2d>'],  # 387
-                ['.', 'IDENTIFIER'],  # 388
+                ['.', 'identifier'],  # 388
                 ['λ']  # 389
             ],
 
@@ -940,11 +940,11 @@ class TableDrivenParser:
             # ============================================================
 
             '<size_call>': [
-                ['size', '(', 'IDENTIFIER', '<size_second_arg>', ')']  # 375
+                ['size', '(', 'identifier', '<size_second_arg>', ')']  # 375
             ],
 
             '<size_second_arg>': [
-                [',', 'NUM_LIT'],  # 376
+                [',', 'num_lit'],  # 376
                 ['λ']  # 377
             ],
         }
@@ -1101,7 +1101,7 @@ class TableDrivenParser:
             # Case 4: Top is non-terminal
             elif top in self.non_terminals:
                 # Special case: Statement-level ambiguity requires 2-token lookahead
-                if top == '<statement>' and current == 'IDENTIFIER':
+                if top == '<statement>' and current == 'identifier':
                     # Look at the NEXT token to decide
                     next_token = None
                     if self.pos + 1 < len(self.tokens):
@@ -1120,7 +1120,7 @@ class TableDrivenParser:
                     elif next_token == '(':
                         # Function call: foo();
                         production = ['<function_call_statement>']
-                    elif next_token == 'IDENTIFIER':
+                    elif next_token == 'identifier':
                         # Declaration: Person p;
                         production = ['<declaration>']
                     else:
@@ -1138,7 +1138,7 @@ class TableDrivenParser:
                             # Assignment
                             ['=', '+=', '-=', '*=', '/=', '%=', '**=', '++', '--', '[', '.'])
                         all_valid_tokens.add('(')  # Function call
-                        all_valid_tokens.add('IDENTIFIER')  # Declaration
+                        all_valid_tokens.add('identifier')  # Declaration
 
                         exp_str = ', '.join(
                             f"'{e}'" for e in sorted(all_valid_tokens))
@@ -1299,8 +1299,8 @@ if __name__ == "__main__":
     test_tokens = [
         Token('start'),
         Token('{'),
-        Token('num'), Token('IDENTIFIER', 'x'), Token(
-            '='), Token('NUM_LIT', '5'), Token(';'),
+        Token('num'), Token('identifier', 'x'), Token(
+            '='), Token('num_lit', '5'), Token(';'),
         Token('}'),
         Token('finish')
     ]

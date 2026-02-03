@@ -130,14 +130,14 @@ COMMENT_SINGLE = '~'
 COMMENT_MULTI = '~~'
 
 # Literals
-LIT_NUMBER = 'NUM_LIT'
-LIT_DECIMAL = 'DECIMAL_LIT'
-LIT_STRING = 'STRING_LIT'
-LIT_CHARACTER = 'CHAR_LIT'
+LIT_NUMBER = 'num_lit'
+LIT_DECIMAL = 'decimal_lit'
+LIT_STRING = 'string_lit'
+LIT_CHARACTER = 'char_lit'
 LIT_BOOLEAN = 'bool_literal'
 
 # Identifier
-IDENTIFIER = 'IDENTIFIER'
+IDENTIFIER = 'identifier'
 
 # Special
 WHITESPACE_SPACE = 'space'
