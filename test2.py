@@ -2029,7 +2029,7 @@ class KuCodeLexerGUI:
             'start', 'finish', 'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool',
             'Yes', 'No', 'none', 'empty', 'read', 'show', 'check', 'otherwise', 'otherwisecheck',
             'fallback', 'select', 'option', 'each', 'during', 'from', 'to', 'step',
-            'stop', 'skip', 'give', 'define', 'worldwide', 'fixed', 'list', 'group'
+            'stop', 'skip', 'give', 'define', 'worldwide', 'fixed', 'list', 'group', 'size'
         ]) + r')\b'
 
         for match in re.finditer(keywords_pattern, content):

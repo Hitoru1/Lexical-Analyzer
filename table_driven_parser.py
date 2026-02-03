@@ -414,9 +414,9 @@ class TableDrivenParser:
                 ['λ']  # 144
             ],
 
-            # SELECT - uses <cond_value>
+            # SELECT - uses <arg_value> (switch on any value, not boolean condition)
             '<select_statement>': [
-                ['select', '(', '<cond_value>', ')',
+                ['select', '(', '<arg_value>', ')',
                  '{', '<option_blocks>', '<optional_fallback>', '}']  # 145
             ],
 

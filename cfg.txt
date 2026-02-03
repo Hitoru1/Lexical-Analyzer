@@ -208,8 +208,8 @@
 143. <otherwise_chain> ⇒ otherwise { <statements> }
 144. <otherwise_chain> ⇒ λ
 
-# SELECT (uses <cond_value>)
-145. <select_statement> ⇒ select ( <cond_value> ) { <option_blocks> <optional_fallback> }
+# SELECT (uses <arg_value> - switch on any value, not boolean condition)
+145. <select_statement> ⇒ select ( <arg_value> ) { <option_blocks> <optional_fallback> }
 
 146. <option_blocks> ⇒ <option_block> <option_blocks>
 147. <option_blocks> ⇒ λ
