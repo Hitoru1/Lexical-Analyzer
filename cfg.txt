@@ -208,8 +208,8 @@
 143. <otherwise_chain> ⇒ otherwise { <statements> }
 144. <otherwise_chain> ⇒ λ
 
-# SELECT (uses <arg_value> - switch on any value, not boolean condition)
-145. <select_statement> ⇒ select ( <arg_value> ) { <option_blocks> <optional_fallback> }
+# SELECT (only IDENTIFIER allowed inside)
+145. <select_statement> ⇒ select ( IDENTIFIER ) { <option_blocks> <optional_fallback> }
 
 146. <option_blocks> ⇒ <option_block> <option_blocks>
 147. <option_blocks> ⇒ λ
@@ -372,46 +372,78 @@
 
 263. <cond_base> ⇒ Yes
 264. <cond_base> ⇒ No
-265. <cond_base> ⇒ <cond_arith> <cond_rel_tail>
+265. <cond_base> ⇒ ( <cond_arith> <cond_paren_tail>
+266. <cond_base> ⇒ <cond_arith_noparen> <cond_rel_tail>
 
-# Relational tail now REQUIRED (no λ) - enforces boolean expressions
-# Uses <cond_arith_no_rel> on RHS to prevent chaining (a < b == c is invalid)
-266. <cond_rel_tail> ⇒ > <cond_arith_no_rel>
-267. <cond_rel_tail> ⇒ < <cond_arith_no_rel>
-268. <cond_rel_tail> ⇒ >= <cond_arith_no_rel>
-269. <cond_rel_tail> ⇒ <= <cond_arith_no_rel>
-270. <cond_rel_tail> ⇒ == <cond_arith_no_rel>
-271. <cond_rel_tail> ⇒ != <cond_arith_no_rel>
-# λ REMOVED - arithmetic must have comparison!
+# Decides: comparison inside parens OR outside parens (but NOT both - prevents chaining)
+267. <cond_paren_tail> ⇒ ) <cond_rel_tail>
+268. <cond_paren_tail> ⇒ <cond_rel_tail_in_paren> )
 
-# Regular arithmetic (first operand)
-270. <cond_arith> ⇒ <cond_add>
+# Comparison inside parentheses (no λ - required)
+269. <cond_rel_tail_in_paren> ⇒ > <cond_arith_no_rel>
+270. <cond_rel_tail_in_paren> ⇒ < <cond_arith_no_rel>
+271. <cond_rel_tail_in_paren> ⇒ >= <cond_arith_no_rel>
+272. <cond_rel_tail_in_paren> ⇒ <= <cond_arith_no_rel>
+273. <cond_rel_tail_in_paren> ⇒ == <cond_arith_no_rel>
+274. <cond_rel_tail_in_paren> ⇒ != <cond_arith_no_rel>
 
-271. <cond_add> ⇒ <cond_mult> <cond_add_tail>
-272. <cond_add_tail> ⇒ + <cond_mult> <cond_add_tail>
-273. <cond_add_tail> ⇒ - <cond_mult> <cond_add_tail>
-274. <cond_add_tail> ⇒ λ
+# Comparison outside parentheses (no λ - required)
+275. <cond_rel_tail> ⇒ > <cond_arith_no_rel>
+276. <cond_rel_tail> ⇒ < <cond_arith_no_rel>
+277. <cond_rel_tail> ⇒ >= <cond_arith_no_rel>
+278. <cond_rel_tail> ⇒ <= <cond_arith_no_rel>
+279. <cond_rel_tail> ⇒ == <cond_arith_no_rel>
+280. <cond_rel_tail> ⇒ != <cond_arith_no_rel>
 
-275. <cond_mult> ⇒ <cond_exp> <cond_mult_tail>
-276. <cond_mult_tail> ⇒ * <cond_exp> <cond_mult_tail>
-277. <cond_mult_tail> ⇒ / <cond_exp> <cond_mult_tail>
-278. <cond_mult_tail> ⇒ % <cond_exp> <cond_mult_tail>
-279. <cond_mult_tail> ⇒ λ
+# Arithmetic that CANNOT start with ( (for LL(1) no conflict at <cond_base>)
+281. <cond_arith_noparen> ⇒ <cond_add_noparen>
 
-280. <cond_exp> ⇒ <cond_arith_unary> <cond_exp_tail>
-281. <cond_exp_tail> ⇒ ** <cond_exp>
-282. <cond_exp_tail> ⇒ λ
+282. <cond_add_noparen> ⇒ <cond_mult_noparen> <cond_add_tail>
+283. <cond_mult_noparen> ⇒ <cond_exp_noparen> <cond_mult_tail>
+284. <cond_exp_noparen> ⇒ <cond_unary_noparen> <cond_exp_tail>
 
-283. <cond_arith_unary> ⇒ - <cond_post>
-284. <cond_arith_unary> ⇒ <cond_post>
+285. <cond_unary_noparen> ⇒ - <cond_post>
+286. <cond_unary_noparen> ⇒ <cond_prim_noparen>
 
-285. <cond_post> ⇒ <cond_prim>  # NO postfix ++ or --
+# Primary that CANNOT start with (
+287. <cond_prim_noparen> ⇒ NUM_LIT
+288. <cond_prim_noparen> ⇒ DECIMAL_LIT
+289. <cond_prim_noparen> ⇒ Yes
+290. <cond_prim_noparen> ⇒ No
+291. <cond_prim_noparen> ⇒ IDENTIFIER <cond_id_suffix>
+292. <cond_prim_noparen> ⇒ <size_call>
 
-286. <cond_prim> ⇒ ( <cond_value> )
-287. <cond_prim> ⇒ NUM_LIT
-288. <cond_prim> ⇒ DECIMAL_LIT
-289. <cond_prim> ⇒ IDENTIFIER <cond_id_suffix>
-290. <cond_prim> ⇒ <size_call>
+# Regular arithmetic (can start with ()
+293. <cond_arith> ⇒ <cond_add>
+
+294. <cond_add> ⇒ <cond_mult> <cond_add_tail>
+295. <cond_add_tail> ⇒ + <cond_mult> <cond_add_tail>
+296. <cond_add_tail> ⇒ - <cond_mult> <cond_add_tail>
+297. <cond_add_tail> ⇒ λ
+
+298. <cond_mult> ⇒ <cond_exp> <cond_mult_tail>
+299. <cond_mult_tail> ⇒ * <cond_exp> <cond_mult_tail>
+300. <cond_mult_tail> ⇒ / <cond_exp> <cond_mult_tail>
+301. <cond_mult_tail> ⇒ % <cond_exp> <cond_mult_tail>
+302. <cond_mult_tail> ⇒ λ
+
+303. <cond_exp> ⇒ <cond_arith_unary> <cond_exp_tail>
+304. <cond_exp_tail> ⇒ ** <cond_exp>
+305. <cond_exp_tail> ⇒ λ
+
+306. <cond_arith_unary> ⇒ - <cond_post>
+307. <cond_arith_unary> ⇒ <cond_post>
+
+308. <cond_post> ⇒ <cond_prim>  # NO postfix ++ or --
+
+# Uses <cond_arith> for parens (arithmetic grouping only)
+309. <cond_prim> ⇒ ( <cond_arith> )
+310. <cond_prim> ⇒ NUM_LIT
+311. <cond_prim> ⇒ DECIMAL_LIT
+312. <cond_prim> ⇒ Yes
+313. <cond_prim> ⇒ No
+314. <cond_prim> ⇒ IDENTIFIER <cond_id_suffix>
+315. <cond_prim> ⇒ <size_call>
 
 290. <cond_id_suffix> ⇒ ( <arg_list> )
 291. <cond_id_suffix> ⇒ [ <index_value> ] <cond_var_2d>
@@ -442,13 +474,16 @@
 309. <cond_arith_unary_no_rel> ⇒ - <cond_post_no_rel>
 310.<cond_arith_unary_no_rel> ⇒ <cond_post_no_rel>
 
-311.<cond_post_no_rel> ⇒ <cond_prim_no_rel>  # NO postfix ++ or --
+334. <cond_post_no_rel> ⇒ <cond_prim_no_rel>  # NO postfix ++ or --
 
-312.<cond_prim_no_rel> ⇒ ( <cond_value> )
-313.<cond_prim_no_rel> ⇒ NUM_LIT
-314.<cond_prim_no_rel> ⇒ DECIMAL_LIT
-315.<cond_prim_no_rel> ⇒ IDENTIFIER <cond_id_suffix_no_rel>
-316.<cond_prim_no_rel> ⇒ <size_call>
+# Uses <cond_arith_no_rel> for parens (arithmetic grouping only)
+335. <cond_prim_no_rel> ⇒ ( <cond_arith_no_rel> )
+336. <cond_prim_no_rel> ⇒ NUM_LIT
+337. <cond_prim_no_rel> ⇒ DECIMAL_LIT
+338. <cond_prim_no_rel> ⇒ Yes
+339. <cond_prim_no_rel> ⇒ No
+340. <cond_prim_no_rel> ⇒ IDENTIFIER <cond_id_suffix_no_rel>
+341. <cond_prim_no_rel> ⇒ <size_call>
 
 316.<cond_id_suffix_no_rel> ⇒ ( <arg_list> )
 317.<cond_id_suffix_no_rel> ⇒ [ <index_value> ] <cond_var_2d_no_rel>
