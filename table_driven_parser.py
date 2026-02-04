@@ -682,19 +682,34 @@ class TableDrivenParser:
             '<cond_base>': [
                 ['Yes'],  # 269
                 ['No'],  # 270
-                ['<cond_arith>', '<cond_rel_tail>']  # 271
+                ['(', '<cond_arith>', '<cond_paren_tail>'],  # 271 - paren case
+                ['<cond_arith_noparen>', '<cond_rel_tail>']  # 272 - non-paren case
             ],
 
+            # Decides: comparison inside parens OR outside parens (but NOT both - prevents chaining)
+            '<cond_paren_tail>': [
+                [')', '<cond_rel_tail>'],  # arith in parens, comparison REQUIRED outside
+                ['<cond_rel_tail_in_paren>', ')']  # comparison in parens, ) closes it
+            ],
+
+            # Comparison inside parentheses (no λ - required)
+            '<cond_rel_tail_in_paren>': [
+                ['>', '<cond_arith_no_rel>'],
+                ['<', '<cond_arith_no_rel>'],
+                ['>=', '<cond_arith_no_rel>'],
+                ['<=', '<cond_arith_no_rel>'],
+                ['==', '<cond_arith_no_rel>'],
+                ['!=', '<cond_arith_no_rel>']
+            ],
+
+            # Comparison outside parentheses (no λ - required)
             '<cond_rel_tail>': [
-                # Second operand uses <cond_arith_no_rel> to prevent chaining (a < b == c)
-                # NO λ - comparison is REQUIRED (enforces boolean expressions)
-                ['>', '<cond_arith_no_rel>'],   # 272
-                ['<', '<cond_arith_no_rel>'],   # 273
-                ['>=', '<cond_arith_no_rel>'],  # 274
-                ['<=', '<cond_arith_no_rel>'],  # 275
-                ['==', '<cond_arith_no_rel>'],  # 276 - equality
-                ['!=', '<cond_arith_no_rel>']   # 277 - inequality
-                # λ REMOVED - check(x + 5) now INVALID
+                ['>', '<cond_arith_no_rel>'],
+                ['<', '<cond_arith_no_rel>'],
+                ['>=', '<cond_arith_no_rel>'],
+                ['<=', '<cond_arith_no_rel>'],
+                ['==', '<cond_arith_no_rel>'],
+                ['!=', '<cond_arith_no_rel>']
             ],
 
             # Arithmetic without relational tail (used as second operand in comparisons)
@@ -733,11 +748,12 @@ class TableDrivenParser:
             '<cond_post_no_rel>': [['<cond_prim_no_rel>']],
 
             '<cond_prim_no_rel>': [
-                ['(', '<cond_value>', ')'],  # 296
-                ['num_lit'],  # 297
-                ['decimal_lit'],  # 298
-                ['identifier', '<cond_id_suffix_no_rel>'],  # 299
-                # 300 - size(IDENTIFIER) or size(IDENTIFIER, 0)
+                ['(', '<cond_arith_no_rel>', ')'],  # arithmetic grouping only
+                ['num_lit'],
+                ['decimal_lit'],
+                ['Yes'],   # boolean literal - fixes age == Yes
+                ['No'],    # boolean literal - fixes age == No
+                ['identifier', '<cond_id_suffix_no_rel>'],
                 ['<size_call>']
             ],
 
@@ -753,8 +769,39 @@ class TableDrivenParser:
                 ['λ']  # 305
             ],
 
-            # Regular arithmetic (can have relational tail)
-            '<cond_arith>': [['<cond_add>']],  # 306
+            # ============================================================
+            # ARITHMETIC THAT CANNOT START WITH ( (for LL(1) no conflict)
+            # Used in <cond_base> for non-parenthesized expressions
+            # ============================================================
+
+            '<cond_arith_noparen>': [['<cond_add_noparen>']],
+
+            '<cond_add_noparen>': [['<cond_mult_noparen>', '<cond_add_tail>']],  # uses regular tail after first
+
+            '<cond_mult_noparen>': [['<cond_exp_noparen>', '<cond_mult_tail>']],
+
+            '<cond_exp_noparen>': [['<cond_unary_noparen>', '<cond_exp_tail>']],
+
+            '<cond_unary_noparen>': [
+                ['-', '<cond_post>'],       # after unary minus, can have parens
+                ['<cond_prim_noparen>']     # no unary, must be non-paren primary
+            ],
+
+            '<cond_prim_noparen>': [
+                # NOTE: No ( here - this is the key difference
+                ['num_lit'],
+                ['decimal_lit'],
+                ['Yes'],
+                ['No'],
+                ['identifier', '<cond_id_suffix>'],
+                ['<size_call>']
+            ],
+
+            # ============================================================
+            # REGULAR ARITHMETIC (can start with ()
+            # ============================================================
+
+            '<cond_arith>': [['<cond_add>']],
 
             '<cond_add>': [['<cond_mult>', '<cond_add_tail>']],  # 278
             '<cond_add_tail>': [
@@ -786,11 +833,12 @@ class TableDrivenParser:
             '<cond_post>': [['<cond_prim>']],
 
             '<cond_prim>': [
-                ['(', '<cond_value>', ')'],  # 296
-                ['num_lit'],  # 297
-                ['decimal_lit'],  # 298
-                ['identifier', '<cond_id_suffix>'],  # 299
-                # 300 - size(IDENTIFIER) or size(IDENTIFIER, 0)
+                ['(', '<cond_arith>', ')'],  # arithmetic grouping only
+                ['num_lit'],
+                ['decimal_lit'],
+                ['Yes'],   # boolean literal
+                ['No'],    # boolean literal
+                ['identifier', '<cond_id_suffix>'],
                 ['<size_call>']
             ],
 
