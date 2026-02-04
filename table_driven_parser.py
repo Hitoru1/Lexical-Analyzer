@@ -436,7 +436,7 @@ class TableDrivenParser:
             ],
 
             '<optional_fallback>': [
-                ['fallback', ':', '{', '<statements>', '}'],  # 151
+                ['fallback', ':',  '<statements>'],  # 151
                 ['λ']  # 152
             ],
 
@@ -544,7 +544,8 @@ class TableDrivenParser:
                 ['(', '<stmt_value>', ')'],  # 201
                 ['<literal>'],  # 202
                 ['identifier', '<stmt_id_suffix>'],  # 203
-                ['<size_call>']  # 204 - size(IDENTIFIER) or size(IDENTIFIER, 0)
+                # 204 - size(IDENTIFIER) or size(IDENTIFIER, 0)
+                ['<size_call>']
             ],
 
             '<stmt_id_suffix>': [
@@ -628,7 +629,8 @@ class TableDrivenParser:
                 ['(', '<arg_value>', ')'],  # 246
                 ['<literal>'],  # 247
                 ['identifier', '<arg_id_suffix>'],  # 248
-                ['<size_call>']  # 249 - size(IDENTIFIER) or size(IDENTIFIER, 0)
+                # 249 - size(IDENTIFIER) or size(IDENTIFIER, 0)
+                ['<size_call>']
             ],
 
             '<arg_id_suffix>': [
@@ -735,7 +737,8 @@ class TableDrivenParser:
                 ['num_lit'],  # 297
                 ['decimal_lit'],  # 298
                 ['identifier', '<cond_id_suffix_no_rel>'],  # 299
-                ['<size_call>']  # 300 - size(IDENTIFIER) or size(IDENTIFIER, 0)
+                # 300 - size(IDENTIFIER) or size(IDENTIFIER, 0)
+                ['<size_call>']
             ],
 
             '<cond_id_suffix_no_rel>': [
@@ -787,7 +790,8 @@ class TableDrivenParser:
                 ['num_lit'],  # 297
                 ['decimal_lit'],  # 298
                 ['identifier', '<cond_id_suffix>'],  # 299
-                ['<size_call>']  # 300 - size(IDENTIFIER) or size(IDENTIFIER, 0)
+                # 300 - size(IDENTIFIER) or size(IDENTIFIER, 0)
+                ['<size_call>']
             ],
 
             '<cond_id_suffix>': [
@@ -843,7 +847,8 @@ class TableDrivenParser:
                 ['num_lit'],  # 326
                 ['decimal_lit'],  # 327
                 ['identifier', '<index_id_suffix>'],  # 328
-                ['<size_call>']  # 329 - size(IDENTIFIER) or size(IDENTIFIER, 0)
+                # 329 - size(IDENTIFIER) or size(IDENTIFIER, 0)
+                ['<size_call>']
             ],
 
             '<index_id_suffix>': [
@@ -869,7 +874,8 @@ class TableDrivenParser:
                 ['num_lit'],  # 365
                 ['decimal_lit'],  # 366
                 ['identifier', '<from_id_suffix>'],  # 367
-                ['<size_call>']  # 368 - size(IDENTIFIER) or size(IDENTIFIER, 0)
+                # 368 - size(IDENTIFIER) or size(IDENTIFIER, 0)
+                ['<size_call>']
             ],
 
             '<from_id_suffix>': [
@@ -895,7 +901,8 @@ class TableDrivenParser:
                 ['num_lit'],  # 374
                 ['decimal_lit'],  # 375
                 ['identifier', '<to_id_suffix>'],  # 376
-                ['<size_call>']  # 377 - size(IDENTIFIER) or size(IDENTIFIER, 0)
+                # 377 - size(IDENTIFIER) or size(IDENTIFIER, 0)
+                ['<size_call>']
             ],
 
             '<to_id_suffix>': [
@@ -921,7 +928,8 @@ class TableDrivenParser:
                 ['num_lit'],  # 383
                 ['decimal_lit'],  # 384
                 ['identifier', '<step_id_suffix>'],  # 385
-                ['<size_call>']  # 386 - size(IDENTIFIER) or size(IDENTIFIER, 0)
+                # 386 - size(IDENTIFIER) or size(IDENTIFIER, 0)
+                ['<size_call>']
             ],
 
             '<step_id_suffix>': [
