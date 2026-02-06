@@ -219,7 +219,7 @@
 149. <control_flow> ⇒ stop
 150. <control_flow> ⇒ skip
 
-151. <optional_fallback> ⇒ fallback : { <statements> }
+151. <optional_fallback> ⇒ fallback :  <statements> 
 152. <optional_fallback> ⇒ λ
 
 # LOOPS
@@ -380,20 +380,28 @@
 268. <cond_paren_tail> ⇒ <cond_rel_tail_in_paren> )
 
 # Comparison inside parentheses (no λ - required)
+# For ==, != we use <cond_eq_rhs> which allows Yes/No as RHS
 269. <cond_rel_tail_in_paren> ⇒ > <cond_arith_no_rel>
 270. <cond_rel_tail_in_paren> ⇒ < <cond_arith_no_rel>
 271. <cond_rel_tail_in_paren> ⇒ >= <cond_arith_no_rel>
 272. <cond_rel_tail_in_paren> ⇒ <= <cond_arith_no_rel>
-273. <cond_rel_tail_in_paren> ⇒ == <cond_arith_no_rel>
-274. <cond_rel_tail_in_paren> ⇒ != <cond_arith_no_rel>
+273. <cond_rel_tail_in_paren> ⇒ == <cond_eq_rhs>
+274. <cond_rel_tail_in_paren> ⇒ != <cond_eq_rhs>
 
 # Comparison outside parentheses (no λ - required)
+# For ==, != we use <cond_eq_rhs> which allows Yes/No as RHS
 275. <cond_rel_tail> ⇒ > <cond_arith_no_rel>
 276. <cond_rel_tail> ⇒ < <cond_arith_no_rel>
 277. <cond_rel_tail> ⇒ >= <cond_arith_no_rel>
 278. <cond_rel_tail> ⇒ <= <cond_arith_no_rel>
-279. <cond_rel_tail> ⇒ == <cond_arith_no_rel>
-280. <cond_rel_tail> ⇒ != <cond_arith_no_rel>
+279. <cond_rel_tail> ⇒ == <cond_eq_rhs>
+280. <cond_rel_tail> ⇒ != <cond_eq_rhs>
+
+# RHS for equality operators - allows Yes/No or arithmetic (but Yes/No cannot be followed by operators)
+# FIRST = {Yes, No, (, -, NUM_LIT, DECIMAL_LIT, IDENTIFIER, size}
+281. <cond_eq_rhs> ⇒ Yes
+282. <cond_eq_rhs> ⇒ No
+283. <cond_eq_rhs> ⇒ <cond_arith_no_rel>
 
 # Arithmetic that CANNOT start with ( (for LL(1) no conflict at <cond_base>)
 281. <cond_arith_noparen> ⇒ <cond_add_noparen>
@@ -406,12 +414,11 @@
 286. <cond_unary_noparen> ⇒ <cond_prim_noparen>
 
 # Primary that CANNOT start with (
+# NOTE: Yes/No are NOT allowed here - they can only appear via <cond_base> or <cond_eq_rhs>
 287. <cond_prim_noparen> ⇒ NUM_LIT
 288. <cond_prim_noparen> ⇒ DECIMAL_LIT
-289. <cond_prim_noparen> ⇒ Yes
-290. <cond_prim_noparen> ⇒ No
-291. <cond_prim_noparen> ⇒ IDENTIFIER <cond_id_suffix>
-292. <cond_prim_noparen> ⇒ <size_call>
+289. <cond_prim_noparen> ⇒ IDENTIFIER <cond_id_suffix>
+290. <cond_prim_noparen> ⇒ <size_call>
 
 # Regular arithmetic (can start with ()
 293. <cond_arith> ⇒ <cond_add>
@@ -437,13 +444,12 @@
 308. <cond_post> ⇒ <cond_prim>  # NO postfix ++ or --
 
 # Uses <cond_arith> for parens (arithmetic grouping only)
+# NOTE: Yes/No are NOT allowed here - they can only appear via <cond_base> or <cond_eq_rhs>
 309. <cond_prim> ⇒ ( <cond_arith> )
 310. <cond_prim> ⇒ NUM_LIT
 311. <cond_prim> ⇒ DECIMAL_LIT
-312. <cond_prim> ⇒ Yes
-313. <cond_prim> ⇒ No
-314. <cond_prim> ⇒ IDENTIFIER <cond_id_suffix>
-315. <cond_prim> ⇒ <size_call>
+312. <cond_prim> ⇒ IDENTIFIER <cond_id_suffix>
+313. <cond_prim> ⇒ <size_call>
 
 290. <cond_id_suffix> ⇒ ( <arg_list> )
 291. <cond_id_suffix> ⇒ [ <index_value> ] <cond_var_2d>
@@ -477,13 +483,12 @@
 334. <cond_post_no_rel> ⇒ <cond_prim_no_rel>  # NO postfix ++ or --
 
 # Uses <cond_arith_no_rel> for parens (arithmetic grouping only)
+# NOTE: Yes/No are NOT allowed here - they can only appear via <cond_base> or <cond_eq_rhs>
 335. <cond_prim_no_rel> ⇒ ( <cond_arith_no_rel> )
 336. <cond_prim_no_rel> ⇒ NUM_LIT
 337. <cond_prim_no_rel> ⇒ DECIMAL_LIT
-338. <cond_prim_no_rel> ⇒ Yes
-339. <cond_prim_no_rel> ⇒ No
-340. <cond_prim_no_rel> ⇒ IDENTIFIER <cond_id_suffix_no_rel>
-341. <cond_prim_no_rel> ⇒ <size_call>
+338. <cond_prim_no_rel> ⇒ IDENTIFIER <cond_id_suffix_no_rel>
+339. <cond_prim_no_rel> ⇒ <size_call>
 
 316.<cond_id_suffix_no_rel> ⇒ ( <arg_list> )
 317.<cond_id_suffix_no_rel> ⇒ [ <index_value> ] <cond_var_2d_no_rel>

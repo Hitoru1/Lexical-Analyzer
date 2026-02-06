@@ -414,9 +414,9 @@ class TableDrivenParser:
                 ['λ']  # 144
             ],
 
-            # SELECT - uses <arg_value> (switch on any value, not boolean condition)
+            # SELECT - only IDENTIFIER allowed inside
             '<select_statement>': [
-                ['select', '(', '<arg_value>', ')',
+                ['select', '(', 'identifier', ')',
                  '{', '<option_blocks>', '<optional_fallback>', '}']  # 145
             ],
 
@@ -693,23 +693,33 @@ class TableDrivenParser:
             ],
 
             # Comparison inside parentheses (no λ - required)
+            # For ==, != we use <cond_eq_rhs> which allows Yes/No as RHS
             '<cond_rel_tail_in_paren>': [
                 ['>', '<cond_arith_no_rel>'],
                 ['<', '<cond_arith_no_rel>'],
                 ['>=', '<cond_arith_no_rel>'],
                 ['<=', '<cond_arith_no_rel>'],
-                ['==', '<cond_arith_no_rel>'],
-                ['!=', '<cond_arith_no_rel>']
+                ['==', '<cond_eq_rhs>'],
+                ['!=', '<cond_eq_rhs>']
             ],
 
             # Comparison outside parentheses (no λ - required)
+            # For ==, != we use <cond_eq_rhs> which allows Yes/No as RHS
             '<cond_rel_tail>': [
                 ['>', '<cond_arith_no_rel>'],
                 ['<', '<cond_arith_no_rel>'],
                 ['>=', '<cond_arith_no_rel>'],
                 ['<=', '<cond_arith_no_rel>'],
-                ['==', '<cond_arith_no_rel>'],
-                ['!=', '<cond_arith_no_rel>']
+                ['==', '<cond_eq_rhs>'],
+                ['!=', '<cond_eq_rhs>']
+            ],
+
+            # RHS for equality operators - allows Yes/No or arithmetic (but Yes/No cannot be followed by operators)
+            # FIRST = {Yes, No, (, -, NUM_LIT, DECIMAL_LIT, IDENTIFIER, size}
+            '<cond_eq_rhs>': [
+                ['Yes'],
+                ['No'],
+                ['<cond_arith_no_rel>']
             ],
 
             # Arithmetic without relational tail (used as second operand in comparisons)
@@ -747,12 +757,11 @@ class TableDrivenParser:
             # 292 - No postfix operators
             '<cond_post_no_rel>': [['<cond_prim_no_rel>']],
 
+            # NOTE: Yes/No are NOT allowed here - they can only appear via <cond_base> or <cond_eq_rhs>
             '<cond_prim_no_rel>': [
                 ['(', '<cond_arith_no_rel>', ')'],  # arithmetic grouping only
                 ['num_lit'],
                 ['decimal_lit'],
-                ['Yes'],   # boolean literal - fixes age == Yes
-                ['No'],    # boolean literal - fixes age == No
                 ['identifier', '<cond_id_suffix_no_rel>'],
                 ['<size_call>']
             ],
@@ -787,12 +796,11 @@ class TableDrivenParser:
                 ['<cond_prim_noparen>']     # no unary, must be non-paren primary
             ],
 
+            # NOTE: Yes/No are NOT allowed here - they can only appear via <cond_base> or <cond_eq_rhs>
             '<cond_prim_noparen>': [
                 # NOTE: No ( here - this is the key difference
                 ['num_lit'],
                 ['decimal_lit'],
-                ['Yes'],
-                ['No'],
                 ['identifier', '<cond_id_suffix>'],
                 ['<size_call>']
             ],
@@ -832,12 +840,11 @@ class TableDrivenParser:
             # 292 - No postfix operators in conditions
             '<cond_post>': [['<cond_prim>']],
 
+            # NOTE: Yes/No are NOT allowed here - they can only appear via <cond_base> or <cond_eq_rhs>
             '<cond_prim>': [
                 ['(', '<cond_arith>', ')'],  # arithmetic grouping only
                 ['num_lit'],
                 ['decimal_lit'],
-                ['Yes'],   # boolean literal
-                ['No'],    # boolean literal
                 ['identifier', '<cond_id_suffix>'],
                 ['<size_call>']
             ],
