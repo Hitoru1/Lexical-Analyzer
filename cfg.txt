@@ -26,7 +26,10 @@
 18. <datatype> ⇒ bool
 19. <datatype> ⇒ text
 20. <datatype> ⇒ letter
-21. <global_variable_declarations> ⇒ worldwide <global_typed_decl>
+21. <global_variable_declarations> ⇒ worldwide <global_modifier> <global_typed_decl>
+
+21a. <global_modifier> ⇒ fixed
+21b. <global_modifier> ⇒ λ
 
 22. <global_typed_decl> ⇒ num IDENTIFIER = <stmt_value> ;
 23. <global_typed_decl> ⇒ decimal IDENTIFIER = <stmt_value> ;

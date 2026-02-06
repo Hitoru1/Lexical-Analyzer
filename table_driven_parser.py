@@ -102,7 +102,12 @@ class TableDrivenParser:
             # ============================================================
 
             '<global_variable_declarations>': [
-                ['worldwide', '<global_typed_decl>']  # 21
+                ['worldwide', '<global_modifier>', '<global_typed_decl>']  # 21
+            ],
+
+            '<global_modifier>': [
+                ['fixed'],  # 21a
+                ['λ']  # 21b
             ],
 
             '<global_typed_decl>': [
