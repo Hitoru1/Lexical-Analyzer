@@ -1,7 +1,7 @@
 """
 OPTIMIZED CONTEXT-SPECIFIC TABLE-DRIVEN LL(1) PARSER FOR KUCODE
 
-374 Productions - 5 Expression Hierarchies + Boolean Enforcement
+390 Productions - 5 Expression Hierarchies + Boolean Enforcement + In-Paren Logic
 - <stmt_value>: declarations, assignments, returns (FOLLOW = {';'})
 - <arg_value>: function args, list elements (FOLLOW = {',', ')', ']'})
 - <cond_value>: conditions (FOLLOW = {')'})
@@ -32,7 +32,7 @@ class TableDrivenParser:
         self.derivations = []
 
     def _init_grammar(self):
-        """Define the complete 374-production CFG with boolean enforcement"""
+        """Define the complete 390-production CFG with boolean enforcement and in-paren logic"""
 
         self.productions = {
             # ============================================================
@@ -687,14 +687,14 @@ class TableDrivenParser:
             '<cond_base>': [
                 ['Yes'],  # 269
                 ['No'],  # 270
-                ['(', '<cond_arith>', '<cond_paren_tail>'],  # 271 - paren case
+                ['(', '<cond_inner_paren>'],  # 271 - paren case (dispatches via <cond_inner_paren>)
                 ['<cond_arith_noparen>', '<cond_rel_tail>']  # 272 - non-paren case
             ],
 
-            # Decides: comparison inside parens OR outside parens (but NOT both - prevents chaining)
+            # Decides: arithmetic grouping (comparison outside) OR comparison inside parens (with optional &&/||)
             '<cond_paren_tail>': [
                 [')', '<cond_rel_tail>'],  # arith in parens, comparison REQUIRED outside
-                ['<cond_rel_tail_in_paren>', ')']  # comparison in parens, ) closes it
+                ['<cond_rel_tail_in_paren>', '<cond_and_tail_ip>', '<cond_or_tail_ip>', ')']  # comparison inside parens with optional logic
             ],
 
             # Comparison inside parentheses (no λ - required)
@@ -706,6 +706,55 @@ class TableDrivenParser:
                 ['<=', '<cond_arith_no_rel>'],
                 ['==', '<cond_eq_rhs>'],
                 ['!=', '<cond_eq_rhs>']
+            ],
+
+            # ============================================================
+            # IN-PAREN LOGIC: Dispatches after ( and supports &&/|| inside parens
+            # ============================================================
+
+            # Dispatches based on first token after (
+            # FIRST sets: <cond_arith> = {(, -, num_lit, decimal_lit, identifier, size}
+            #             ! = {!}, Yes = {Yes}, No = {No} — all disjoint
+            '<cond_inner_paren>': [
+                ['<cond_arith>', '<cond_paren_tail>'],          # arithmetic start → existing paren tail logic
+                ['!', '<cond_comparison_ip>', '<cond_and_tail_ip>', '<cond_or_tail_ip>', ')'],  # negation inside parens
+                ['Yes', '<cond_and_tail_ip>', '<cond_or_tail_ip>', ')'],  # Yes as first operand
+                ['No', '<cond_and_tail_ip>', '<cond_or_tail_ip>', ')']   # No as first operand
+            ],
+
+            # AND chain inside parentheses (mirrors <cond_and_tail> but uses <cond_comparison_ip>)
+            '<cond_and_tail_ip>': [
+                ['&&', '<cond_comparison_ip>', '<cond_and_tail_ip>'],
+                ['λ']
+            ],
+
+            # OR chain inside parentheses (mirrors <cond_or_tail> but uses <cond_and_ip>)
+            '<cond_or_tail_ip>': [
+                ['||', '<cond_and_ip>', '<cond_or_tail_ip>'],
+                ['λ']
+            ],
+
+            # Single AND operand inside parens
+            '<cond_and_ip>': [
+                ['<cond_comparison_ip>', '<cond_and_tail_ip>']
+            ],
+
+            # A comparison unit inside parentheses
+            # FIRST sets: <cond_arith_noparen> = {num_lit, decimal_lit, identifier, size, -}
+            #             ( = {(}, ! = {!}, Yes = {Yes}, No = {No} — all disjoint
+            '<cond_comparison_ip>': [
+                ['<cond_arith_noparen>', '<cond_rel_tail_in_paren>'],  # e.g. a == b, x > 5
+                ['(', '<cond_arith>', '<cond_paren_tail_ip>'],         # nested paren: (a+b)==5 or (a==b && c==d)
+                ['!', '<cond_comparison_ip>'],                         # negation: !a == b
+                ['Yes'],                                                # standalone Yes
+                ['No']                                                  # standalone No
+            ],
+
+            # Paren tail for nested parens inside <cond_comparison_ip>
+            # FIRST: ) vs {>, <, >=, <=, ==, !=} — disjoint
+            '<cond_paren_tail_ip>': [
+                [')', '<cond_rel_tail_in_paren>'],  # (arith) comparison — arithmetic grouping
+                ['<cond_rel_tail_in_paren>', '<cond_and_tail_ip>', '<cond_or_tail_ip>', ')']  # (condition) — full logic inside
             ],
 
             # Comparison outside parentheses (no λ - required)
