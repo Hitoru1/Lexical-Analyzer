@@ -177,7 +177,7 @@ DELIM_SETS = {
     # space, mathop, logicop, relop, ;, {, )
     'closeparen_delim': {' ', '+', '-', '*', '/', '%', '&', '|', '!', '=', '<', '>', ';', '{', ')', ']'},
     # space, &, |, !, ;
-    'bool_delim': {' ', '&', '|', '!', ';', ')', ':', ',', ']'},
+    'bool_delim': {' ', '&', '|', '!', ';', ')', ':', ',', ']', '='},
     # space_nline, ,, +, ), ], }, ;
     'string_char': {' ', '\n', ',', '+', ')', ']', '}', ';', ':'},
     # space_nline, null, }, ], ), ,, ;, mathop, relop, logicop, =
@@ -757,22 +757,22 @@ class Lexer:
                 'space_nline': 'space or newline',
                 'delim1': 'space or "{"',
                 'delim2': 'space or "("',
-                'delim3': 'delim3',
+                'delim3': 'space, letter, digit, (, “, ‘, [',
                 'sem_col': '";"',
-                'op_delim': 'op_delim',
+                'op_delim': 'space, letter, digit, (',
                 'open_paren': '"("',
                 'comma_delim': 'space, letter, digit, "(", """, "{", "[", or "\'"',
                 'open_list': 'space, digit, """, "\'", "[" or "]"',
                 'close_list': 'space, ";", "," or "="',
                 'openparen_delim': 'space, letter, digit, "\'", """, ")" or "!"',
                 'closeparen_delim': 'space, operator, ";", "{" or ")"',
-                'bool_delim': 'space, "&", "|", "!" or ";"',
+                'bool_delim': 'space, "&", "|", "!", ";", ")", ":", ",", "]" or "="',
                 'string_char': 'space, newline, ",", "+", ")", "]", "}" or ";"',
-                'lit_delim': 'lit_delim',
-                'identifier_del': 'space, newline, operator, or punctuation',
+                'lit_delim': 'space, newline, }, ] ,) , ",\', ;, mathop, =, <, >, &, |, !',
+                'identifier_del': 'space, newline, mathop, =, <, >, (, ), ], ,, ;, }, &, |, !,[',
                 'num': 'digit',
                 'id3': 'space or digit',
-                'delim7': 'delim3',
+                'delim7': 'space, letter, digit, (, “, ‘, [',
                 'dot_delim': 'digit or letter',
             }
 
