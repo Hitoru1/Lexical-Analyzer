@@ -1,19 +1,3 @@
-"""
-OPTIMIZED CONTEXT-SPECIFIC TABLE-DRIVEN LL(1) PARSER FOR KUCODE
-
-390 Productions - 5 Expression Hierarchies + Boolean Enforcement + In-Paren Logic
-- <stmt_value>: declarations, assignments, returns (FOLLOW = {';'})
-- <arg_value>: function args, list elements (FOLLOW = {',', ')', ']'})
-- <cond_value>: conditions (FOLLOW = {')'})
-- <index_value>: array indices (FOLLOW = {']'})
-- <from_primary>, <to_primary>, <step_primary>: loop bounds (PRIMARY ONLY)
-
-BOOLEAN ENFORCEMENT:
-- Removed λ from <cond_rel_tail> (production 276)
-- Arithmetic in conditions MUST have comparison operator
-- check(x + 5) → SYNTAX ERROR (must be check(x + 5 > 0))
-- check(flag) → SYNTAX ERROR (must be check(flag == Yes))
-"""
 
 
 class TableDrivenParser:
@@ -205,112 +189,46 @@ class TableDrivenParser:
             ],
 
             '<list_typed_decl>': [
-                ['num', 'identifier', '=', '<num_list>', ';'],  # 65
-                ['decimal', 'identifier', '=', '<num_list>', ';'],  # 66
-                ['bigdecimal', 'identifier', '=', '<num_list>', ';'],  # 67
-                ['bool', 'identifier', '=', '<bool_list>', ';'],  # 68
-                ['text', 'identifier', '=', '<expr_list>', ';'],  # 69
-                ['letter', 'identifier', '=', '<expr_list>', ';']  # 70
+                ['num', 'identifier', '=', '<val_list>', ';'],  # 67
+                ['decimal', 'identifier', '=', '<val_list>', ';'],  # 68
+                ['bigdecimal', 'identifier', '=', '<val_list>', ';'],  # 69
+                ['bool', 'identifier', '=', '<val_list>', ';'],  # 70
+                ['text', 'identifier', '=', '<val_list>', ';'],  # 71
+                ['letter', 'identifier', '=', '<val_list>', ';']  # 72
             ],
 
-            # List literals - use <arg_value>
-            '<num_list>': [
-                ['<num_list_1d>'],  # 71
-                ['<num_list_2d>']  # 72
+            # List literals - unified, uses <arg_value>
+            '<val_list>': [
+                ['<val_list_1d>'],  # 73
+                ['<val_list_2d>']  # 74
             ],
 
-            '<num_list_1d>': [
-                ['[', '<num_list_elems>', ']']  # 73
+            '<val_list_1d>': [
+                ['[', '<val_list_elems>', ']']  # 75
             ],
 
-            '<num_list_elems>': [
-                ['<arg_value>', '<num_list_tail>'],  # 74
-                ['λ']  # 75
-            ],
-
-            '<num_list_tail>': [
-                [',', '<arg_value>', '<num_list_tail>'],  # 76
+            '<val_list_elems>': [
+                ['<arg_value>', '<val_list_tail>'],  # 76
                 ['λ']  # 77
             ],
 
-            '<num_list_2d>': [
-                ['[', '<num_list_rows>', ']']  # 78
+            '<val_list_tail>': [
+                [',', '<arg_value>', '<val_list_tail>'],  # 78
+                ['λ']  # 79
             ],
 
-            '<num_list_rows>': [
-                ['<num_list_1d>', '<num_list_rows_tail>'],  # 79
-                ['λ']  # 80
+            '<val_list_2d>': [
+                ['[', '<val_list_rows>', ']']  # 80
             ],
 
-            '<num_list_rows_tail>': [
-                [',', '<num_list_1d>', '<num_list_rows_tail>'],  # 81
+            '<val_list_rows>': [
+                ['<val_list_1d>', '<val_list_rows_tail>'],  # 81
                 ['λ']  # 82
             ],
 
-            '<bool_list>': [
-                ['<bool_list_1d>'],  # 83
-                ['<bool_list_2d>']  # 84
-            ],
-
-            '<bool_list_1d>': [
-                ['[', '<bool_list_elems>', ']']  # 85
-            ],
-
-            '<bool_list_elems>': [
-                ['<arg_value>', '<bool_list_tail>'],  # 86
-                ['λ']  # 87
-            ],
-
-            '<bool_list_tail>': [
-                [',', '<arg_value>', '<bool_list_tail>'],  # 88
-                ['λ']  # 89
-            ],
-
-            '<bool_list_2d>': [
-                ['[', '<bool_list_rows>', ']']  # 90
-            ],
-
-            '<bool_list_rows>': [
-                ['<bool_list_1d>', '<bool_list_rows_tail>'],  # 91
-                ['λ']  # 92
-            ],
-
-            '<bool_list_rows_tail>': [
-                [',', '<bool_list_1d>', '<bool_list_rows_tail>'],  # 93
-                ['λ']  # 94
-            ],
-
-            '<expr_list>': [
-                ['<expr_list_1d>'],  # 95
-                ['<expr_list_2d>']  # 96
-            ],
-
-            '<expr_list_1d>': [
-                ['[', '<expr_list_elems>', ']']  # 97
-            ],
-
-            '<expr_list_elems>': [
-                ['<arg_value>', '<expr_list_tail>'],  # 98
-                ['λ']  # 99
-            ],
-
-            '<expr_list_tail>': [
-                [',', '<arg_value>', '<expr_list_tail>'],  # 100
-                ['λ']  # 101
-            ],
-
-            '<expr_list_2d>': [
-                ['[', '<expr_list_rows>', ']']  # 102
-            ],
-
-            '<expr_list_rows>': [
-                ['<expr_list_1d>', '<expr_list_rows_tail>'],  # 103
-                ['λ']  # 104
-            ],
-
-            '<expr_list_rows_tail>': [
-                [',', '<expr_list_1d>', '<expr_list_rows_tail>'],  # 105
-                ['λ']  # 106
+            '<val_list_rows_tail>': [
+                [',', '<val_list_1d>', '<val_list_rows_tail>'],  # 83
+                ['λ']  # 84
             ],
 
             # ============================================================
@@ -685,16 +603,27 @@ class TableDrivenParser:
             ],
 
             '<cond_base>': [
-                ['Yes'],  # 269
-                ['No'],  # 270
-                ['(', '<cond_inner_paren>'],  # 271 - paren case (dispatches via <cond_inner_paren>)
-                ['<cond_arith_noparen>', '<cond_rel_tail>']  # 272 - non-paren case
+                ['Yes'],  # 243
+                ['No'],  # 244
+                ['(', '<cond_inner_paren>'],  # 245 - paren case
+                ['<cond_arith_noparen>', '<cond_rel_tail>'],  # 246 - non-paren case
+                ['string_lit', '<cond_str_tail>'],  # 247 - string only with ==/!=
+                ['char_lit', '<cond_str_tail>']  # 248 - char only with ==/!=
+            ],
+
+            # Forces == or != after string_lit/char_lit (no λ = no standalone)
+            '<cond_str_tail>': [
+                ['==', '<cond_eq_rhs>'],  # 249
+                ['!=', '<cond_eq_rhs>']  # 250
             ],
 
             # Decides: arithmetic grouping (comparison outside) OR comparison inside parens (with optional &&/||)
             '<cond_paren_tail>': [
-                [')', '<cond_rel_tail>'],  # arith in parens, comparison REQUIRED outside
-                ['<cond_rel_tail_in_paren>', '<cond_and_tail_ip>', '<cond_or_tail_ip>', ')']  # comparison inside parens with optional logic
+                # arith in parens, comparison REQUIRED outside
+                [')', '<cond_rel_tail>'],
+                # comparison inside parens with optional logic
+                ['<cond_rel_tail_in_paren>', '<cond_and_tail_ip>',
+                    '<cond_or_tail_ip>', ')']
             ],
 
             # Comparison inside parentheses (no λ - required)
@@ -716,10 +645,16 @@ class TableDrivenParser:
             # FIRST sets: <cond_arith> = {(, -, num_lit, decimal_lit, identifier, size}
             #             ! = {!}, Yes = {Yes}, No = {No} — all disjoint
             '<cond_inner_paren>': [
-                ['<cond_arith>', '<cond_paren_tail>'],          # arithmetic start → existing paren tail logic
-                ['!', '<cond_comparison_ip>', '<cond_and_tail_ip>', '<cond_or_tail_ip>', ')'],  # negation inside parens
-                ['Yes', '<cond_and_tail_ip>', '<cond_or_tail_ip>', ')'],  # Yes as first operand
-                ['No', '<cond_and_tail_ip>', '<cond_or_tail_ip>', ')']   # No as first operand
+                # arithmetic start → existing paren tail logic
+                ['<cond_arith>', '<cond_paren_tail>'],  # 259
+                ['!', '<cond_comparison_ip>', '<cond_and_tail_ip>',
+                    '<cond_or_tail_ip>', ')'],  # 260 - negation inside parens
+                ['Yes', '<cond_and_tail_ip>', '<cond_or_tail_ip>', ')'],  # 261
+                ['No', '<cond_and_tail_ip>', '<cond_or_tail_ip>', ')'],  # 262
+                ['string_lit', '<cond_str_tail>', '<cond_and_tail_ip>',
+                    '<cond_or_tail_ip>', ')'],  # 263
+                ['char_lit', '<cond_str_tail>', '<cond_and_tail_ip>',
+                    '<cond_or_tail_ip>', ')']  # 264
             ],
 
             # AND chain inside parentheses (mirrors <cond_and_tail> but uses <cond_comparison_ip>)
@@ -743,18 +678,30 @@ class TableDrivenParser:
             # FIRST sets: <cond_arith_noparen> = {num_lit, decimal_lit, identifier, size, -}
             #             ( = {(}, ! = {!}, Yes = {Yes}, No = {No} — all disjoint
             '<cond_comparison_ip>': [
-                ['<cond_arith_noparen>', '<cond_rel_tail_in_paren>'],  # e.g. a == b, x > 5
-                ['(', '<cond_arith>', '<cond_paren_tail_ip>'],         # nested paren: (a+b)==5 or (a==b && c==d)
-                ['!', '<cond_comparison_ip>'],                         # negation: !a == b
-                ['Yes'],                                                # standalone Yes
-                ['No']                                                  # standalone No
+                # e.g. a == b, x > 5
+                ['<cond_arith_noparen>', '<cond_rel_tail_in_paren>'],  # 270
+                # nested paren: (a+b)==5 or (a==b && c==d)
+                ['(', '<cond_arith>', '<cond_paren_tail_ip>'],  # 271
+                # negation: !a == b
+                ['!', '<cond_comparison_ip>'],  # 272
+                # standalone Yes
+                ['Yes'],  # 273
+                # standalone No
+                ['No'],  # 274
+                # string only with ==/!=
+                ['string_lit', '<cond_str_tail>'],  # 275
+                # char only with ==/!=
+                ['char_lit', '<cond_str_tail>']  # 276
             ],
 
             # Paren tail for nested parens inside <cond_comparison_ip>
             # FIRST: ) vs {>, <, >=, <=, ==, !=} — disjoint
             '<cond_paren_tail_ip>': [
-                [')', '<cond_rel_tail_in_paren>'],  # (arith) comparison — arithmetic grouping
-                ['<cond_rel_tail_in_paren>', '<cond_and_tail_ip>', '<cond_or_tail_ip>', ')']  # (condition) — full logic inside
+                # (arith) comparison — arithmetic grouping
+                [')', '<cond_rel_tail_in_paren>'],
+                ['<cond_rel_tail_in_paren>', '<cond_and_tail_ip>',
+                    # (condition) — full logic inside
+                    '<cond_or_tail_ip>', ')']
             ],
 
             # Comparison outside parentheses (no λ - required)
@@ -771,9 +718,11 @@ class TableDrivenParser:
             # RHS for equality operators - allows Yes/No or arithmetic (but Yes/No cannot be followed by operators)
             # FIRST = {Yes, No, (, -, NUM_LIT, DECIMAL_LIT, IDENTIFIER, size}
             '<cond_eq_rhs>': [
-                ['Yes'],
-                ['No'],
-                ['<cond_arith_no_rel>']
+                ['Yes'],  # 285
+                ['No'],  # 286
+                ['<cond_arith_no_rel>'],  # 287
+                ['string_lit'],  # 288
+                ['char_lit']  # 289
             ],
 
             # Arithmetic without relational tail (used as second operand in comparisons)
@@ -839,7 +788,8 @@ class TableDrivenParser:
 
             '<cond_arith_noparen>': [['<cond_add_noparen>']],
 
-            '<cond_add_noparen>': [['<cond_mult_noparen>', '<cond_add_tail>']],  # uses regular tail after first
+            # uses regular tail after first
+            '<cond_add_noparen>': [['<cond_mult_noparen>', '<cond_add_tail>']],
 
             '<cond_mult_noparen>': [['<cond_exp_noparen>', '<cond_mult_tail>']],
 
@@ -1276,7 +1226,7 @@ class TableDrivenParser:
                     self.derivations.append((top, production))
 
                 # Special case: List 1D vs 2D disambiguation
-                elif top in ['<num_list>', '<bool_list>', '<expr_list>'] and current == '[':
+                elif top == '<val_list>' and current == '[':
                     # Look at the NEXT token after '['
                     next_token = None
                     if self.pos + 1 < len(self.tokens):
@@ -1290,21 +1240,9 @@ class TableDrivenParser:
 
                     # Decide: if next is '[', it's 2D; otherwise 1D
                     if next_token == '[':
-                        # 2D: [ [ ... ] ]
-                        if top == '<num_list>':
-                            production = ['<num_list_2d>']
-                        elif top == '<bool_list>':
-                            production = ['<bool_list_2d>']
-                        else:  # <expr_list>
-                            production = ['<expr_list_2d>']
+                        production = ['<val_list_2d>']
                     else:
-                        # 1D: [ values ]
-                        if top == '<num_list>':
-                            production = ['<num_list_1d>']
-                        elif top == '<bool_list>':
-                            production = ['<bool_list_1d>']
-                        else:  # <expr_list>
-                            production = ['<expr_list_1d>']
+                        production = ['<val_list_1d>']
 
                     if verbose:
                         prod_str = ' '.join(production)
