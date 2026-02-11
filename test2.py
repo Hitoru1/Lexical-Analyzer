@@ -8,14 +8,6 @@ LETTERS = string.ascii_letters
 LETTERNUM = NUM + LETTERS
 WHITESPACE = '\n\t '
 
-# RESERVED WORDS - FROM OUR PAPER
-keywords = {
-    'start', 'finish', 'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool',
-    'Yes', 'No', 'empty', 'read', 'show', 'check', 'otherwise', 'otherwisecheck',
-    'fallback', 'select', 'option', 'each', 'during', 'from', 'to', 'step',
-    'stop', 'skip', 'give', 'define', 'worldwide', 'fixed', 'list', 'group', 'size'
-}
-
 
 # Reserved Words - Program Structure
 RW_START = 'start'
@@ -751,7 +743,6 @@ class Lexer:
 
         # Not EOF - check if current char is in expected delimiters
         if next_char not in expected_delims:
-            # Build friendly error message
             delim_names = {
                 'space': 'space',
                 'space_nline': 'space or newline',
