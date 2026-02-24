@@ -142,7 +142,7 @@ DELIM_SETS = {
     'space_semcol': {' ', ';'},
     'space': {' '},
     # space, newline
-    'space_nline': {' ', '\n', '{', },
+    'space_nline': {' ', '\n', None},
     # space, {
     'delim1': {' ', '{'},
     # space, (
@@ -168,8 +168,8 @@ DELIM_SETS = {
     'openparen_delim': {' ', "'", '"', '(', ')', '!', '-'} | set(LETTERNUM),
     # space, mathop, logicop, relop, ;, {, )
     'closeparen_delim': {' ', '+', '-', '*', '/', '%', '&', '|', '!', '=', '<', '>', ';', '{', ')', ']'},
-    # space, &, |, !, ;
-    'bool_delim': {' ', '&', '|', '!', ';', ')', ':', ',', ']', '='},
+    # space, &, |, !, ;, arithmetic ops, relational ops
+    'bool_delim': {' ', '&', '|', '!', ';', ')', ':', ',', ']', '=', '+', '-', '*', '/', '%', '>', '<'},
     # space_nline, ,, +, ), ], }, ;
     'string_char': {' ', '\n', ',', '+', ')', ']', '}', ';', ':'},
     # space_nline, null, }, ], ), ,, ;, mathop, relop, logicop, =
@@ -698,8 +698,11 @@ class Lexer:
     def check_delimiter(self, token_type, token_value, pos_end):
         """Check if the character following a token matches the expected delimiter"""
         # Skip delimiter check for certain token types
+        # Single-char punctuation is self-delimiting — no check needed
         skip_check = [NEWLINE, WHITESPACE_SPACE,
-                      WHITESPACE_TAB, EOF, COMMENT_SINGLE, COMMENT_MULTI]
+                      WHITESPACE_TAB, EOF, COMMENT_SINGLE, COMMENT_MULTI,
+                      DELIM_LEFT_BRACE, DELIM_RIGHT_BRACE,
+                      DELIM_SEMICOLON, DELIM_COLON]
         if token_type in skip_check:
             return None
 
@@ -722,7 +725,7 @@ class Lexer:
 
         # Handle EOF - only these specific delimiter types accept EOF
         if next_char is None:
-            eof_allowed_types = []
+            eof_allowed_types = ['space_nline']
 
             if delimiter_type not in eof_allowed_types:
                 # EOF not allowed for this delimiter type
@@ -1210,142 +1213,131 @@ class Lexer:
                 pos_start = self.pos.copy()
                 self.advance()
 
-                # Check if this is a negative number (unary minus)
+                # Negative number: -digit (no space) always tokenized as negative literal
                 if self.current_char and self.current_char != ' ' and (self.current_char in NUM or (self.current_char == '.' and self.peek() and self.peek() in NUM)):
-                    if len(tokens) == 0 or tokens[-1].type in [
-                        OP_ASSIGNMENT, OP_ADDITION_ASSIGN, OP_SUBTRACTION_ASSIGN,
-                        OP_MULTIPLICATION_ASSIGN, OP_DIVISION_ASSIGN, OP_MODULUS_ASSIGN,
-                        OP_EQUAL_TO, OP_NOT_EQUAL, OP_GREATER_THAN, OP_LESS_THAN,
-                        OP_GREATER_EQUAL, OP_LESS_EQUAL, OP_LOGICAL_AND, OP_LOGICAL_OR,
-                        DELIM_LEFT_PAREN, DELIM_LEFT_BRACKET, DELIM_COMMA,
-                        OP_ADDITION, OP_SUBTRACTION, OP_MULTIPLICATION, OP_DIVISION,
-                        OP_MODULUS, OP_EXPONENTIATION,
-                        NEWLINE, WHITESPACE_SPACE, WHITESPACE_TAB, DELIM_SEMICOLON,
-                        RW_START, DELIM_LEFT_BRACE
-                    ]:
-                        num_start = pos_start
-                        num_str = '-'
-                        dot_count = 0
-                        int_dig_count = 0
-                        dec_dig_count = 0
+                    num_start = pos_start
+                    num_str = '-'
+                    dot_count = 0
+                    int_dig_count = 0
+                    dec_dig_count = 0
 
-                        # Special handling for -0
-                        if self.current_char == '0':
-                            num_str += '0'
-                            self.advance()
+                    # Special handling for -0
+                    if self.current_char == '0':
+                        num_str += '0'
+                        self.advance()
 
-                            # -0 can ONLY continue to decimal, not standalone
-                            if self.current_char == '.' and self.peek() and self.peek() in NUM:
-                                # Valid: -0.5
-                                num_str += self.current_char
-                                dot_count += 1
-                                self.advance()
-
-                                while self.current_char != None and self.current_char in NUM and dec_dig_count < 16:
-                                    num_str += self.current_char
-                                    dec_dig_count += 1
-                                    self.advance()
-
-                                # Check if there's a 17th decimal digit (invalid delimiter)
-                                if dec_dig_count == 16 and self.current_char != None and self.current_char in NUM:
-                                    pos_error = self.pos.copy()
-                                    errors.append(LexicalError(num_start, pos_error,
-                                                               f'Invalid delimiter after "{num_str}": expected lit_delim "{self.current_char}"'))
-                                    continue
-
-                                num_end = self.pos.copy()
-
-                                # Create decimal token
-                                token = Token(LIT_DECIMAL, num_str,
-                                              num_start, num_end)
-
-                                # Check delimiter
-                                delim_error = self.check_delimiter(
-                                    token.type, token.value, num_end)
-                                if delim_error:
-                                    errors.append(delim_error)
-                                    continue
-
-                                tokens.append(token)
-                                continue
-                            else:
-                                # -0 NOT followed by .digit - incomplete number literal
-                                if self.current_char == '.':
-                                    # Has dot but no digits after - advance past the dot
-                                    self.advance()  # Move past the '.'
-                                    errors.append(LexicalError(
-                                        num_start,
-                                        self.pos.copy(),
-                                        f'Invalid character after "-0.": expected digits, got "{self.current_char if self.current_char else "EOF"}"'
-                                    ))
-                                else:
-                                    # No dot at all
-                                    errors.append(LexicalError(
-                                        num_start,
-                                        self.pos.copy(),
-                                        f'Invalid character after "-0": expected decimal point and digits, got "{self.current_char if self.current_char else "EOF"}"'
-                                    ))
-                                # Position is now ready to continue from the invalid character
-                                continue
-
-                        # Normal negative number (not starting with 0): -1, -2, -999, etc.
-                        while self.current_char != None and self.current_char in NUM and int_dig_count < 10:
+                        # -0 can ONLY continue to decimal, not standalone
+                        if self.current_char == '.' and self.peek() and self.peek() in NUM:
+                            # Valid: -0.5
                             num_str += self.current_char
-                            int_dig_count += 1
+                            dot_count += 1
                             self.advance()
 
-                        # Check if there's an 11th digit (invalid delimiter)
-                        if int_dig_count == 10 and self.current_char != None and self.current_char in NUM:
-                            pos_error = self.pos.copy()
-                            errors.append(LexicalError(num_start, pos_error,
-                                                       f'Invalid delimiter after "{num_str}" expected lit_delim, got "{self.current_char}"'))
-                            continue
-
-                        # Handle optional decimal point for non-zero numbers
-                        if self.current_char == '.':
-                            if self.peek() and self.peek() in NUM:
+                            while self.current_char != None and self.current_char in NUM and dec_dig_count < 16:
                                 num_str += self.current_char
-                                dot_count += 1
+                                dec_dig_count += 1
                                 self.advance()
 
-                                while self.current_char != None and self.current_char in NUM and dec_dig_count < 16:
-                                    num_str += self.current_char
-                                    dec_dig_count += 1
-                                    self.advance()
-
-                                # Check if there's a 17th decimal digit (invalid delimiter)
-                                if dec_dig_count == 16 and self.current_char != None and self.current_char in NUM:
-                                    pos_error = self.pos.copy()
-                                    errors.append(LexicalError(num_start, pos_error,
-                                                               f'Invalid delimiter after "{num_str}" expected lit_delim, got "{self.current_char}"'))
-                                    continue
-                            else:
-                                # Dot not followed by digit
-                                num_str += self.current_char
-                                self.advance()
-                                errors.append(LexicalError(num_start, self.pos.copy(),
-                                                           f'Invalid delimiter after "{num_str}": expected digit, got "{self.current_char if self.current_char else "EOF"}"'))
+                            # Check if there's a 17th decimal digit (invalid delimiter)
+                            if dec_dig_count == 16 and self.current_char != None and self.current_char in NUM:
+                                pos_error = self.pos.copy()
+                                errors.append(LexicalError(num_start, pos_error,
+                                                           f'Invalid delimiter after "{num_str}": expected lit_delim "{self.current_char}"'))
                                 continue
 
-                        num_end = self.pos.copy()
+                            num_end = self.pos.copy()
 
-                        # Create token
-                        if dot_count == 0:
-                            token = Token(LIT_NUMBER, num_str,
-                                          num_start, num_end)
-                        else:
+                            # Create decimal token
                             token = Token(LIT_DECIMAL, num_str,
                                           num_start, num_end)
 
-                        # Check delimiter
-                        delim_error = self.check_delimiter(
-                            token.type, token.value, num_end)
-                        if delim_error:
-                            errors.append(delim_error)
+                            # Check delimiter
+                            delim_error = self.check_delimiter(
+                                token.type, token.value, num_end)
+                            if delim_error:
+                                errors.append(delim_error)
+                                continue
+
+                            tokens.append(token)
+                            continue
+                        else:
+                            # -0 NOT followed by .digit - incomplete number literal
+                            if self.current_char == '.':
+                                # Has dot but no digits after - advance past the dot
+                                self.advance()  # Move past the '.'
+                                errors.append(LexicalError(
+                                    num_start,
+                                    self.pos.copy(),
+                                    f'Invalid character after "-0.": expected digits, got "{self.current_char if self.current_char else "EOF"}"'
+                                ))
+                            else:
+                                # No dot at all
+                                errors.append(LexicalError(
+                                    num_start,
+                                    self.pos.copy(),
+                                    f'Invalid character after "-0": expected decimal point and digits, got "{self.current_char if self.current_char else "EOF"}"'
+                                ))
+                            # Position is now ready to continue from the invalid character
                             continue
 
-                        tokens.append(token)
+                    # Normal negative number (not starting with 0): -1, -2, -999, etc.
+                    while self.current_char != None and self.current_char in NUM and int_dig_count < 10:
+                        num_str += self.current_char
+                        int_dig_count += 1
+                        self.advance()
+
+                    # Check if there's an 11th digit (invalid delimiter)
+                    if int_dig_count == 10 and self.current_char != None and self.current_char in NUM:
+                        pos_error = self.pos.copy()
+                        errors.append(LexicalError(num_start, pos_error,
+                                                   f'Invalid delimiter after "{num_str}" expected lit_delim, got "{self.current_char}"'))
                         continue
+
+                    # Handle optional decimal point for non-zero numbers
+                    if self.current_char == '.':
+                        if self.peek() and self.peek() in NUM:
+                            num_str += self.current_char
+                            dot_count += 1
+                            self.advance()
+
+                            while self.current_char != None and self.current_char in NUM and dec_dig_count < 16:
+                                num_str += self.current_char
+                                dec_dig_count += 1
+                                self.advance()
+
+                            # Check if there's a 17th decimal digit (invalid delimiter)
+                            if dec_dig_count == 16 and self.current_char != None and self.current_char in NUM:
+                                pos_error = self.pos.copy()
+                                errors.append(LexicalError(num_start, pos_error,
+                                                           f'Invalid delimiter after "{num_str}" expected lit_delim, got "{self.current_char}"'))
+                                continue
+                        else:
+                            # Dot not followed by digit
+                            num_str += self.current_char
+                            self.advance()
+                            errors.append(LexicalError(num_start, self.pos.copy(),
+                                                       f'Invalid delimiter after "{num_str}": expected digit, got "{self.current_char if self.current_char else "EOF"}"'))
+                            continue
+
+                    num_end = self.pos.copy()
+
+                    # Create token
+                    if dot_count == 0:
+                        token = Token(LIT_NUMBER, num_str,
+                                      num_start, num_end)
+                    else:
+                        token = Token(LIT_DECIMAL, num_str,
+                                      num_start, num_end)
+
+                    # Check delimiter
+                    delim_error = self.check_delimiter(
+                        token.type, token.value, num_end)
+                    if delim_error:
+                        errors.append(delim_error)
+                        continue
+
+                    tokens.append(token)
+                    continue
 
                 if self.current_char == '=':
                     self.advance()
@@ -2124,8 +2116,31 @@ class KuCodeLexerGUI:
             result = parser.parse()
             self.terminal_text.insert(
                 tk.END, "✓ Syntax analysis passed.\n", "success")
+
+            # SEMANTIC ANALYSIS (only runs if syntax passed)
             self.terminal_text.insert(
-                tk.END, f"\nResult: {result}\n", "success")
+                tk.END, "\nStarting semantic analysis...\n\n", "info")
+
+            from semantic_analyzer import SemanticAnalyzer
+            analyzer = SemanticAnalyzer(parser_tokens)
+            quadruples, sem_errors = analyzer.analyze()
+
+            if sem_errors:
+                self.terminal_text.insert(
+                    tk.END,
+                    f"✗ Semantic analysis failed "
+                    f"({len(sem_errors)} error(s)):\n\n",
+                    "error"
+                )
+                for err in sem_errors:
+                    self.terminal_text.insert(
+                        tk.END, f"  {err}\n", "error")
+            else:
+                self.terminal_text.insert(
+                    tk.END, "✓ Semantic analysis passed.\n", "success")
+                # quadruples are stored in analyzer.quadruples
+                # and will be passed to the code generator (next phase)
+
         except SyntaxError as e:
             self.terminal_text.insert(
                 tk.END, "✗ Syntax analysis failed:\n\n", "error")

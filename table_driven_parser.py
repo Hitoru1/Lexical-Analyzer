@@ -17,7 +17,7 @@ class TableDrivenParser:
         self.skipped_expected = set()
 
     def _init_grammar(self):
-        """Defining the 413 CFG Productions"""
+        """Defining the 289 CFG Productions"""
 
         self.productions = {
 
@@ -330,8 +330,13 @@ class TableDrivenParser:
             ],
 
             '<option_block>': [
-                ['option', '<literal>', ':', '<statements>',
+                ['option', '<literal>', ':', '<option_statements>',
                     '<control_flow>', ';']
+            ],
+
+            '<option_statements>': [
+                ['<statement>', '<option_statements>'],
+                ['λ']
             ],
 
             '<control_flow>': [
@@ -403,10 +408,10 @@ class TableDrivenParser:
 
             '<stmt_rel>': [['<stmt_add>', '<stmt_rel_tail>']],
             '<stmt_rel_tail>': [
-                ['>', '<stmt_add>'],
-                ['<', '<stmt_add>'],
-                ['>=', '<stmt_add>'],
-                ['<=', '<stmt_add>'],
+                ['>', '<stmt_add>', '<stmt_rel_tail>'],
+                ['<', '<stmt_add>', '<stmt_rel_tail>'],
+                ['>=', '<stmt_add>', '<stmt_rel_tail>'],
+                ['<=', '<stmt_add>', '<stmt_rel_tail>'],
                 ['λ']
             ],
 
@@ -484,10 +489,10 @@ class TableDrivenParser:
 
             '<arg_rel>': [['<arg_add>', '<arg_rel_tail>']],
             '<arg_rel_tail>': [
-                ['>', '<arg_add>'],
-                ['<', '<arg_add>'],
-                ['>=', '<arg_add>'],
-                ['<=', '<arg_add>'],
+                ['>', '<arg_add>', '<arg_rel_tail>'],
+                ['<', '<arg_add>', '<arg_rel_tail>'],
+                ['>=', '<arg_add>', '<arg_rel_tail>'],
+                ['<=', '<arg_add>', '<arg_rel_tail>'],
                 ['λ']
             ],
 
@@ -541,282 +546,7 @@ class TableDrivenParser:
 
 
 
-            '<cond_value>': [['<cond_or>']],
-
-            '<cond_or>': [['<cond_and>', '<cond_or_tail>']],
-            '<cond_or_tail>': [
-                ['||', '<cond_and>', '<cond_or_tail>'],
-                ['λ']
-            ],
-
-            '<cond_and>': [['<cond_eq>', '<cond_and_tail>']],
-            '<cond_and_tail>': [
-                ['&&', '<cond_eq>', '<cond_and_tail>'],
-                ['λ']
-            ],
-
-            '<cond_eq>': [['<cond_comp>', '<cond_eq_tail>']],
-            '<cond_eq_tail>': [
-                ['==', '<cond_comp>', '<cond_eq_tail>'],
-                ['!=', '<cond_comp>', '<cond_eq_tail>'],
-                ['λ']
-            ],
-
-            '<cond_comp>': [['<cond_unary>']],
-
-            '<cond_unary>': [
-                ['!', '<cond_base>'],
-                ['<cond_base>']
-            ],
-
-            '<cond_base>': [
-                ['Yes'],
-                ['No'],
-                ['(', '<cond_inner_paren>'],
-
-                ['<cond_arith_noparen>', '<cond_rel_tail>'],
-
-                ['string_lit', '<cond_str_tail>'],
-                ['char_lit', '<cond_str_tail>']
-            ],
-
-
-            '<cond_str_tail>': [
-                ['==', '<cond_eq_rhs>'],
-                ['!=', '<cond_eq_rhs>']
-            ],
-
-
-            '<cond_paren_tail>': [
-
-                [')', '<cond_rel_tail>'],
-
-                ['<cond_rel_tail_in_paren>', '<cond_and_tail_ip>',
-                    '<cond_or_tail_ip>', ')']
-            ],
-
-
-
-            '<cond_rel_tail_in_paren>': [
-                ['>', '<cond_arith_no_rel>'],
-                ['<', '<cond_arith_no_rel>'],
-                ['>=', '<cond_arith_no_rel>'],
-                ['<=', '<cond_arith_no_rel>'],
-                ['==', '<cond_eq_rhs>'],
-                ['!=', '<cond_eq_rhs>']
-            ],
-
-
-            '<cond_inner_paren>': [
-
-                ['<cond_arith>', '<cond_paren_tail>'],
-                ['!', '<cond_comparison_ip>', '<cond_and_tail_ip>',
-                    '<cond_or_tail_ip>', ')'],
-                ['Yes', '<cond_and_tail_ip>', '<cond_or_tail_ip>', ')'],
-                ['No', '<cond_and_tail_ip>', '<cond_or_tail_ip>', ')'],
-                ['string_lit', '<cond_str_tail>', '<cond_and_tail_ip>',
-                    '<cond_or_tail_ip>', ')'],
-                ['char_lit', '<cond_str_tail>', '<cond_and_tail_ip>',
-                    '<cond_or_tail_ip>', ')']
-            ],
-
-
-            '<cond_and_tail_ip>': [
-                ['&&', '<cond_comparison_ip>', '<cond_and_tail_ip>'],
-                ['λ']
-            ],
-
-
-            '<cond_or_tail_ip>': [
-                ['||', '<cond_and_ip>', '<cond_or_tail_ip>'],
-                ['λ']
-            ],
-
-
-            '<cond_and_ip>': [
-                ['<cond_comparison_ip>', '<cond_and_tail_ip>']
-            ],
-
-
-            '<cond_comparison_ip>': [
-
-                ['<cond_arith_noparen>', '<cond_rel_tail_in_paren>'],
-
-                ['(', '<cond_arith>', '<cond_paren_tail_ip>'],
-
-                ['!', '<cond_comparison_ip>'],
-
-                ['Yes'],
-
-                ['No'],
-
-                ['string_lit', '<cond_str_tail>'],
-
-                ['char_lit', '<cond_str_tail>']
-            ],
-
-
-            '<cond_paren_tail_ip>': [
-
-                [')', '<cond_rel_tail_in_paren>'],
-                ['<cond_rel_tail_in_paren>', '<cond_and_tail_ip>',
-
-                    '<cond_or_tail_ip>', ')']
-            ],
-
-
-            '<cond_rel_tail>': [
-                ['>', '<cond_arith_no_rel>'],
-                ['<', '<cond_arith_no_rel>'],
-                ['>=', '<cond_arith_no_rel>'],
-                ['<=', '<cond_arith_no_rel>'],
-                ['==', '<cond_eq_rhs>'],
-                ['!=', '<cond_eq_rhs>']
-            ],
-
-
-            '<cond_eq_rhs>': [
-                ['Yes'],
-                ['No'],
-                ['<cond_arith_no_rel>'],
-                ['string_lit'],
-                ['char_lit']
-            ],
-
-
-            '<cond_arith_no_rel>': [['<cond_add_no_rel>']],
-
-
-            '<cond_add_no_rel>': [['<cond_mult_no_rel>', '<cond_add_tail_no_rel>']],
-            '<cond_add_tail_no_rel>': [
-                ['+', '<cond_mult_no_rel>', '<cond_add_tail_no_rel>'],
-                ['-', '<cond_mult_no_rel>', '<cond_add_tail_no_rel>'],
-                ['λ']
-            ],
-
-
-            '<cond_mult_no_rel>': [['<cond_exp_no_rel>', '<cond_mult_tail_no_rel>']],
-            '<cond_mult_tail_no_rel>': [
-                ['*', '<cond_exp_no_rel>', '<cond_mult_tail_no_rel>'],
-                ['/', '<cond_exp_no_rel>', '<cond_mult_tail_no_rel>'],
-                ['%', '<cond_exp_no_rel>', '<cond_mult_tail_no_rel>'],
-                ['λ']
-            ],
-
-
-            '<cond_exp_no_rel>': [['<cond_arith_unary_no_rel>', '<cond_exp_tail_no_rel>']],
-            '<cond_exp_tail_no_rel>': [
-                ['**', '<cond_exp_no_rel>'],
-                ['λ']
-            ],
-
-            '<cond_arith_unary_no_rel>': [
-                ['-', '<cond_post_no_rel>'],
-                ['<cond_post_no_rel>']
-            ],
-
-
-            '<cond_post_no_rel>': [['<cond_prim_no_rel>']],
-
-
-            '<cond_prim_no_rel>': [
-                ['(', '<cond_arith_no_rel>', ')'],
-                ['num_lit'],
-                ['decimal_lit'],
-                ['identifier', '<cond_id_suffix_no_rel>'],
-                ['<size_call>']
-            ],
-
-            '<cond_id_suffix_no_rel>': [
-                ['(', '<arg_list>', ')'],
-                ['[', '<index_value>', ']', '<cond_var_2d_no_rel>'],
-                ['.', 'identifier'],
-                ['λ']
-            ],
-
-            '<cond_var_2d_no_rel>': [
-                ['[', '<index_value>', ']'],
-                ['λ']
-            ],
-
-
-
-            '<cond_arith_noparen>': [['<cond_add_noparen>']],
-
-
-            '<cond_add_noparen>': [['<cond_mult_noparen>', '<cond_add_tail>']],
-
-            '<cond_mult_noparen>': [['<cond_exp_noparen>', '<cond_mult_tail>']],
-
-            '<cond_exp_noparen>': [['<cond_unary_noparen>', '<cond_exp_tail>']],
-
-            '<cond_unary_noparen>': [
-                ['-', '<cond_post>'],
-                ['<cond_prim_noparen>']
-            ],
-
-
-            '<cond_prim_noparen>': [
-
-                ['num_lit'],
-                ['decimal_lit'],
-                ['identifier', '<cond_id_suffix>'],
-                ['<size_call>']
-            ],
-
-
-
-            '<cond_arith>': [['<cond_add>']],
-
-            '<cond_add>': [['<cond_mult>', '<cond_add_tail>']],
-            '<cond_add_tail>': [
-                ['+', '<cond_mult>', '<cond_add_tail>'],
-                ['-', '<cond_mult>', '<cond_add_tail>'],
-                ['λ']
-            ],
-
-            '<cond_mult>': [['<cond_exp>', '<cond_mult_tail>']],
-            '<cond_mult_tail>': [
-                ['*', '<cond_exp>', '<cond_mult_tail>'],
-                ['/', '<cond_exp>', '<cond_mult_tail>'],
-                ['%', '<cond_exp>', '<cond_mult_tail>'],
-                ['λ']
-            ],
-
-            '<cond_exp>': [['<cond_arith_unary>', '<cond_exp_tail>']],
-            '<cond_exp_tail>': [
-                ['**', '<cond_exp>'],
-                ['λ']
-            ],
-
-            '<cond_arith_unary>': [
-                ['-', '<cond_post>'],
-                ['<cond_post>']
-            ],
-
-
-            '<cond_post>': [['<cond_prim>']],
-
-
-            '<cond_prim>': [
-                ['(', '<cond_arith>', ')'],
-                ['num_lit'],
-                ['decimal_lit'],
-                ['identifier', '<cond_id_suffix>'],
-                ['<size_call>']
-            ],
-
-            '<cond_id_suffix>': [
-                ['(', '<arg_list>', ')'],
-                ['[', '<index_value>', ']', '<cond_var_2d>'],
-                ['.', 'identifier'],
-                ['λ']
-            ],
-
-            '<cond_var_2d>': [
-                ['[', '<index_value>', ']'],
-                ['λ']
-            ],
+            '<cond_value>': [['<arg_value>']],
 
 
 
