@@ -1,0 +1,302 @@
+CONTEXT FREE GRAMMAR - PRODUCTION RULES (REVISED - TRUTHY VALUES) [291 productions]
+
+1. <program> ⇒ <group_part>
+2. <group_part> ⇒ <group_definitions> <group_part>
+3. <group_part> ⇒ <worldwide_part>
+4. <worldwide_part> ⇒ <global_variable_declarations> <worldwide_part>
+5. <worldwide_part> ⇒ <define_part>
+6. <define_part> ⇒ <function_definitions> <define_part>
+7. <define_part> ⇒ <start_block>
+8. <start_block> ⇒ start { <statements> } finish
+9. <group_definitions> ⇒ group identifier { <group_body> }
+10. <group_body> ⇒ <group_member> <group_body_tail>
+11. <group_body> ⇒ λ
+12. <group_body_tail> ⇒ <group_member> <group_body_tail>
+13. <group_body_tail> ⇒ λ
+14. <group_member> ⇒ <datatype> identifier ;
+15. <datatype> ⇒ num
+16. <datatype> ⇒ decimal
+17. <datatype> ⇒ bigdecimal
+18. <datatype> ⇒ bool
+19. <datatype> ⇒ text
+20. <datatype> ⇒ letter
+21. <global_variable_declarations> ⇒ worldwide <global_modifier> <global_typed_decl>
+22. <global_modifier> ⇒ fixed
+23. <global_modifier> ⇒ λ
+24. <global_typed_decl> ⇒ num identifier = <stmt_value> ;
+25. <global_typed_decl> ⇒ decimal identifier = <stmt_value> ;
+26. <global_typed_decl> ⇒ bigdecimal identifier = <stmt_value> ;
+27. <global_typed_decl> ⇒ bool identifier = <stmt_value> ;
+28. <global_typed_decl> ⇒ text identifier = <stmt_value> ;
+29. <global_typed_decl> ⇒ letter identifier = <stmt_value> ;
+30. <function_definitions> ⇒ define <return_type> identifier ( <parameter_list> ) { <local_declarations> <statements> <optional_return> }
+31. <return_type> ⇒ num
+32. <return_type> ⇒ decimal
+33. <return_type> ⇒ bigdecimal
+34. <return_type> ⇒ bool
+35. <return_type> ⇒ text
+36. <return_type> ⇒ letter
+37. <return_type> ⇒ empty
+38. <parameter_list> ⇒ <parameter> <parameter_list_tail>
+39. <parameter_list> ⇒ λ
+40. <parameter_list_tail> ⇒ , <parameter> <parameter_list_tail>
+41. <parameter_list_tail> ⇒ λ
+42. <parameter> ⇒ <datatype> identifier
+43. <optional_return> ⇒ give <return_tail>
+44. <optional_return> ⇒ λ
+45. <return_tail> ⇒ <stmt_value> ;
+46. <return_tail> ⇒ ;
+47. <local_declarations> ⇒ <declaration> <local_declarations>
+48. <local_declarations> ⇒ λ
+49. <declaration> ⇒ <local_declaration>
+50. <declaration> ⇒ <fixed_declaration>
+51. <declaration> ⇒ <list_declaration>
+52. <local_declaration> ⇒ identifier identifier ;
+53. <local_declaration> ⇒ num identifier = <stmt_value> ;
+54. <local_declaration> ⇒ decimal identifier = <stmt_value> ;
+55. <local_declaration> ⇒ bigdecimal identifier = <stmt_value> ;
+56. <local_declaration> ⇒ bool identifier = <stmt_value> ;
+57. <local_declaration> ⇒ text identifier = <stmt_value> ;
+58. <local_declaration> ⇒ letter identifier = <stmt_value> ;
+59. <fixed_declaration> ⇒ fixed <fixed_typed_decl>
+60. <fixed_typed_decl> ⇒ num identifier = <stmt_value> ;
+61. <fixed_typed_decl> ⇒ decimal identifier = <stmt_value> ;
+62. <fixed_typed_decl> ⇒ bigdecimal identifier = <stmt_value> ;
+63. <fixed_typed_decl> ⇒ bool identifier = <stmt_value> ;
+64. <fixed_typed_decl> ⇒ text identifier = <stmt_value> ;
+65. <fixed_typed_decl> ⇒ letter identifier = <stmt_value> ;
+66. <list_declaration> ⇒ list <list_typed_decl>
+67. <list_typed_decl> ⇒ num identifier = <val_list> ;
+68. <list_typed_decl> ⇒ decimal identifier = <val_list> ;
+69. <list_typed_decl> ⇒ bigdecimal identifier = <val_list> ;
+70. <list_typed_decl> ⇒ bool identifier = <val_list> ;
+71. <list_typed_decl> ⇒ text identifier = <val_list> ;
+72. <list_typed_decl> ⇒ letter identifier = <val_list> ;
+73. <val_list> ⇒ <val_list_1d>
+74. <val_list> ⇒ <val_list_2d>
+75. <val_list_1d> ⇒ [ <val_list_elems> ]
+76. <val_list_elems> ⇒ <arg_value> <val_list_tail>
+77. <val_list_elems> ⇒ λ
+78. <val_list_tail> ⇒ , <arg_value> <val_list_tail>
+79. <val_list_tail> ⇒ λ
+80. <val_list_2d> ⇒ [ <val_list_rows> ]
+81. <val_list_rows> ⇒ <val_list_1d> <val_list_rows_tail>
+82. <val_list_rows> ⇒ λ
+83. <val_list_rows_tail> ⇒ , <val_list_1d> <val_list_rows_tail>
+84. <val_list_rows_tail> ⇒ λ
+85. <statements> ⇒ <statement> <statements>
+86. <statements> ⇒ λ
+87. <statement> ⇒ <control_statement>
+88. <statement> ⇒ <assignment_statement>
+89. <statement> ⇒ <function_call_statement>
+90. <statement> ⇒ <declaration>
+91. <statement> ⇒ <io_statement>
+92. <assignment_statement> ⇒ <assignable> <assignment_tail>
+93. <assignment_tail> ⇒ = <stmt_value> ;
+94. <assignment_tail> ⇒ += <stmt_value> ;
+95. <assignment_tail> ⇒ -= <stmt_value> ;
+96. <assignment_tail> ⇒ *= <stmt_value> ;
+97. <assignment_tail> ⇒ /= <stmt_value> ;
+98. <assignment_tail> ⇒ %= <stmt_value> ;
+99. <assignment_tail> ⇒ **= <stmt_value> ;
+100. <assignment_tail> ⇒ ++ ;
+101. <assignment_tail> ⇒ -- ;
+102. <assignable> ⇒ identifier <assignable_suffix>
+103. <assignable_suffix> ⇒ [ <index_value> ] <assignable_2d>
+104. <assignable_suffix> ⇒ . identifier
+105. <assignable_suffix> ⇒ λ
+106. <assignable_2d> ⇒ [ <index_value> ]
+107. <assignable_2d> ⇒ λ
+108. <function_call_statement> ⇒ <function_call> ;
+109. <function_call> ⇒ identifier ( <arg_list> )
+110. <arg_list> ⇒ <arg_value> <arg_list_tail>
+111. <arg_list> ⇒ λ
+112. <arg_list_tail> ⇒ , <arg_value> <arg_list_tail>
+113. <arg_list_tail> ⇒ λ
+114. <io_statement> ⇒ show ( <arg_list> ) ;
+115. <io_statement> ⇒ read ( identifier ) ;
+116. <control_statement> ⇒ <check_structure>
+117. <control_statement> ⇒ <select_statement>
+118. <control_statement> ⇒ <iterative_statement>
+119. <check_structure> ⇒ check ( <cond_value> ) { <statements> } <otherwise_chain>
+120. <otherwise_chain> ⇒ otherwisecheck ( <cond_value> ) { <statements> } <otherwise_chain>
+121. <otherwise_chain> ⇒ otherwise { <statements> }
+122. <otherwise_chain> ⇒ λ
+123. <select_statement> ⇒ select (identifier) { <option_blocks> <optional_fallback> }
+124. <option_blocks> ⇒ <option_block> <option_blocks>
+125. <option_blocks> ⇒ λ
+126. <option_block> ⇒ option <literal>: <option_statements> <control_flow> ;
+127. <control_flow> ⇒ stop
+128. <control_flow> ⇒ skip
+129. <optional_fallback> ⇒ fallback: <statements>
+130. <optional_fallback> ⇒ λ
+131. <iterative_statement> ⇒ <each_loop>
+132. <iterative_statement> ⇒ <during_loop>
+133. <each_loop> ⇒ each identifier from <from_primary> to <to_primary> <step_clause> { <statements> }
+134. <step_clause> ⇒ step <step_primary>
+135. <step_clause> ⇒ λ
+136. <during_loop> ⇒ during ( <cond_value> ) { <statements> }
+137. <literal> ⇒ num_lit
+138. <literal> ⇒ decimal_lit
+139. <literal> ⇒ string_lit
+140. <literal> ⇒ char_lit
+141. <literal> ⇒ Yes
+142. <literal> ⇒ No
+
+143. <stmt_value> ⇒ <stmt_or>
+144. <stmt_or> ⇒ <stmt_and> <stmt_or_tail>
+145. <stmt_or_tail> ⇒ || <stmt_and> <stmt_or_tail>
+146. <stmt_or_tail> ⇒ λ
+147. <stmt_and> ⇒ <stmt_eq> <stmt_and_tail>
+148. <stmt_and_tail> ⇒ && <stmt_eq> <stmt_and_tail>
+149. <stmt_and_tail> ⇒ λ
+150. <stmt_eq> ⇒ <stmt_rel> <stmt_eq_tail>
+151. <stmt_eq_tail> ⇒ == <stmt_rel> <stmt_eq_tail>
+152. <stmt_eq_tail> ⇒ != <stmt_rel> <stmt_eq_tail>
+153. <stmt_eq_tail> ⇒ λ
+154. <stmt_rel> ⇒ <stmt_add> <stmt_rel_tail>
+155. <stmt_rel_tail> ⇒ > <stmt_add> <stmt_rel_tail>
+156. <stmt_rel_tail> ⇒ < <stmt_add> <stmt_rel_tail>
+157. <stmt_rel_tail> ⇒ >= <stmt_add> <stmt_rel_tail>
+158. <stmt_rel_tail> ⇒ <= <stmt_add> <stmt_rel_tail>
+159. <stmt_rel_tail> ⇒ λ
+160. <stmt_add> ⇒ <stmt_mult> <stmt_add_tail>
+161. <stmt_add_tail> ⇒ + <stmt_mult> <stmt_add_tail>
+162. <stmt_add_tail> ⇒ - <stmt_mult> <stmt_add_tail>
+163. <stmt_add_tail> ⇒ λ
+164. <stmt_mult> ⇒ <stmt_exp> <stmt_mult_tail>
+165. <stmt_mult_tail> ⇒ * <stmt_exp> <stmt_mult_tail>
+166. <stmt_mult_tail> ⇒ / <stmt_exp> <stmt_mult_tail>
+167. <stmt_mult_tail> ⇒ % <stmt_exp> <stmt_mult_tail>
+168. <stmt_mult_tail> ⇒ λ
+169. <stmt_exp> ⇒ <stmt_unary> <stmt_exp_tail>
+170. <stmt_exp_tail> ⇒ ** <stmt_exp>
+171. <stmt_exp_tail> ⇒ λ
+172. <stmt_unary> ⇒ - <stmt_post>
+173. <stmt_unary> ⇒ ! <stmt_post>
+174. <stmt_unary> ⇒ <stmt_post>
+175. <stmt_post> ⇒ <stmt_prim>
+176. <stmt_prim> ⇒ ( <stmt_value> )
+177. <stmt_prim> ⇒ <literal>
+178. <stmt_prim> ⇒ identifier <stmt_id_suffix>
+179. <stmt_prim> ⇒ <size_call>
+180. <stmt_id_suffix> ⇒ ( <arg_list> )
+181. <stmt_id_suffix> ⇒ [ <index_value> ] <stmt_var_2d>
+182. <stmt_id_suffix> ⇒ . identifier
+183. <stmt_id_suffix> ⇒ λ
+184. <stmt_var_2d> ⇒ [ <index_value> ]
+185. <stmt_var_2d> ⇒ λ
+
+186. <arg_value> ⇒ <arg_or>
+187. <arg_or> ⇒ <arg_and> <arg_or_tail>
+188. <arg_or_tail> ⇒ || <arg_and> <arg_or_tail>
+189. <arg_or_tail> ⇒ λ
+190. <arg_and> ⇒ <arg_eq> <arg_and_tail>
+191. <arg_and_tail> ⇒ && <arg_eq> <arg_and_tail>
+192. <arg_and_tail> ⇒ λ
+193. <arg_eq> ⇒ <arg_rel> <arg_eq_tail>
+194. <arg_eq_tail> ⇒ == <arg_rel> <arg_eq_tail>
+195. <arg_eq_tail> ⇒ != <arg_rel> <arg_eq_tail>
+196. <arg_eq_tail> ⇒ λ
+197. <arg_rel> ⇒ <arg_add> <arg_rel_tail>
+198. <arg_rel_tail> ⇒ > <arg_add> <arg_rel_tail>
+199. <arg_rel_tail> ⇒ < <arg_add> <arg_rel_tail>
+200. <arg_rel_tail> ⇒ >= <arg_add> <arg_rel_tail>
+201. <arg_rel_tail> ⇒ <= <arg_add> <arg_rel_tail>
+202. <arg_rel_tail> ⇒ λ
+203. <arg_add> ⇒ <arg_mult> <arg_add_tail>
+204. <arg_add_tail> ⇒ + <arg_mult> <arg_add_tail>
+205. <arg_add_tail> ⇒ - <arg_mult> <arg_add_tail>
+206. <arg_add_tail> ⇒ λ
+207. <arg_mult> ⇒ <arg_exp> <arg_mult_tail>
+208. <arg_mult_tail> ⇒ * <arg_exp> <arg_mult_tail>
+209. <arg_mult_tail> ⇒ / <arg_exp> <arg_mult_tail>
+210. <arg_mult_tail> ⇒ % <arg_exp> <arg_mult_tail>
+211. <arg_mult_tail> ⇒ λ
+212. <arg_exp> ⇒ <arg_unary> <arg_exp_tail>
+213. <arg_exp_tail> ⇒ ** <arg_exp>
+214. <arg_exp_tail> ⇒ λ
+215. <arg_unary> ⇒ - <arg_post>
+216. <arg_unary> ⇒ ! <arg_post>
+217. <arg_unary> ⇒ <arg_post>
+218. <arg_post> ⇒ <arg_prim>
+219. <arg_prim> ⇒ ( <arg_value> )
+220. <arg_prim> ⇒ <literal>
+221. <arg_prim> ⇒ identifier <arg_id_suffix>
+222. <arg_prim> ⇒ <size_call>
+223. <arg_id_suffix> ⇒ ( <arg_list> )
+224. <arg_id_suffix> ⇒ [ <index_value> ] <arg_var_2d>
+225. <arg_id_suffix> ⇒ . identifier
+226. <arg_id_suffix> ⇒ λ
+227. <arg_var_2d> ⇒ [ <index_value> ]
+228. <arg_var_2d> ⇒ λ
+
+229. <cond_value> ⇒ <arg_value>
+
+230. <index_value> ⇒ <index_add>
+231. <index_add> ⇒ <index_mult> <index_add_tail>
+232. <index_add_tail> ⇒ + <index_mult> <index_add_tail>
+233. <index_add_tail> ⇒ - <index_mult> <index_add_tail>
+234. <index_add_tail> ⇒ λ
+235. <index_mult> ⇒ <index_exp> <index_mult_tail>
+236. <index_mult_tail> ⇒ * <index_exp> <index_mult_tail>
+237. <index_mult_tail> ⇒ / <index_exp> <index_mult_tail>
+238. <index_mult_tail> ⇒ % <index_exp> <index_mult_tail>
+239. <index_mult_tail> ⇒ λ
+240. <index_exp> ⇒ <index_unary> <index_exp_tail>
+241. <index_exp_tail> ⇒ ** <index_exp>
+242. <index_exp_tail> ⇒ λ
+243. <index_unary> ⇒ - <index_post>
+244. <index_unary> ⇒ <index_post>
+245. <index_post> ⇒ <index_prim>
+246. <index_prim> ⇒ ( <index_value> )
+247. <index_prim> ⇒ num_lit
+248. <index_prim> ⇒ decimal_lit
+249. <index_prim> ⇒ identifier <index_id_suffix>
+250. <index_prim> ⇒ <size_call>
+251. <index_id_suffix> ⇒ ( <arg_list> )
+252. <index_id_suffix> ⇒ [ <index_value> ] <index_var_2d>
+253. <index_id_suffix> ⇒ . identifier
+254. <index_id_suffix> ⇒ λ
+255. <index_var_2d> ⇒ [ <index_value> ]
+256. <index_var_2d> ⇒ λ
+
+257. <from_primary> ⇒ num_lit
+258. <from_primary> ⇒ decimal_lit
+259. <from_primary> ⇒ identifier <from_id_suffix>
+260. <from_primary> ⇒ <size_call>
+261. <from_id_suffix> ⇒ ( <arg_list> )
+262. <from_id_suffix> ⇒ [ <index_value> ] <from_var_2d>
+263. <from_id_suffix> ⇒ . identifier
+264. <from_id_suffix> ⇒ λ
+265. <from_var_2d> ⇒ [ <index_value> ]
+266. <from_var_2d> ⇒ λ
+
+267. <to_primary> ⇒ num_lit
+268. <to_primary> ⇒ decimal_lit
+269. <to_primary> ⇒ identifier <to_id_suffix>
+270. <to_primary> ⇒ <size_call>
+271. <to_id_suffix> ⇒ ( <arg_list> )
+272. <to_id_suffix> ⇒ [ <index_value> ] <to_var_2d>
+273. <to_id_suffix> ⇒ . identifier
+274. <to_id_suffix> ⇒ λ
+275. <to_var_2d> ⇒ [ <index_value> ]
+276. <to_var_2d> ⇒ λ
+
+277. <step_primary> ⇒ num_lit
+278. <step_primary> ⇒ decimal_lit
+279. <step_primary> ⇒ identifier <step_id_suffix>
+280. <step_primary> ⇒ <size_call>
+281. <step_id_suffix> ⇒ ( <arg_list> )
+282. <step_id_suffix> ⇒ [ <index_value> ] <step_var_2d>
+283. <step_id_suffix> ⇒ . identifier
+284. <step_id_suffix> ⇒ λ
+285. <step_var_2d> ⇒ [ <index_value> ]
+286. <step_var_2d> ⇒ λ
+
+287. <size_call> ⇒ size ( identifier <size_second_arg> )
+288. <size_second_arg> ⇒ , num_lit
+289. <size_second_arg> ⇒ λ
+
+290. <option_statements> ⇒ <statement> <option_statements>
+291. <option_statements> ⇒ λ

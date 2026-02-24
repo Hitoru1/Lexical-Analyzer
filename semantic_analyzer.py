@@ -137,6 +137,14 @@ class SymbolTable:
     def lookup_global(self, name: str) -> Optional[Symbol]:
         return self.scopes[0].get(name)
 
+    def lookup_in_enclosing_local(self, name: str) -> Optional[Symbol]:
+        """Search scopes between global and current (enclosing local scopes only).
+        Excludes scope[0] (global) and scope[-1] (current)."""
+        for scope in self.scopes[1:-1]:
+            if name in scope:
+                return scope[name]
+        return None
+
     @property
     def depth(self) -> int:
         return len(self.scopes)
@@ -146,15 +154,35 @@ class SymbolTable:
 # TYPE HELPERS
 # ═══════════════════════════════════════════════════════════════
 
-def infer_literal_type(token_type: str) -> str:
-    """Map a literal token type to its semantic data type."""
+def infer_literal_type(token_type: str, value: str = '') -> str:
+    """
+    Map a literal token type to its semantic data type.
+
+    For decimal_lit, the inferred type depends on the number of digits
+    after the decimal point:
+      <= 11 digits  →  decimal
+      12 – 16 digits →  bigdecimal
+      > 16 digits   →  error (returned as 'bigdecimal' so analysis continues)
+    """
+    if token_type == 'decimal_lit':
+        frac_digits = 0
+        if '.' in str(value):
+            frac_digits = len(str(value).split('.')[1])
+        if frac_digits <= 11:
+            return 'decimal'
+        elif frac_digits <= 16:
+            return 'bigdecimal'
+        else:
+            # > 16: will trigger an error in _literal(); return bigdecimal
+            # so downstream type-checking can still proceed
+            return 'bigdecimal'
+
     mapping = {
-        'num_lit':     'num',
-        'decimal_lit': 'decimal',
-        'string_lit':  'text',
-        'char_lit':    'letter',
-        'Yes':         'bool',
-        'No':          'bool',
+        'num_lit':    'num',
+        'string_lit': 'text',
+        'char_lit':   'letter',
+        'Yes':        'bool',
+        'No':         'bool',
     }
     return mapping.get(token_type, 'unknown')
 
@@ -312,6 +340,31 @@ class SemanticAnalyzer:
     def _error(self, message: str, token=None) -> None:
         ln, col = self._token_location(token)
         self.errors.append(SemanticError(message, ln, col))
+
+    def _check_name_conflicts(
+        self, vname: str, name_tok, label: str = 'Variable'
+    ) -> None:
+        """Emit an error if vname conflicts with a worldwide variable or
+        shadows a variable in any enclosing local scope."""
+        # Check worldwide conflict (any depth — worldwide can never be shadowed)
+        global_sym = self.symbol_table.lookup_global(vname)
+        if global_sym is not None and global_sym.is_worldwide:
+            qualifier = 'fixed worldwide' if global_sym.is_fixed else 'worldwide'
+            self._error(
+                f"{label} '{vname}' conflicts with {qualifier} variable "
+                f"'{vname}'; worldwide variables cannot be shadowed or redeclared",
+                name_tok
+            )
+            return
+        # Check enclosing local scope shadowing
+        outer_sym = self.symbol_table.lookup_in_enclosing_local(vname)
+        if outer_sym is not None:
+            qualifier = 'fixed ' if outer_sym.is_fixed else ''
+            self._error(
+                f"{label} '{vname}' shadows {qualifier}variable '{vname}' "
+                f"declared in an enclosing scope",
+                name_tok
+            )
 
     # ──────────────────────────────────────────────────────────
     # TAC UTILITIES
@@ -583,6 +636,7 @@ class SemanticAnalyzer:
         # Declare parameters in function scope
         for ptype, pname in params:
             p_sym = Symbol(name=pname, kind='parameter', data_type=ptype)
+            self._check_name_conflicts(pname, name_tok, label='Parameter')
             if not self.symbol_table.declare(p_sym):
                 self._error(
                     f"Duplicate parameter name '{pname}' in '{fname}'",
@@ -731,6 +785,7 @@ class SemanticAnalyzer:
                 name=vname, kind='variable', data_type=group_type,
                 line=ln, col=col
             )
+            self._check_name_conflicts(vname, name_tok)
             # Semantic Rule I-2: no duplicate in same scope
             if not self.symbol_table.declare(sym):
                 self._error(
@@ -752,12 +807,19 @@ class SemanticAnalyzer:
         sym = Symbol(
             name=vname, kind='variable', data_type=dtype, line=ln, col=col
         )
+        self._check_name_conflicts(vname, name_tok)
         # Semantic Rule I-2
         if not self.symbol_table.declare(sym):
-            self._error(
-                f"Variable '{vname}' already declared in this scope",
-                name_tok
-            )
+            existing = self.symbol_table.lookup_current_scope(vname)
+            if existing and existing.is_fixed:
+                self._error(
+                    f"Cannot redeclare fixed variable '{vname}'", name_tok
+                )
+            else:
+                self._error(
+                    f"Variable '{vname}' already declared in this scope",
+                    name_tok
+                )
 
         # Semantic Rule II-1
         if not type_compatible(dtype, expr_type):
@@ -785,12 +847,19 @@ class SemanticAnalyzer:
             name=vname, kind='variable', data_type=dtype,
             is_fixed=True, line=ln, col=col
         )
+        self._check_name_conflicts(vname, name_tok, label='Fixed variable')
         # Semantic Rule III-1: fixed must be initialized (grammar ensures it)
         if not self.symbol_table.declare(sym):
-            self._error(
-                f"Variable '{vname}' already declared in this scope",
-                name_tok
-            )
+            existing = self.symbol_table.lookup_current_scope(vname)
+            if existing and existing.is_fixed:
+                self._error(
+                    f"Cannot redeclare fixed variable '{vname}'", name_tok
+                )
+            else:
+                self._error(
+                    f"Variable '{vname}' already declared in this scope",
+                    name_tok
+                )
 
         if not type_compatible(dtype, expr_type):
             self._error(
@@ -817,6 +886,7 @@ class SemanticAnalyzer:
             name=vname, kind='list', data_type=dtype,
             is_list=True, list_dim=list_dim, line=ln, col=col
         )
+        self._check_name_conflicts(vname, name_tok)
         if not self.symbol_table.declare(sym):
             self._error(
                 f"Variable '{vname}' already declared in this scope",
@@ -1273,12 +1343,18 @@ class SemanticAnalyzer:
                 f"each loop",
                 var_tok
             )
-        elif sym.data_type not in ('num', 'unknown'):
-            self._error(
-                f"Loop variable '{vname}' must be type num (integer), "
-                f"got '{sym.data_type}'",
-                var_tok
-            )
+        else:
+            if sym.data_type not in ('num', 'unknown'):
+                self._error(
+                    f"Loop variable '{vname}' must be type num (integer), "
+                    f"got '{sym.data_type}'",
+                    var_tok
+                )
+            if sym.is_fixed:
+                self._error(
+                    f"Loop variable '{vname}' is fixed and cannot be modified",
+                    var_tok
+                )
 
         self._consume('from')
         from_place, from_type = self._from_primary()
@@ -1470,12 +1546,11 @@ class SemanticAnalyzer:
                     self._error(
                         f"Operator '{op}' is not valid on text values"
                     )
-            # Semantic Rule II-4: no arithmetic on text/letter
-            elif (left_type in (TEXT_TYPE, CHAR_TYPE)
-                  or right_type in (TEXT_TYPE, CHAR_TYPE)):
+            # Semantic Rule II-4: no arithmetic on letter
+            # (TEXT_TYPE is already handled above; only CHAR_TYPE reaches here)
+            elif left_type == CHAR_TYPE or right_type == CHAR_TYPE:
                 self._error(
-                    f"Arithmetic operator '{op}' not valid on "
-                    f"text or letter values"
+                    f"Operator '{op}' is not valid on letter values"
                 )
             else:
                 temp = self._new_temp()
@@ -1492,10 +1567,11 @@ class SemanticAnalyzer:
             op = self._current_type()
             self._advance()
             right_place, right_type = self._expr_exp()
-            if (left_type in (TEXT_TYPE, CHAR_TYPE)
-                    or right_type in (TEXT_TYPE, CHAR_TYPE)):
+            if left_type in (TEXT_TYPE, CHAR_TYPE) or right_type in (TEXT_TYPE, CHAR_TYPE):
+                bad = left_type if left_type in (TEXT_TYPE, CHAR_TYPE) else right_type
                 self._error(
-                    f"Operator '{op}' not valid on text or letter values"
+                    f"Operator '{op}' is not valid on "
+                    f"{'text' if bad == TEXT_TYPE else 'letter'} values"
                 )
             temp = self._new_temp()
             rtype = result_type_of_op(op, left_type, right_type)
@@ -1580,7 +1656,17 @@ class SemanticAnalyzer:
         t = self._current_type()
         val = self.current.value if self.current else ''
         self._advance()
-        dtype = infer_literal_type(t)
+        dtype = infer_literal_type(t, val)
+
+        # Precision overflow check for decimal literals
+        if t == 'decimal_lit' and '.' in str(val):
+            frac_digits = len(str(val).split('.')[1])
+            if frac_digits > 16:
+                self._error(
+                    f"Decimal literal '{val}' has {frac_digits} fractional "
+                    f"digit(s); maximum precision is 16 (bigdecimal)"
+                )
+
         if t == 'string_lit':
             place = f'"{val}"'
         elif t == 'char_lit':
