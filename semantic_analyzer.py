@@ -1847,6 +1847,13 @@ class SemanticAnalyzer:
             dim_tok = self.current
             dim_arg = dim_tok.value if dim_tok else '0'
             self._consume('num_lit')
+            # Semantic Rule V-5: dimension argument only valid for 2D lists
+            if sym is not None and sym.is_list and sym.list_dim != 2:
+                self._error(
+                    f"size() with a dimension argument is only valid for 2D lists; "
+                    f"'{vname}' is a 1D list",
+                    dim_tok
+                )
 
         self._consume(')')
         temp = self._new_temp()
