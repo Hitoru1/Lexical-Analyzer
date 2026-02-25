@@ -167,7 +167,7 @@ DELIM_SETS = {
     # space, letternum, ', ", (, ), !
     'openparen_delim': {' ', "'", '"', '(', ')', '!', '-'} | set(LETTERNUM),
     # space, mathop, logicop, relop, ;, {, )
-    'closeparen_delim': {' ', '+', '-', '*', '/', '%', '&', '|', '!', '=', '<', '>', ';', '{', ')', ']'},
+    'closeparen_delim': {' ', '+', '-', '*', '/', '%', '&', '|', '!', '=', '<', '>', ';', '{', ')', ']',','},
     # space, &, |, !, ;, arithmetic ops, relational ops
     'bool_delim': {' ', '&', '|', '!', ';', ')', ':', ',', ']', '=', '+', '-', '*', '/', '%', '>', '<'},
     # space_nline, ,, +, ), ], }, ;
