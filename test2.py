@@ -167,7 +167,7 @@ DELIM_SETS = {
     # space, letternum, ', ", (, ), !
     'openparen_delim': {' ', "'", '"', '(', ')', '!', '-'} | set(LETTERNUM),
     # space, mathop, logicop, relop, ;, {, )
-    'closeparen_delim': {' ', '+', '-', '*', '/', '%', '&', '|', '!', '=', '<', '>', ';', '{', ')', ']'},
+    'closeparen_delim': {' ', '+', '-', '*', '/', '%', '&', '|', '!', '=', '<', '>', ';', '{', ')', ']', '\n'},
     # space, &, |, !, ;, arithmetic ops, relational ops
     'bool_delim': {' ', '&', '|', '!', ';', ')', ':', ',', ']', '=', '+', '-', '*', '/', '%', '>', '<'},
     # space_nline, ,, +, ), ], }, ;
@@ -186,6 +186,7 @@ DELIM_SETS = {
     'delim7': {' ', '\n', '"', "'"} | set(LETTERNUM),
     'dot_delim': set(NUM) | set(LETTERS),
     'not_delim': {'(', '-'} | set(LETTERNUM) | {'"', "'"},
+
 }
 
 # Token to delimiter mapping
