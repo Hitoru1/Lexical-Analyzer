@@ -710,7 +710,27 @@ class SemanticChecker(ASTVisitor):
                     f"got '{idx_type}'",
                     target
                 )
+            # Compile-time bounds checking for first index
+            if sym.is_list and sym.list_size > 0:
+                if isinstance(target.index1, Literal) and target.index1.token_type == 'num_lit':
+                    try:
+                        idx_val = int(target.index1.value)
+                        max_idx = sym.list_size - 1
+                        if idx_val < 0 or idx_val > max_idx:
+                            self._error(
+                                f"List index {idx_val} is out of bounds for '{vname}' "
+                                f"(valid range: 0 to {max_idx})",
+                                target
+                            )
+                    except ValueError:
+                        pass
             if target.index2 is not None:
+                # Dimension mismatch: 2 indices on a 1D list
+                if sym.is_list and sym.list_dim == 1:
+                    self._error(
+                        f"'{vname}' is a 1D list but is being accessed with 2 indices",
+                        target
+                    )
                 idx2_place, idx2_type = self.visit(target.index2)
                 if not is_valid_index_type(idx2_type):
                     self._error(
@@ -718,6 +738,20 @@ class SemanticChecker(ASTVisitor):
                         f"got '{idx2_type}'",
                         target
                     )
+                # Compile-time bounds checking for second index (2D column)
+                if sym.is_list and sym.list_col_count > 0:
+                    if isinstance(target.index2, Literal) and target.index2.token_type == 'num_lit':
+                        try:
+                            idx2_val = int(target.index2.value)
+                            max_col = sym.list_col_count - 1
+                            if idx2_val < 0 or idx2_val > max_col:
+                                self._error(
+                                    f"Column index {idx2_val} is out of bounds for '{vname}' "
+                                    f"(valid range: 0 to {max_col})",
+                                    target
+                                )
+                        except ValueError:
+                            pass
                 return f'{vname}[{idx_place}][{idx2_place}]', sym.data_type, sym
             return f'{vname}[{idx_place}]', sym.data_type, sym
 
@@ -1153,6 +1187,12 @@ class SemanticChecker(ASTVisitor):
                     pass
 
         if node.index2 is not None:
+            # Dimension mismatch: 2 indices on a 1D list
+            if sym.is_list and sym.list_dim == 1:
+                self._error(
+                    f"'{vname}' is a 1D list but is being accessed with 2 indices",
+                    node
+                )
             idx2_place, idx2_type = self.visit(node.index2)
             if not is_valid_index_type(idx2_type):
                 self._error(
