@@ -1040,14 +1040,20 @@ class SemanticChecker(ASTVisitor):
 
         if op in ('+', '-'):
             if left_type == TEXT_TYPE or right_type == TEXT_TYPE:
-                if op == '+':
+                if op == '+' and left_type == TEXT_TYPE and right_type == TEXT_TYPE:
                     temp = self._new_temp()
                     self._emit('+', left_place, right_place, temp)
                     return temp, TEXT_TYPE
                 else:
-                    self._error(
-                        f"Operator '{op}' is not valid for type 'text'", node
-                    )
+                    if op == '-':
+                        self._error(
+                            f"Operator '-' is not valid for type 'text'", node
+                        )
+                    else:
+                        other = right_type if left_type == TEXT_TYPE else left_type
+                        self._error(
+                            f"Cannot concatenate 'text' with '{other}'", node
+                        )
                     return '_', 'unknown'
             elif left_type == CHAR_TYPE or right_type == CHAR_TYPE:
                 self._error(
