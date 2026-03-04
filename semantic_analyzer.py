@@ -441,7 +441,7 @@ class SemanticChecker(ASTVisitor):
         if node.return_type != 'empty' and not self._has_return:
             self._error(
                 f"Function '{node.name}' has return type '{node.return_type}' "
-                f"must return a value; use 'give <expr>;'",
+                f"must return a value; use 'give <stmt_value>;'",
                 node
             )
 
@@ -457,7 +457,7 @@ class SemanticChecker(ASTVisitor):
             if func_rtype != 'empty':
                 self._error(
                     f"Function with return type '{func_rtype}' must "
-                    f"return a value; use 'give <expr>;' not 'give;'",
+                    f"return a value; use 'give <stmt_value>;' not 'give;'",
                     func_node
                 )
             else:
