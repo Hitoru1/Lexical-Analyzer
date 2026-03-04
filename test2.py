@@ -1778,7 +1778,7 @@ class Lexer:
 class KuCodeLexerGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("KuCode Lexical & Syntax Analyzer")
+        self.root.title("KuCode Compiler")
         self.root.geometry("1400x800")
 
         # Configure style
@@ -2157,7 +2157,6 @@ class KuCodeLexerGUI:
         self.terminal_text.insert(tk.END, f"\n{'='*50}\n")
         self.terminal_text.insert(
             tk.END, f"Total Tokens: {len(displayable_tokens)}\n")
-        self.terminal_text.insert(tk.END, f"Lexical Errors: {len(errors)}\n")
 
     def save_results(self):
         file_path = filedialog.asksaveasfilename(
