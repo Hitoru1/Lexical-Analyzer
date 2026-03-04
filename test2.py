@@ -2114,7 +2114,7 @@ class KuCodeLexerGUI:
         parser = Parser(parser_tokens)
 
         try:
-            result = parser.parse()
+            ast = parser.parse()
             self.terminal_text.insert(
                 tk.END, "✓ Syntax analysis passed.\n", "success")
 
@@ -2123,7 +2123,7 @@ class KuCodeLexerGUI:
                 tk.END, "\nStarting semantic analysis...\n\n", "info")
 
             from semantic_analyzer import SemanticAnalyzer
-            analyzer = SemanticAnalyzer(parser_tokens)
+            analyzer = SemanticAnalyzer(ast)
             quadruples, sem_errors = analyzer.analyze()
 
             if sem_errors:
