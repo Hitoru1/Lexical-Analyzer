@@ -857,8 +857,16 @@ class SemanticChecker(ASTVisitor):
 
         L_end = self._new_label()
 
+        select_type = sym.data_type if sym else 'unknown'
+
         for opt in node.options:
-            lit_place, _lit_type = self.visit(opt.value)
+            lit_place, lit_type = self.visit(opt.value)
+            if not type_compatible(select_type, lit_type):
+                self._error(
+                    f"Option value type '{lit_type}' does not match "
+                    f"select variable type '{select_type}'",
+                    opt
+                )
             L_next = self._new_label()
             temp = self._new_temp()
             self._emit('==', node.variable, lit_place, temp)
