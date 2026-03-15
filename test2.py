@@ -1871,11 +1871,17 @@ class KuCodeLexerGUI:
                               activebackground="#4d7aaf")
         clear_btn.pack(side=tk.LEFT, padx=5)
 
-        save_btn = tk.Button(btn_frame, text="Save", command=self.save_results,
+        save_btn = tk.Button(btn_frame, text="Save", command=self.save_file,
                              bg="#1d4a7a", fg="white", font=("Courier New", 10, "bold"),
                              padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
                              activebackground="#2d5a8a")
         save_btn.pack(side=tk.LEFT, padx=5)
+
+        open_btn = tk.Button(btn_frame, text="Open", command=self.open_file,
+                             bg="#1d4a7a", fg="white", font=("Courier New", 10, "bold"),
+                             padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
+                             activebackground="#2d5a8a")
+        open_btn.pack(side=tk.LEFT, padx=5)
 
         toggle_btn = tk.Button(btn_frame, text="Toggle Tokens",
                                command=self.toggle_token_table,
@@ -2401,43 +2407,33 @@ class KuCodeLexerGUI:
         self.terminal_text.insert(
             tk.END, f"Total Tokens: {len(displayable_tokens)}\n")
 
-    def save_results(self):
+    def save_file(self):
         file_path = filedialog.asksaveasfilename(
-            defaultextension=".txt",
-            filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+            defaultextension=".kc",
+            filetypes=[("KuCode files", "*.kc"), ("All files", "*.*")]
         )
-
         if not file_path:
             return
-
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
-                f.write("=" * 80 + "\n")
-                f.write("SOURCE CODE\n")
-                f.write("=" * 80 + "\n")
-                f.write(self.source_text.get(1.0, tk.END))
-                f.write("\n")
-
-                f.write("=" * 80 + "\n")
-                f.write("TOKENS\n")
-                f.write("=" * 80 + "\n")
-                f.write(f"{'Lexeme':<40} {'Token':<40}\n")
-                f.write("-" * 80 + "\n")
-
-                for item in self.token_table.get_children():
-                    values = self.token_table.item(item)['values']
-                    f.write(f"{values[0]:<40} {values[1]:<40}\n")
-
-                f.write("\n")
-
-                f.write("=" * 80 + "\n")
-                f.write("ANALYSIS RESULT\n")
-                f.write("=" * 80 + "\n")
-                f.write(self.terminal_text.get(1.0, tk.END))
-
-            messagebox.showinfo("Success", f"Results saved to:\n{file_path}")
+                f.write(self.source_text.get(1.0, tk.END).rstrip('\n'))
+            messagebox.showinfo("Success", f"Saved to:\n{file_path}")
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to save file:\n{str(e)}")
+            messagebox.showerror("Error", f"Failed to save:\n{str(e)}")
+
+    def open_file(self):
+        file_path = filedialog.askopenfilename(
+            filetypes=[("KuCode files", "*.kc"), ("All files", "*.*")]
+        )
+        if not file_path:
+            return
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            self.source_text.delete(1.0, tk.END)
+            self.source_text.insert(1.0, content)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open:\n{str(e)}")
 
 
 # main
