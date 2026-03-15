@@ -1781,6 +1781,11 @@ class KuCodeLexerGUI:
         self.root.title("KuCode Compiler")
         self.root.geometry("1400x800")
 
+        # Subprocess state
+        self._subprocess = None
+        self._temp_file_path = None
+        self._running = False
+
         # Configure style
         style = ttk.Style()
         style.theme_use('clam')
@@ -1820,7 +1825,7 @@ class KuCodeLexerGUI:
         header_frame.pack_propagate(False)
 
         # Logo and Title
-        title_label = tk.Label(header_frame, text="KuCode Lexical & Syntax Analyzer",
+        title_label = tk.Label(header_frame, text="KuCode Compiler",
                                font=("Courier New", 18, "bold"), bg=bg_color, fg=fg_color)
         title_label.pack(side=tk.LEFT, padx=20, pady=10)
 
@@ -1845,6 +1850,13 @@ class KuCodeLexerGUI:
                              padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
                              activebackground="#2d5a8a")
         save_btn.pack(side=tk.LEFT, padx=5)
+
+        toggle_btn = tk.Button(btn_frame, text="Toggle Tokens",
+                               command=self.toggle_token_table,
+                               bg="#4a3a6a", fg="white", font=("Courier New", 10, "bold"),
+                               padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
+                               activebackground="#5a4a7a")
+        toggle_btn.pack(side=tk.LEFT, padx=5)
 
         # Main container
         # Container for everything below header (for PanedWindow)
@@ -1889,17 +1901,17 @@ class KuCodeLexerGUI:
         self.source_text.bind('<KeyRelease>', self.update_line_numbers)
         self.source_text.bind('<MouseWheel>', self.sync_scroll)
 
-        # Right Panel - Tokens
-        right_panel = tk.Frame(
+        # Right Panel - Tokens (hidden by default, toggle with button)
+        self.right_panel = tk.Frame(
             main_container, bg=panel_bg, relief=tk.RAISED, bd=1)
-        right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
+        self.token_table_visible = False
 
-        tokens_label = tk.Label(right_panel, text="Lexical Table",
+        tokens_label = tk.Label(self.right_panel, text="Lexical Table",
                                 font=("Courier New", 12, "bold"), bg=panel_bg, fg="white", anchor="w")
         tokens_label.pack(fill=tk.X, padx=10, pady=(10, 5))
 
         # Tokens table
-        table_frame = tk.Frame(right_panel)
+        table_frame = tk.Frame(self.right_panel)
         table_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
 
         # Scrollbars
@@ -2053,13 +2065,180 @@ class KuCodeLexerGUI:
     def sync_scroll(self, event=None):
         self.line_numbers.yview_moveto(self.source_text.yview()[0])
 
+    def toggle_token_table(self):
+        if self.token_table_visible:
+            self.right_panel.pack_forget()
+            self.token_table_visible = False
+        else:
+            self.right_panel.pack(
+                side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
+            self.token_table_visible = True
+
     def clear_all(self):
+        self._cleanup_subprocess()
         self.source_text.delete(1.0, tk.END)
         self.token_table.delete(*self.token_table.get_children())
         self.terminal_text.delete(1.0, tk.END)
         self.update_line_numbers()
 
+    # ── Subprocess execution infrastructure ────────────────
+
+    def _execute_code(self, python_code: str):
+        """Write generated code to temp file and execute in subprocess."""
+        import subprocess
+        import threading
+        import tempfile
+        import sys
+
+        self._cleanup_subprocess()
+        self._running = True
+
+        # Write generated code to temp file
+        self._temp_file_path = tempfile.mktemp(suffix='.py')
+        with open(self._temp_file_path, 'w', encoding='utf-8') as f:
+            f.write(python_code)
+
+        # Launch subprocess
+        self._subprocess = subprocess.Popen(
+            [sys.executable, '-u', self._temp_file_path],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1
+        )
+
+        # Input buffer — tracks what the user types, independent of terminal state
+        self._input_buffer = ""
+
+        # Bind keys for input
+        self.terminal_text.bind('<Key>', self._on_terminal_key)
+
+        # Start output reader threads
+        self._stdout_thread = threading.Thread(
+            target=self._read_stream,
+            args=(self._subprocess.stdout, False),
+            daemon=True
+        )
+        self._stderr_thread = threading.Thread(
+            target=self._read_stream,
+            args=(self._subprocess.stderr, True),
+            daemon=True
+        )
+        self._watcher_thread = threading.Thread(
+            target=self._watch_process,
+            daemon=True
+        )
+        self._stdout_thread.start()
+        self._stderr_thread.start()
+        self._watcher_thread.start()
+
+    def _read_stream(self, stream, is_error=False):
+        """Read from subprocess stdout/stderr in background thread."""
+        try:
+            for line in iter(stream.readline, ''):
+                tag = "error" if is_error else ""
+                self.root.after(0, self._append_output, line, tag)
+        except (ValueError, OSError):
+            pass
+
+    def _append_output(self, text, tag=""):
+        """Thread-safe: insert text into terminal (called via root.after)."""
+        self.terminal_text.insert(tk.END, text, tag if tag else None)
+        self.terminal_text.see(tk.END)
+
+    def _on_terminal_key(self, event):
+        """Buffer-based input: capture keystrokes, display them, send on Enter."""
+        if not self._running:
+            return 'break'
+
+        # Enter key — send buffered input to subprocess
+        if event.keysym == 'Return':
+            if self._subprocess and self._subprocess.poll() is None:
+                # Just add newline (typed chars are already visible)
+                self.terminal_text.insert(tk.END, '\n')
+                self.terminal_text.see(tk.END)
+                try:
+                    self._subprocess.stdin.write(self._input_buffer + '\n')
+                    self._subprocess.stdin.flush()
+                except (BrokenPipeError, OSError):
+                    pass
+                self._input_buffer = ""
+            return 'break'
+
+        # BackSpace — remove last char from buffer
+        if event.keysym == 'BackSpace':
+            if self._input_buffer:
+                self._input_buffer = self._input_buffer[:-1]
+                # Remove last visible character from terminal
+                self.terminal_text.delete('end-2c', 'end-1c')
+            return 'break'
+
+        # Ignore non-printable / modifier keys
+        if event.keysym in ('Shift_L', 'Shift_R', 'Control_L', 'Control_R',
+                            'Alt_L', 'Alt_R', 'Caps_Lock', 'Escape', 'Tab',
+                            'Left', 'Right', 'Up', 'Down', 'Home', 'End',
+                            'Delete', 'Insert', 'F1', 'F2', 'F3', 'F4',
+                            'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'):
+            return 'break'
+
+        # Regular character — add to buffer and display
+        if event.char and event.char.isprintable():
+            self._input_buffer += event.char
+            self.terminal_text.insert(tk.END, event.char)
+            self.terminal_text.see(tk.END)
+
+        return 'break'  # block all default Text widget behavior
+
+    def _watch_process(self):
+        """Wait for subprocess to finish."""
+        if self._subprocess:
+            self._subprocess.wait()
+            # Wait for reader threads to finish draining output
+            if hasattr(self, '_stdout_thread'):
+                self._stdout_thread.join(timeout=3)
+            if hasattr(self, '_stderr_thread'):
+                self._stderr_thread.join(timeout=3)
+            exit_code = self._subprocess.returncode
+            self.root.after(0, self._on_process_done, exit_code)
+
+    def _on_process_done(self, exit_code):
+        """Called on main thread when subprocess finishes."""
+        self._running = False
+        self.terminal_text.insert(tk.END, f"\n{'='*50}\n")
+        if exit_code == 0:
+            self.terminal_text.insert(
+                tk.END, "Program finished successfully.\n", "success")
+        else:
+            self.terminal_text.insert(
+                tk.END, f"Program exited with code {exit_code}.\n", "error")
+        self.terminal_text.see(tk.END)
+        # Unbind execution key handler
+        self.terminal_text.unbind('<Key>')
+        # Configure tags
+        self.terminal_text.tag_config("error", foreground="#ff6b6b")
+        self.terminal_text.tag_config("success", foreground="#00ff00")
+
+    def _cleanup_subprocess(self):
+        """Kill running subprocess and clean up temp file."""
+        import os
+        if hasattr(self, '_subprocess') and self._subprocess \
+                and self._subprocess.poll() is None:
+            self._subprocess.terminate()
+            try:
+                self._subprocess.wait(timeout=5)
+            except Exception:
+                self._subprocess.kill()
+        self._subprocess = None
+        if hasattr(self, '_temp_file_path') and self._temp_file_path:
+            try:
+                os.unlink(self._temp_file_path)
+            except OSError:
+                pass
+            self._temp_file_path = None
+
     def analyze(self):
+        self._cleanup_subprocess()
         self.token_table.delete(*self.token_table.get_children())
         self.terminal_text.delete(1.0, tk.END)
 
@@ -2139,8 +2318,41 @@ class KuCodeLexerGUI:
             else:
                 self.terminal_text.insert(
                     tk.END, "✓ Semantic analysis passed.\n", "success")
-                # quadruples are stored in analyzer.quadruples
-                # and will be passed to the code generator (next phase)
+
+                # Display warnings if any
+                if analyzer.warnings:
+                    for w in analyzer.warnings:
+                        self.terminal_text.insert(
+                            tk.END, f"  {w}\n", "warning")
+
+                # CODE GENERATION
+                self.terminal_text.insert(
+                    tk.END, "\nStarting code generation...\n\n", "info")
+
+                from code_generator import CodeGenerator
+                gen = CodeGenerator(analyzer.symbol_table)
+                python_code = gen.generate(ast)
+
+                self.terminal_text.insert(
+                    tk.END, "✓ Code generation passed.\n", "success")
+                self.terminal_text.insert(
+                    tk.END, f"\n{'='*50}\n", "info")
+                self.terminal_text.insert(
+                    tk.END, "Program Output:\n\n", "info")
+
+                # Configure tags before execution
+                self.terminal_text.tag_config(
+                    "error", foreground="#ff6b6b")
+                self.terminal_text.tag_config(
+                    "success", foreground="#00ff00")
+                self.terminal_text.tag_config(
+                    "info", foreground="#61afef")
+                self.terminal_text.tag_config(
+                    "warning", foreground="#e5c07b")
+
+                # Execute generated code
+                self._execute_code(python_code)
+                return  # execution runs async, skip stats
 
         except SyntaxError as e:
             self.terminal_text.insert(

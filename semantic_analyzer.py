@@ -1,25 +1,3 @@
-"""
-KUCODE Semantic Analyzer
-========================
-Tree-walking semantic analyzer over the AST produced by the LL(1) parser.
-
-Responsibilities:
-  1. Semantic checks defined in semantic_rules.txt
-  2. Three-Address Code (TAC) emission as Quadruples: (op, arg1, arg2, result)
-
-Two-pass design:
-  Pass 1 — DeclarationCollector: walks Program.groups, Program.worldwide_decls,
-            and Program.functions (headers only) to collect group types,
-            worldwide variables, and function signatures (enables forward refs).
-  Pass 2 — SemanticChecker: full tree walk; semantic checking and TAC emission
-            happen in tandem.
-
-Usage:
-    from semantic_analyzer import SemanticAnalyzer
-    # ast = parser.parse()   # returns a Program AST node
-    analyzer = SemanticAnalyzer(ast)
-    quadruples, errors = analyzer.analyze()
-"""
 
 from __future__ import annotations
 from dataclasses import dataclass, field
@@ -37,9 +15,9 @@ from ast_nodes import (
 )
 
 
-# ═══════════════════════════════════════════════════════════════
+
 # TYPE-SYSTEM CONSTANTS
-# ═══════════════════════════════════════════════════════════════
+
 
 NUMERIC_TYPES   = {'num', 'decimal', 'bigdecimal'}
 BOOL_TYPE       = 'bool'
@@ -56,9 +34,9 @@ LOGICAL_OPS     = {'&&', '||', '!'}
 COMPOUND_ASSIGN = {'+=', '-=', '*=', '/=', '%=', '**='}
 
 
-# ═══════════════════════════════════════════════════════════════
+
 # DATA STRUCTURES
-# ═══════════════════════════════════════════════════════════════
+
 
 @dataclass
 class SemanticError:
@@ -151,9 +129,8 @@ class SymbolTable:
         return len(self.scopes)
 
 
-# ═══════════════════════════════════════════════════════════════
 # TYPE HELPERS
-# ═══════════════════════════════════════════════════════════════
+
 
 def infer_literal_type(token_type: str, value: str = '') -> str:
     if token_type == 'decimal_lit':
@@ -217,9 +194,9 @@ def result_type_of_op(op: str, left: str, right: str) -> str:
     return 'unknown'
 
 
-# ═══════════════════════════════════════════════════════════════
+
 # AST VISITOR BASE
-# ═══════════════════════════════════════════════════════════════
+
 
 class ASTVisitor:
     def visit(self, node):
@@ -233,9 +210,9 @@ class ASTVisitor:
         return None
 
 
-# ═══════════════════════════════════════════════════════════════
+
 # PASS 1 — DECLARATION COLLECTOR
-# ═══════════════════════════════════════════════════════════════
+
 
 class DeclarationCollector(ASTVisitor):
     """Walks Program top-level to collect groups, worldwide vars, and
@@ -289,9 +266,9 @@ class DeclarationCollector(ASTVisitor):
             self._error(f"Duplicate function definition '{node.name}'", node)
 
 
-# ═══════════════════════════════════════════════════════════════
+
 # PASS 2 — SEMANTIC CHECKER + TAC EMITTER
-# ═══════════════════════════════════════════════════════════════
+
 
 class SemanticChecker(ASTVisitor):
     """Full tree walk: semantic checks + TAC emission."""
@@ -995,18 +972,25 @@ class SemanticChecker(ASTVisitor):
 
         # Type checking per operator category
         if op in LOGICAL_OPS:
-            has_error = False
-            if not is_numeric_or_bool(left_type) and left_type != 'unknown':
-                self._error(
-                    f"Operator '{op}' is not valid for type '{left_type}'", node
-                )
-                has_error = True
-            if not is_numeric_or_bool(right_type) and right_type != 'unknown':
-                self._error(
-                    f"Operator '{op}' is not valid for type '{right_type}'", node
-                )
-                has_error = True
-            if has_error:
+            left_bad = not is_numeric_or_bool(left_type) and left_type != 'unknown'
+            right_bad = not is_numeric_or_bool(right_type) and right_type != 'unknown'
+            if left_bad or right_bad:
+                if left_bad and right_bad and left_type == right_type:
+                    self._error(
+                        f"Operator '{op}' is not valid for type '{left_type}'", node
+                    )
+                elif left_bad and right_bad:
+                    self._error(
+                        f"Operator '{op}' is not valid for types '{left_type}' and '{right_type}'", node
+                    )
+                elif left_bad:
+                    self._error(
+                        f"Operator '{op}' is not valid for type '{left_type}'", node
+                    )
+                else:
+                    self._error(
+                        f"Operator '{op}' is not valid for type '{right_type}'", node
+                    )
                 return '_', 'unknown'
             temp = self._new_temp()
             self._emit(op, left_place, right_place, temp)
