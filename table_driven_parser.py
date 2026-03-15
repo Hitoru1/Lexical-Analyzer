@@ -266,6 +266,7 @@ class TableDrivenParser:
                 ['-=', '<stmt_value>', ';'],
                 ['*=', '<stmt_value>', ';'],
                 ['/=', '<stmt_value>', ';'],
+                ['//=', '<stmt_value>', ';'],
                 ['%=', '<stmt_value>', ';'],
                 ['**=', '<stmt_value>', ';'],
                 ['++', ';'],
@@ -443,6 +444,7 @@ class TableDrivenParser:
             '<stmt_mult_tail>': [
                 ['*', '<stmt_exp>', '<stmt_mult_tail>'],
                 ['/', '<stmt_exp>', '<stmt_mult_tail>'],
+                ['//', '<stmt_exp>', '<stmt_mult_tail>'],
                 ['%', '<stmt_exp>', '<stmt_mult_tail>'],
                 ['λ']
             ],
@@ -524,6 +526,7 @@ class TableDrivenParser:
             '<arg_mult_tail>': [
                 ['*', '<arg_exp>', '<arg_mult_tail>'],
                 ['/', '<arg_exp>', '<arg_mult_tail>'],
+                ['//', '<arg_exp>', '<arg_mult_tail>'],
                 ['%', '<arg_exp>', '<arg_mult_tail>'],
                 ['λ']
             ],
@@ -580,6 +583,7 @@ class TableDrivenParser:
             '<index_mult_tail>': [
                 ['*', '<index_exp>', '<index_mult_tail>'],
                 ['/', '<index_exp>', '<index_mult_tail>'],
+                ['//', '<index_exp>', '<index_mult_tail>'],
                 ['%', '<index_exp>', '<index_mult_tail>'],
                 ['λ']
             ],
@@ -809,9 +813,9 @@ class TableDrivenParser:
             'identifier', 'num_lit', 'decimal_lit', 'string_lit', 'char_lit',
             'Yes', 'No',
             # Operators
-            '+', '-', '*', '/', '%', '**',
+            '+', '-', '*', '/', '//', '%', '**',
             '||', '&&', '==', '!=', '>', '<', '>=', '<=',
-            '=', '+=', '-=', '*=', '/=', '%=', '**=', '++', '--',
+            '=', '+=', '-=', '*=', '/=', '//=', '%=', '**=', '++', '--',
             '!',
             # Type keywords (semantic value = the type itself)
             'num', 'decimal', 'bigdecimal', 'bool', 'text', 'letter', 'empty',
@@ -1017,7 +1021,7 @@ class TableDrivenParser:
                     else:
                         next_token = '$'
 
-                    if next_token in ['=', '+=', '-=', '*=', '/=', '%=', '**=', '++', '--', '[', '.']:
+                    if next_token in ['=', '+=', '-=', '*=', '/=', '//=', '%=', '**=', '++', '--', '[', '.']:
                         production = ['<assignment_statement>']
                     elif next_token == '(':
                         production = ['<function_call_statement>']
@@ -1026,7 +1030,7 @@ class TableDrivenParser:
                     else:
                         all_valid_tokens = set()
                         all_valid_tokens.update(
-                            ['=', '+=', '-=', '*=', '/=', '%=', '**=', '++', '--', '[', '.'])
+                            ['=', '+=', '-=', '*=', '/=', '//=', '%=', '**=', '++', '--', '[', '.'])
                         all_valid_tokens.add('(')
                         all_valid_tokens.add('identifier')
                         exp_str = ', '.join(
@@ -1935,10 +1939,10 @@ class TableDrivenParser:
             'identifier', 'num_lit', 'decimal_lit', 'string_lit', 'char_lit',
             'Yes', 'No',
             # Binary operators (needed for BUILD_TAIL / expression actions)
-            '+', '-', '*', '/', '%', '**',
+            '+', '-', '*', '/', '//', '%', '**',
             '||', '&&', '==', '!=', '>', '<', '>=', '<=',
             # Compound assignment ops & increment/decrement
-            '+=', '-=', '*=', '/=', '%=', '**=', '++', '--',
+            '+=', '-=', '*=', '/=', '//=', '%=', '**=', '++', '--',
             # Unary
             '!',
             # Type keywords
@@ -2190,7 +2194,7 @@ class TableDrivenParser:
                 if nt == '<assignment_tail>':
                     if prod[0] == '=':
                         self.production_actions[key] = 'CUSTOM_assignment_tail_eq'
-                    elif prod[0] in ('+=', '-=', '*=', '/=', '%=', '**='):
+                    elif prod[0] in ('+=', '-=', '*=', '/=', '//=', '%=', '**='):
                         self.production_actions[key] = 'CUSTOM_assignment_tail_compound'
                     elif prod[0] == '++':
                         self.production_actions[key] = 'CUSTOM_assignment_tail_increment'

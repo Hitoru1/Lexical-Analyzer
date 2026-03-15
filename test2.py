@@ -75,6 +75,7 @@ OP_ADDITION = '+'
 OP_SUBTRACTION = '-'
 OP_MULTIPLICATION = '*'
 OP_DIVISION = '/'
+OP_INTEGER_DIVISION = '//'
 OP_MODULUS = '%'
 OP_EXPONENTIATION = '**'
 OP_EXPONENTIATION_ASSIGN = '**='
@@ -85,6 +86,7 @@ OP_ADDITION_ASSIGN = '+='
 OP_SUBTRACTION_ASSIGN = '-='
 OP_MULTIPLICATION_ASSIGN = '*='
 OP_DIVISION_ASSIGN = '/='
+OP_INTEGER_DIVISION_ASSIGN = '//='
 OP_MODULUS_ASSIGN = '%='
 
 # Comparison Operators
@@ -236,6 +238,8 @@ TOKEN_DELIMITERS = {
     OP_SUBTRACTION_ASSIGN: 'op_delim',
     OP_DIVISION: 'op_delim',
     OP_DIVISION_ASSIGN: 'op_delim',
+    OP_INTEGER_DIVISION: 'op_delim',
+    OP_INTEGER_DIVISION_ASSIGN: 'op_delim',
     OP_MULTIPLICATION: 'op_delim',
     OP_MULTIPLICATION_ASSIGN: 'op_delim',
     OP_EXPONENTIATION: 'op_delim',
@@ -1422,7 +1426,29 @@ class Lexer:
                 pos_start = self.pos.copy()
                 self.advance()
 
-                if self.current_char == '=':
+                if self.current_char == '/':
+                    # // or //=
+                    self.advance()
+                    if self.current_char == '=':
+                        self.advance()
+                        pos_end = self.pos.copy()
+                        delim_error = self.check_delimiter(
+                            OP_INTEGER_DIVISION_ASSIGN, '//=', pos_end)
+                        if delim_error:
+                            errors.append(delim_error)
+                            continue
+                        tokens.append(Token(OP_INTEGER_DIVISION_ASSIGN,
+                                      '//=', pos_start, pos_end))
+                    else:
+                        pos_end = self.pos.copy()
+                        delim_error = self.check_delimiter(
+                            OP_INTEGER_DIVISION, '//', pos_end)
+                        if delim_error:
+                            errors.append(delim_error)
+                            continue
+                        tokens.append(Token(OP_INTEGER_DIVISION,
+                                      '//', pos_start, pos_end))
+                elif self.current_char == '=':
                     self.advance()
                     pos_end = self.pos.copy()
                     delim_error = self.check_delimiter(
@@ -2134,11 +2160,16 @@ class KuCodeLexerGUI:
         self._watcher_thread.start()
 
     def _read_stream(self, stream, is_error=False):
-        """Read from subprocess stdout/stderr in background thread."""
+        """Read from subprocess stdout/stderr in background thread.
+        Uses read(1) instead of readline() so that prompts printed
+        with end='' (no newline) appear immediately in the terminal."""
+        tag = "error" if is_error else ""
         try:
-            for line in iter(stream.readline, ''):
-                tag = "error" if is_error else ""
-                self.root.after(0, self._append_output, line, tag)
+            while True:
+                char = stream.read(1)
+                if not char:
+                    break
+                self.root.after(0, self._append_output, char, tag)
         except (ValueError, OSError):
             pass
 

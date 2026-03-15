@@ -27,11 +27,11 @@ PRIMITIVE_TYPES = NUMERIC_TYPES | {BOOL_TYPE, TEXT_TYPE, CHAR_TYPE}
 NUMERIC_OR_BOOL = NUMERIC_TYPES | {BOOL_TYPE}   # truthy-coercion domain
 RETURN_TYPES    = PRIMITIVE_TYPES | {'empty'}
 
-ARITHMETIC_OPS  = {'+', '-', '*', '/', '%', '**'}
+ARITHMETIC_OPS  = {'+', '-', '*', '/', '//', '%', '**'}
 RELATIONAL_OPS  = {'>', '<', '>=', '<='}
 EQUALITY_OPS    = {'==', '!='}
 LOGICAL_OPS     = {'&&', '||', '!'}
-COMPOUND_ASSIGN = {'+=', '-=', '*=', '/=', '%=', '**='}
+COMPOUND_ASSIGN = {'+=', '-=', '*=', '/=', '//=', '%=', '**='}
 
 
 
