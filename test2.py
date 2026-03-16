@@ -34,6 +34,7 @@ RW_FIXED = 'fixed'
 # Reserved Words - Input/Output
 RW_READ = 'read'
 RW_SHOW = 'show'
+RW_DISPLAY = 'display'
 
 # Reserved Words - Built-in Functions
 RW_SIZE = 'size'
@@ -470,8 +471,8 @@ class TransitionDFA:
         trans[19] = {'k': 20}
         trans[20] = {}  # accept: check
 
-        # "decimal", "define", "during"
-        trans[22] = {'e': 23, 'u': 35}
+        # "decimal", "define", "display", "during"
+        trans[22] = {'e': 23, 'i': 205, 'u': 35}
         trans[23] = {'c': 24, 'f': 30}
         trans[24] = {'i': 25}
         trans[25] = {'m': 26}
@@ -489,6 +490,14 @@ class TransitionDFA:
         trans[37] = {'n': 38}
         trans[38] = {'g': 39}
         trans[39] = {}  # accept: during
+
+        # "display"
+        trans[205] = {'s': 206}
+        trans[206] = {'p': 207}
+        trans[207] = {'l': 208}
+        trans[208] = {'a': 209}
+        trans[209] = {'y': 210}
+        trans[210] = {}  # accept: display
 
         # "each", "empty"
         trans[41] = {'a': 42, 'm': 46}
@@ -627,6 +636,7 @@ class TransitionDFA:
             128: RW_READ,
             134: RW_SELECT,
             139: RW_SHOW,
+            210: RW_DISPLAY,
             197: RW_SIZE,
             143: RW_SKIP,
             154: RW_STOP,
@@ -2048,7 +2058,7 @@ class KuCodeLexerGUI:
     # Keywords - purple/pink (SKIP if inside string/comment)
         keywords_pattern = r'\b(' + '|'.join([
             'start', 'finish', 'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool',
-            'Yes', 'No', 'empty', 'read', 'show', 'check', 'otherwise', 'otherwisecheck',
+            'Yes', 'No', 'empty', 'read', 'show', 'display', 'check', 'otherwise', 'otherwisecheck',
             'fallback', 'select', 'option', 'each', 'during', 'from', 'to', 'step',
             'stop', 'skip', 'give', 'define', 'worldwide', 'fixed', 'list', 'group', 'size'
         ]) + r')\b'

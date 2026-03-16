@@ -190,6 +190,11 @@ class ShowStmt(Stmt):
 
 
 @dataclass
+class DisplayStmt(Stmt):
+    args: List[Expr] = field(default_factory=list)
+
+
+@dataclass
 class ReadStmt(Stmt):
     variable: str = ''
 
