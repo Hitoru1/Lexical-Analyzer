@@ -4,7 +4,7 @@ from ast_nodes import (
     VarDecl, FixedDecl, ListDecl,
     Assignment, CompoundAssign, Increment, Decrement,
     IfChain, ElifBranch, SelectStmt, OptionBlock,
-    EachLoop, DuringLoop, FuncCallStmt, ReturnStmt, ShowStmt, ReadStmt,
+    EachLoop, DuringLoop, FuncCallStmt, ReturnStmt, ShowStmt, DisplayStmt, ReadStmt,
     BinaryOp, UnaryOp, Literal, Identifier, FuncCall,
     ListAccess, MemberAccess, SizeCall, ListLiteral1D, ListLiteral2D,
 )
@@ -266,6 +266,7 @@ class TableDrivenParser:
                 ['-=', '<stmt_value>', ';'],
                 ['*=', '<stmt_value>', ';'],
                 ['/=', '<stmt_value>', ';'],
+                ['//=', '<stmt_value>', ';'],
                 ['%=', '<stmt_value>', ';'],
                 ['**=', '<stmt_value>', ';'],
                 ['++', ';'],
@@ -311,6 +312,7 @@ class TableDrivenParser:
 
             '<io_statement>': [
                 ['show', '(', '<arg_list>', ')', ';'],
+                ['display', '(', '<arg_list>', ')', ';'],
                 ['read', '(', 'identifier', ')', ';']
             ],
 
@@ -443,6 +445,7 @@ class TableDrivenParser:
             '<stmt_mult_tail>': [
                 ['*', '<stmt_exp>', '<stmt_mult_tail>'],
                 ['/', '<stmt_exp>', '<stmt_mult_tail>'],
+                ['//', '<stmt_exp>', '<stmt_mult_tail>'],
                 ['%', '<stmt_exp>', '<stmt_mult_tail>'],
                 ['λ']
             ],
@@ -524,6 +527,7 @@ class TableDrivenParser:
             '<arg_mult_tail>': [
                 ['*', '<arg_exp>', '<arg_mult_tail>'],
                 ['/', '<arg_exp>', '<arg_mult_tail>'],
+                ['//', '<arg_exp>', '<arg_mult_tail>'],
                 ['%', '<arg_exp>', '<arg_mult_tail>'],
                 ['λ']
             ],
@@ -580,6 +584,7 @@ class TableDrivenParser:
             '<index_mult_tail>': [
                 ['*', '<index_exp>', '<index_mult_tail>'],
                 ['/', '<index_exp>', '<index_mult_tail>'],
+                ['//', '<index_exp>', '<index_mult_tail>'],
                 ['%', '<index_exp>', '<index_mult_tail>'],
                 ['λ']
             ],
@@ -809,9 +814,9 @@ class TableDrivenParser:
             'identifier', 'num_lit', 'decimal_lit', 'string_lit', 'char_lit',
             'Yes', 'No',
             # Operators
-            '+', '-', '*', '/', '%', '**',
+            '+', '-', '*', '/', '//', '%', '**',
             '||', '&&', '==', '!=', '>', '<', '>=', '<=',
-            '=', '+=', '-=', '*=', '/=', '%=', '**=', '++', '--',
+            '=', '+=', '-=', '*=', '/=', '//=', '%=', '**=', '++', '--',
             '!',
             # Type keywords (semantic value = the type itself)
             'num', 'decimal', 'bigdecimal', 'bool', 'text', 'letter', 'empty',
@@ -1017,7 +1022,7 @@ class TableDrivenParser:
                     else:
                         next_token = '$'
 
-                    if next_token in ['=', '+=', '-=', '*=', '/=', '%=', '**=', '++', '--', '[', '.']:
+                    if next_token in ['=', '+=', '-=', '*=', '/=', '//=', '%=', '**=', '++', '--', '[', '.']:
                         production = ['<assignment_statement>']
                     elif next_token == '(':
                         production = ['<function_call_statement>']
@@ -1026,7 +1031,7 @@ class TableDrivenParser:
                     else:
                         all_valid_tokens = set()
                         all_valid_tokens.update(
-                            ['=', '+=', '-=', '*=', '/=', '%=', '**=', '++', '--', '[', '.'])
+                            ['=', '+=', '-=', '*=', '/=', '//=', '%=', '**=', '++', '--', '[', '.'])
                         all_valid_tokens.add('(')
                         all_valid_tokens.add('identifier')
                         exp_str = ', '.join(
@@ -1620,6 +1625,14 @@ class TableDrivenParser:
             args = []
         self.sem_stack.append(ShowStmt(args=args))
 
+    def _action_io_display(self, saved_depth):
+        # display ( arg_list ) ;
+        # sem_stack has: ... arg_list
+        args = self.sem_stack.pop()
+        if not isinstance(args, list):
+            args = []
+        self.sem_stack.append(DisplayStmt(args=args))
+
     def _action_io_read(self, saved_depth):
         # read ( identifier ) ;
         # sem_stack has: ... identifier_token
@@ -1935,10 +1948,10 @@ class TableDrivenParser:
             'identifier', 'num_lit', 'decimal_lit', 'string_lit', 'char_lit',
             'Yes', 'No',
             # Binary operators (needed for BUILD_TAIL / expression actions)
-            '+', '-', '*', '/', '%', '**',
+            '+', '-', '*', '/', '//', '%', '**',
             '||', '&&', '==', '!=', '>', '<', '>=', '<=',
             # Compound assignment ops & increment/decrement
-            '+=', '-=', '*=', '/=', '%=', '**=', '++', '--',
+            '+=', '-=', '*=', '/=', '//=', '%=', '**=', '++', '--',
             # Unary
             '!',
             # Type keywords
@@ -2190,7 +2203,7 @@ class TableDrivenParser:
                 if nt == '<assignment_tail>':
                     if prod[0] == '=':
                         self.production_actions[key] = 'CUSTOM_assignment_tail_eq'
-                    elif prod[0] in ('+=', '-=', '*=', '/=', '%=', '**='):
+                    elif prod[0] in ('+=', '-=', '*=', '/=', '//=', '%=', '**='):
                         self.production_actions[key] = 'CUSTOM_assignment_tail_compound'
                     elif prod[0] == '++':
                         self.production_actions[key] = 'CUSTOM_assignment_tail_increment'
@@ -2219,6 +2232,8 @@ class TableDrivenParser:
                 if nt == '<io_statement>':
                     if prod[0] == 'show':
                         self.production_actions[key] = 'CUSTOM_io_show'
+                    elif prod[0] == 'display':
+                        self.production_actions[key] = 'CUSTOM_io_display'
                     else:
                         self.production_actions[key] = 'CUSTOM_io_read'
                     continue

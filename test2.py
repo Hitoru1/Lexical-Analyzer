@@ -34,6 +34,7 @@ RW_FIXED = 'fixed'
 # Reserved Words - Input/Output
 RW_READ = 'read'
 RW_SHOW = 'show'
+RW_DISPLAY = 'display'
 
 # Reserved Words - Built-in Functions
 RW_SIZE = 'size'
@@ -75,6 +76,7 @@ OP_ADDITION = '+'
 OP_SUBTRACTION = '-'
 OP_MULTIPLICATION = '*'
 OP_DIVISION = '/'
+OP_INTEGER_DIVISION = '//'
 OP_MODULUS = '%'
 OP_EXPONENTIATION = '**'
 OP_EXPONENTIATION_ASSIGN = '**='
@@ -85,6 +87,7 @@ OP_ADDITION_ASSIGN = '+='
 OP_SUBTRACTION_ASSIGN = '-='
 OP_MULTIPLICATION_ASSIGN = '*='
 OP_DIVISION_ASSIGN = '/='
+OP_INTEGER_DIVISION_ASSIGN = '//='
 OP_MODULUS_ASSIGN = '%='
 
 # Comparison Operators
@@ -236,6 +239,8 @@ TOKEN_DELIMITERS = {
     OP_SUBTRACTION_ASSIGN: 'op_delim',
     OP_DIVISION: 'op_delim',
     OP_DIVISION_ASSIGN: 'op_delim',
+    OP_INTEGER_DIVISION: 'op_delim',
+    OP_INTEGER_DIVISION_ASSIGN: 'op_delim',
     OP_MULTIPLICATION: 'op_delim',
     OP_MULTIPLICATION_ASSIGN: 'op_delim',
     OP_EXPONENTIATION: 'op_delim',
@@ -466,8 +471,8 @@ class TransitionDFA:
         trans[19] = {'k': 20}
         trans[20] = {}  # accept: check
 
-        # "decimal", "define", "during"
-        trans[22] = {'e': 23, 'u': 35}
+        # "decimal", "define", "display", "during"
+        trans[22] = {'e': 23, 'i': 205, 'u': 35}
         trans[23] = {'c': 24, 'f': 30}
         trans[24] = {'i': 25}
         trans[25] = {'m': 26}
@@ -485,6 +490,14 @@ class TransitionDFA:
         trans[37] = {'n': 38}
         trans[38] = {'g': 39}
         trans[39] = {}  # accept: during
+
+        # "display"
+        trans[205] = {'s': 206}
+        trans[206] = {'p': 207}
+        trans[207] = {'l': 208}
+        trans[208] = {'a': 209}
+        trans[209] = {'y': 210}
+        trans[210] = {}  # accept: display
 
         # "each", "empty"
         trans[41] = {'a': 42, 'm': 46}
@@ -623,6 +636,7 @@ class TransitionDFA:
             128: RW_READ,
             134: RW_SELECT,
             139: RW_SHOW,
+            210: RW_DISPLAY,
             197: RW_SIZE,
             143: RW_SKIP,
             154: RW_STOP,
@@ -1422,7 +1436,29 @@ class Lexer:
                 pos_start = self.pos.copy()
                 self.advance()
 
-                if self.current_char == '=':
+                if self.current_char == '/':
+                    # // or //=
+                    self.advance()
+                    if self.current_char == '=':
+                        self.advance()
+                        pos_end = self.pos.copy()
+                        delim_error = self.check_delimiter(
+                            OP_INTEGER_DIVISION_ASSIGN, '//=', pos_end)
+                        if delim_error:
+                            errors.append(delim_error)
+                            continue
+                        tokens.append(Token(OP_INTEGER_DIVISION_ASSIGN,
+                                      '//=', pos_start, pos_end))
+                    else:
+                        pos_end = self.pos.copy()
+                        delim_error = self.check_delimiter(
+                            OP_INTEGER_DIVISION, '//', pos_end)
+                        if delim_error:
+                            errors.append(delim_error)
+                            continue
+                        tokens.append(Token(OP_INTEGER_DIVISION,
+                                      '//', pos_start, pos_end))
+                elif self.current_char == '=':
                     self.advance()
                     pos_end = self.pos.copy()
                     delim_error = self.check_delimiter(
@@ -1845,11 +1881,17 @@ class KuCodeLexerGUI:
                               activebackground="#4d7aaf")
         clear_btn.pack(side=tk.LEFT, padx=5)
 
-        save_btn = tk.Button(btn_frame, text="Save", command=self.save_results,
+        save_btn = tk.Button(btn_frame, text="Save", command=self.save_file,
                              bg="#1d4a7a", fg="white", font=("Courier New", 10, "bold"),
                              padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
                              activebackground="#2d5a8a")
         save_btn.pack(side=tk.LEFT, padx=5)
+
+        open_btn = tk.Button(btn_frame, text="Open", command=self.open_file,
+                             bg="#1d4a7a", fg="white", font=("Courier New", 10, "bold"),
+                             padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
+                             activebackground="#2d5a8a")
+        open_btn.pack(side=tk.LEFT, padx=5)
 
         toggle_btn = tk.Button(btn_frame, text="Toggle Tokens",
                                command=self.toggle_token_table,
@@ -2016,7 +2058,7 @@ class KuCodeLexerGUI:
     # Keywords - purple/pink (SKIP if inside string/comment)
         keywords_pattern = r'\b(' + '|'.join([
             'start', 'finish', 'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool',
-            'Yes', 'No', 'empty', 'read', 'show', 'check', 'otherwise', 'otherwisecheck',
+            'Yes', 'No', 'empty', 'read', 'show', 'display', 'check', 'otherwise', 'otherwisecheck',
             'fallback', 'select', 'option', 'each', 'during', 'from', 'to', 'step',
             'stop', 'skip', 'give', 'define', 'worldwide', 'fixed', 'list', 'group', 'size'
         ]) + r')\b'
@@ -2134,11 +2176,16 @@ class KuCodeLexerGUI:
         self._watcher_thread.start()
 
     def _read_stream(self, stream, is_error=False):
-        """Read from subprocess stdout/stderr in background thread."""
+        """Read from subprocess stdout/stderr in background thread.
+        Uses read(1) instead of readline() so that prompts printed
+        with end='' (no newline) appear immediately in the terminal."""
+        tag = "error" if is_error else ""
         try:
-            for line in iter(stream.readline, ''):
-                tag = "error" if is_error else ""
-                self.root.after(0, self._append_output, line, tag)
+            while True:
+                char = stream.read(1)
+                if not char:
+                    break
+                self.root.after(0, self._append_output, char, tag)
         except (ValueError, OSError):
             pass
 
@@ -2370,43 +2417,33 @@ class KuCodeLexerGUI:
         self.terminal_text.insert(
             tk.END, f"Total Tokens: {len(displayable_tokens)}\n")
 
-    def save_results(self):
+    def save_file(self):
         file_path = filedialog.asksaveasfilename(
-            defaultextension=".txt",
-            filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+            defaultextension=".kc",
+            filetypes=[("KuCode files", "*.kc"), ("All files", "*.*")]
         )
-
         if not file_path:
             return
-
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
-                f.write("=" * 80 + "\n")
-                f.write("SOURCE CODE\n")
-                f.write("=" * 80 + "\n")
-                f.write(self.source_text.get(1.0, tk.END))
-                f.write("\n")
-
-                f.write("=" * 80 + "\n")
-                f.write("TOKENS\n")
-                f.write("=" * 80 + "\n")
-                f.write(f"{'Lexeme':<40} {'Token':<40}\n")
-                f.write("-" * 80 + "\n")
-
-                for item in self.token_table.get_children():
-                    values = self.token_table.item(item)['values']
-                    f.write(f"{values[0]:<40} {values[1]:<40}\n")
-
-                f.write("\n")
-
-                f.write("=" * 80 + "\n")
-                f.write("ANALYSIS RESULT\n")
-                f.write("=" * 80 + "\n")
-                f.write(self.terminal_text.get(1.0, tk.END))
-
-            messagebox.showinfo("Success", f"Results saved to:\n{file_path}")
+                f.write(self.source_text.get(1.0, tk.END).rstrip('\n'))
+            messagebox.showinfo("Success", f"Saved to:\n{file_path}")
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to save file:\n{str(e)}")
+            messagebox.showerror("Error", f"Failed to save:\n{str(e)}")
+
+    def open_file(self):
+        file_path = filedialog.askopenfilename(
+            filetypes=[("KuCode files", "*.kc"), ("All files", "*.*")]
+        )
+        if not file_path:
+            return
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            self.source_text.delete(1.0, tk.END)
+            self.source_text.insert(1.0, content)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open:\n{str(e)}")
 
 
 # main

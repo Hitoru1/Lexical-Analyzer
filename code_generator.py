@@ -13,7 +13,7 @@ from ast_nodes import (
     VarDecl, FixedDecl, ListDecl,
     Assignment, CompoundAssign, Increment, Decrement,
     IfChain, ElifBranch, SelectStmt, OptionBlock,
-    EachLoop, DuringLoop, FuncCallStmt, ReturnStmt, ShowStmt, ReadStmt,
+    EachLoop, DuringLoop, FuncCallStmt, ReturnStmt, ShowStmt, DisplayStmt, ReadStmt,
     BinaryOp, UnaryOp, Literal, Identifier, FuncCall,
     ListAccess, MemberAccess, SizeCall, ListLiteral1D, ListLiteral2D,
     Expr
@@ -97,26 +97,9 @@ class CodeGenerator(ASTVisitor):
         return self._var_types.get(name, 'text')
 
     def _visit_stmts(self, stmts: list) -> None:
-        """Visit a list of statements with look-ahead.
-        If a ShowStmt is followed by a ReadStmt (skipping declarations),
-        suppress the newline so the input appears on the same line."""
-        for i, stmt in enumerate(stmts):
-            if isinstance(stmt, ShowStmt) and self._read_follows(stmts, i):
-                args = ', '.join(self.visit(arg) for arg in stmt.args)
-                self._emit_line(f'print({args}, end="", flush=True)')
-            else:
-                self.visit(stmt)
-
-    def _read_follows(self, stmts: list, show_idx: int) -> bool:
-        """Check if a ReadStmt comes after stmts[show_idx], skipping declarations."""
-        for j in range(show_idx + 1, len(stmts)):
-            s = stmts[j]
-            if isinstance(s, ReadStmt):
-                return True
-            if isinstance(s, (VarDecl, FixedDecl, ListDecl)):
-                continue  # declarations don't produce output, skip
-            break  # any other statement means it's not a prompt
-        return False
+        """Visit a list of statements."""
+        for stmt in stmts:
+            self.visit(stmt)
 
     # ── Program Structure ────────────────────────────────────
 
@@ -356,6 +339,10 @@ class CodeGenerator(ASTVisitor):
         args = ', '.join(self.visit(arg) for arg in node.args)
         self._emit_line(f'print({args}, flush=True)')
 
+    def visit_DisplayStmt(self, node: DisplayStmt) -> None:
+        args = ', '.join(self.visit(arg) for arg in node.args)
+        self._emit_line(f'print({args}, sep="", end="", flush=True)')
+
     def visit_ReadStmt(self, node: ReadStmt) -> None:
         var_type = self._get_var_type(node.variable)
         if var_type == 'num':
@@ -391,7 +378,10 @@ class CodeGenerator(ASTVisitor):
             raw = node.value
             if len(raw) >= 2 and raw[0] in ('"', "'") and raw[-1] in ('"', "'"):
                 raw = raw[1:-1]
-            return repr(raw)
+            if node.token_type == 'string_lit':
+                return f'"{raw}"'
+            else:
+                return f"'{raw}'"
         if node.value == 'Yes':
             return 'True'
         if node.value == 'No':

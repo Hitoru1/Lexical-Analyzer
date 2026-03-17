@@ -9,7 +9,7 @@ from ast_nodes import (
     VarDecl, FixedDecl, ListDecl,
     Assignment, CompoundAssign, Increment, Decrement,
     IfChain, ElifBranch, SelectStmt, OptionBlock,
-    EachLoop, DuringLoop, FuncCallStmt, ReturnStmt, ShowStmt, ReadStmt,
+    EachLoop, DuringLoop, FuncCallStmt, ReturnStmt, ShowStmt, DisplayStmt, ReadStmt,
     BinaryOp, UnaryOp, Literal, Identifier, FuncCall,
     ListAccess, MemberAccess, SizeCall, ListLiteral1D, ListLiteral2D,
 )
@@ -27,11 +27,11 @@ PRIMITIVE_TYPES = NUMERIC_TYPES | {BOOL_TYPE, TEXT_TYPE, CHAR_TYPE}
 NUMERIC_OR_BOOL = NUMERIC_TYPES | {BOOL_TYPE}   # truthy-coercion domain
 RETURN_TYPES    = PRIMITIVE_TYPES | {'empty'}
 
-ARITHMETIC_OPS  = {'+', '-', '*', '/', '%', '**'}
+ARITHMETIC_OPS  = {'+', '-', '*', '/', '//', '%', '**'}
 RELATIONAL_OPS  = {'>', '<', '>=', '<='}
 EQUALITY_OPS    = {'==', '!='}
 LOGICAL_OPS     = {'&&', '||', '!'}
-COMPOUND_ASSIGN = {'+=', '-=', '*=', '/=', '%=', '**='}
+COMPOUND_ASSIGN = {'+=', '-=', '*=', '/=', '//=', '%=', '**='}
 
 
 
@@ -763,6 +763,15 @@ class SemanticChecker(ASTVisitor):
         for arg_place, _ in args:
             self._emit('param', arg_place)
         self._emit('call', 'show', str(len(args)))
+
+    def visit_DisplayStmt(self, node: DisplayStmt):
+        args = []
+        for arg in node.args:
+            place, dtype = self.visit(arg)
+            args.append((place, dtype))
+        for arg_place, _ in args:
+            self._emit('param', arg_place)
+        self._emit('call', 'display', str(len(args)))
 
     def visit_ReadStmt(self, node: ReadStmt):
         sym = self.symbol_table.lookup(node.variable)
