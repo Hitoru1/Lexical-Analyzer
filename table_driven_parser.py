@@ -2466,6 +2466,7 @@ class TableDrivenParser:
             'CUSTOM_arg_list': TableDrivenParser._action_arg_list,
             'CUSTOM_arg_list_epsilon': TableDrivenParser._action_arg_list_epsilon,
             'CUSTOM_io_show': TableDrivenParser._action_io_show,
+            'CUSTOM_io_display': TableDrivenParser._action_io_display,
             'CUSTOM_io_read': TableDrivenParser._action_io_read,
             'CUSTOM_check_structure': TableDrivenParser._action_check_structure,
             'CUSTOM_otherwise_chain_elif': TableDrivenParser._action_otherwise_chain_elif,
