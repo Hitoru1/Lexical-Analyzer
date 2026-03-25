@@ -162,7 +162,7 @@ DELIM_SETS = {
     # (
     'open_paren': {'('},
     # space, letternum, (, ", ', {, [
-    'comma_delim': {' ', '(', '"', "'", '{', '['} | set(LETTERNUM),
+    'comma_delim': {' ', '(', '"', "'", '{', '[', '\n'} | set(LETTERNUM),
     # space, num, ", ', [, ]
     'open_list': {' ', '"', "'", '[', ']'} | set(LETTERNUM),
     # space, ;, ,, =
@@ -770,7 +770,7 @@ class Lexer:
                 'sem_col': '";"',
                 'op_delim': 'space, letter, digit, (',
                 'open_paren': '"("',
-                'comma_delim': 'space, letter, digit, "(", """, "{", "[", or "\'"',
+                'comma_delim': 'space, letter, digit, "(", """, "{", "[", or "\'",\n',
                 'open_list': 'space, digit, """, "\'", "[" or "]"',
                 'close_list': 'space, ";", "," or "="',
                 'openparen_delim': 'space, letter, digit, "\'", """, ")" or "!"',
