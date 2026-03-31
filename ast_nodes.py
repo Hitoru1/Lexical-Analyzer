@@ -1,18 +1,11 @@
-"""
-KUCODE AST Node Definitions
-============================
-Dataclass-based AST nodes for the KUCODE compiler.
-Built by the LL(1) table-driven parser, walked by the semantic analyzer.
-"""
 
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional, List
 
 
-# ═══════════════════════════════════════════════════════════════
 # BASE CLASSES
-# ═══════════════════════════════════════════════════════════════
+
 
 @dataclass
 class ASTNode:
@@ -30,9 +23,8 @@ class Stmt(ASTNode):
     pass
 
 
-# ═══════════════════════════════════════════════════════════════
 # PROGRAM STRUCTURE
-# ═══════════════════════════════════════════════════════════════
+
 
 @dataclass
 class Program(ASTNode):
@@ -63,6 +55,13 @@ class WorldwideDecl(ASTNode):
 
 
 @dataclass
+class WorldwideListDecl(ASTNode):
+    datatype: str = ''
+    name: str = ''
+    value: Optional[ListLiteral1D | ListLiteral2D] = None
+
+
+@dataclass
 class FuncDef(ASTNode):
     return_type: str = ''
     name: str = ''
@@ -78,9 +77,8 @@ class Parameter(ASTNode):
     name: str = ''
 
 
-# ═══════════════════════════════════════════════════════════════
 # DECLARATIONS (Stmt)
-# ═══════════════════════════════════════════════════════════════
+
 
 @dataclass
 class VarDecl(Stmt):
@@ -104,9 +102,8 @@ class ListDecl(Stmt):
     value: Optional[ListLiteral1D | ListLiteral2D] = None
 
 
-# ═══════════════════════════════════════════════════════════════
 # STATEMENTS (Stmt)
-# ═══════════════════════════════════════════════════════════════
+
 
 @dataclass
 class Assignment(Stmt):
@@ -199,9 +196,8 @@ class ReadStmt(Stmt):
     variable: str = ''
 
 
-# ═══════════════════════════════════════════════════════════════
 # EXPRESSIONS (Expr)
-# ═══════════════════════════════════════════════════════════════
+
 
 @dataclass
 class BinaryOp(Expr):

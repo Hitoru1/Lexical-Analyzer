@@ -2196,6 +2196,10 @@ class KuCodeLexerGUI:
 
     def _on_terminal_key(self, event):
         """Buffer-based input: capture keystrokes, display them, send on Enter."""
+        # Allow Ctrl+C (copy) and Ctrl+A (select all) always
+        if event.state & 0x4 and event.keysym in ('c', 'C', 'a', 'A'):
+            return  # let default Text widget handle it
+
         if not self._running:
             return 'break'
 
@@ -2239,14 +2243,15 @@ class KuCodeLexerGUI:
 
     def _watch_process(self):
         """Wait for subprocess to finish."""
-        if self._subprocess:
-            self._subprocess.wait()
+        proc = self._subprocess
+        if proc:
+            proc.wait()
             # Wait for reader threads to finish draining output
             if hasattr(self, '_stdout_thread'):
                 self._stdout_thread.join(timeout=3)
             if hasattr(self, '_stderr_thread'):
                 self._stderr_thread.join(timeout=3)
-            exit_code = self._subprocess.returncode
+            exit_code = proc.returncode
             self.root.after(0, self._on_process_done, exit_code)
 
     def _on_process_done(self, exit_code):
@@ -2376,9 +2381,9 @@ class KuCodeLexerGUI:
                 self.terminal_text.insert(
                     tk.END, "\nStarting code generation...\n\n", "info")
 
-                from code_generator import CodeGenerator
-                gen = CodeGenerator(analyzer.symbol_table)
-                python_code = gen.generate(ast)
+                from code_generator import TACCodeGenerator
+                gen = TACCodeGenerator(analyzer.quadruples, analyzer.symbol_table)
+                python_code = gen.generate()
 
                 self.terminal_text.insert(
                     tk.END, "✓ Code generation passed.\n", "success")

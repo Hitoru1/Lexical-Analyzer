@@ -5,7 +5,7 @@ from typing import Optional, List, Dict, Tuple
 
 from ast_nodes import (
     ASTNode, Expr, Stmt,
-    Program, GroupDef, GroupMember, WorldwideDecl, FuncDef, Parameter,
+    Program, GroupDef, GroupMember, WorldwideDecl, WorldwideListDecl, FuncDef, Parameter,
     VarDecl, FixedDecl, ListDecl,
     Assignment, CompoundAssign, Increment, Decrement,
     IfChain, ElifBranch, SelectStmt, OptionBlock,
@@ -255,6 +255,27 @@ class DeclarationCollector(ASTVisitor):
         if not self.symbol_table.declare(sym):
             self._error(f"Duplicate worldwide variable '{node.name}'", node)
 
+    def visit_WorldwideListDecl(self, node: WorldwideListDecl):
+        # Determine dimensions from the value node shape
+        list_dim = 1
+        elem_count = 0
+        col_count = 0
+        if isinstance(node.value, ListLiteral2D):
+            list_dim = 2
+            elem_count = len(node.value.rows)
+            col_count = len(node.value.rows[0].elements) if node.value.rows else 0
+        elif isinstance(node.value, ListLiteral1D):
+            elem_count = len(node.value.elements)
+
+        sym = Symbol(
+            name=node.name, kind='list', data_type=node.datatype,
+            is_list=True, is_worldwide=True,
+            list_dim=list_dim, list_size=elem_count, list_col_count=col_count,
+            line=node.line, col=node.col
+        )
+        if not self.symbol_table.declare(sym):
+            self._error(f"Duplicate worldwide list '{node.name}'", node)
+
     def _collect_function_signature(self, node: FuncDef):
         params = [(p.datatype, p.name) for p in node.params]
         sym = Symbol(
@@ -380,6 +401,12 @@ class SemanticChecker(ASTVisitor):
                 )
             self._emit('=', place, '_', node.name)
 
+    def visit_WorldwideListDecl(self, node: WorldwideListDecl):
+        # Reuse the same list-visiting logic as visit_ListDecl
+        list_place, list_dim, elem_count, col_count = self._visit_val_list(node.value, node.datatype)
+        # Symbol already registered by Pass 1 — just emit TAC
+        self._emit('list_assign', list_place, str(list_dim), node.name)
+
     def visit_FuncDef(self, node: FuncDef):
         self._emit('func_begin', node.name)
 
@@ -476,6 +503,7 @@ class SemanticChecker(ASTVisitor):
                     f"Variable '{node.name}' already declared in this scope",
                     node
                 )
+            self._emit('=', f'{node.datatype}()', '_', node.name)
             return
 
         # Primitive-typed variable: type name = expr;
@@ -781,7 +809,8 @@ class SemanticChecker(ASTVisitor):
             self._error(
                 f"Cannot read into fixed variable '{node.variable}'", node
             )
-        self._emit('read', node.variable)
+        var_type = sym.data_type if sym else 'text'
+        self._emit('read', node.variable, var_type)
 
     # ── Control statement visitors ────────────────────────────
 

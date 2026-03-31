@@ -1,6 +1,6 @@
 
 from ast_nodes import (
-    Program, GroupDef, GroupMember, WorldwideDecl, FuncDef, Parameter,
+    Program, GroupDef, GroupMember, WorldwideDecl, WorldwideListDecl, FuncDef, Parameter,
     VarDecl, FixedDecl, ListDecl,
     Assignment, CompoundAssign, Increment, Decrement,
     IfChain, ElifBranch, SelectStmt, OptionBlock,
@@ -97,7 +97,12 @@ class TableDrivenParser:
             # GLOBAL DECLARATIONS
 
             '<global_variable_declarations>': [
-                ['worldwide', '<global_modifier>', '<global_typed_decl>']
+                ['worldwide', '<global_decl_choice>']
+            ],
+
+            '<global_decl_choice>': [
+                ['<global_modifier>', '<global_typed_decl>'],
+                ['list', '<list_typed_decl>']
             ],
 
             '<global_modifier>': [
@@ -1295,12 +1300,25 @@ class TableDrivenParser:
         self.sem_stack.append((dtype, name, value, ln, col))
 
     def _action_global_variable_declarations(self, saved_depth):
+        # sem_stack has: ... decl_node (WorldwideDecl or WorldwideListDecl from <global_decl_choice>)
+        # Pass through — the node is already built by _action_global_decl_choice_*
+        pass
+
+    def _action_global_decl_choice_var(self, saved_depth):
         # sem_stack has: ... is_fixed typed_decl_tuple
         typed_decl = self.sem_stack.pop()
         is_fixed = self.sem_stack.pop()
         dtype, name, value, ln, col = typed_decl
         self.sem_stack.append(
             WorldwideDecl(is_fixed=is_fixed, datatype=dtype, name=name, value=value, line=ln, col=col)
+        )
+
+    def _action_global_decl_choice_list(self, saved_depth):
+        # sem_stack has: ... list_decl_node (ListDecl from _action_list_typed_decl)
+        list_decl = self.sem_stack.pop()
+        self.sem_stack.append(
+            WorldwideListDecl(datatype=list_decl.datatype, name=list_decl.name,
+                              value=list_decl.value, line=list_decl.line, col=list_decl.col)
         )
 
     def _action_parameter(self, saved_depth):
@@ -2063,6 +2081,14 @@ class TableDrivenParser:
                     self.production_actions[key] = 'CUSTOM_global_variable_declarations'
                     continue
 
+                # Global decl choice (left-factored: var vs list)
+                if nt == '<global_decl_choice>':
+                    if prod == ['list', '<list_typed_decl>']:
+                        self.production_actions[key] = 'CUSTOM_global_decl_choice_list'
+                    else:
+                        self.production_actions[key] = 'CUSTOM_global_decl_choice_var'
+                    continue
+
                 # Parameter
                 if nt == '<parameter>':
                     self.production_actions[key] = 'CUSTOM_parameter'
@@ -2428,6 +2454,8 @@ class TableDrivenParser:
             'CUSTOM_global_modifier_epsilon': TableDrivenParser._action_global_modifier_epsilon,
             'CUSTOM_global_typed_decl': TableDrivenParser._action_global_typed_decl,
             'CUSTOM_global_variable_declarations': TableDrivenParser._action_global_variable_declarations,
+            'CUSTOM_global_decl_choice_var': TableDrivenParser._action_global_decl_choice_var,
+            'CUSTOM_global_decl_choice_list': TableDrivenParser._action_global_decl_choice_list,
             'CUSTOM_parameter': TableDrivenParser._action_parameter,
             'CUSTOM_parameter_list': TableDrivenParser._action_parameter_list,
             'CUSTOM_parameter_list_epsilon': TableDrivenParser._action_parameter_list_epsilon,

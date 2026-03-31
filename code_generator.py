@@ -1,25 +1,21 @@
 """
-KUCODE Code Generator
-=====================
-Translates AST (validated by semantic analyzer) into executable Python code.
-Uses the visitor pattern over AST nodes.
+KUCODE Code Generator (TAC-Based)
+==================================
+Translates TAC quadruples (from the semantic analyzer) into executable Python code.
+Uses block-dispatch loop to handle goto/label control flow.
 """
 
 from __future__ import annotations
-from typing import List, Optional
+from typing import List, Dict, Optional, Tuple
 
-from ast_nodes import (
-    Program, GroupDef, GroupMember, WorldwideDecl, FuncDef, Parameter,
-    VarDecl, FixedDecl, ListDecl,
-    Assignment, CompoundAssign, Increment, Decrement,
-    IfChain, ElifBranch, SelectStmt, OptionBlock,
-    EachLoop, DuringLoop, FuncCallStmt, ReturnStmt, ShowStmt, DisplayStmt, ReadStmt,
-    BinaryOp, UnaryOp, Literal, Identifier, FuncCall,
-    ListAccess, MemberAccess, SizeCall, ListLiteral1D, ListLiteral2D,
-    Expr
-)
-from semantic_analyzer import ASTVisitor, SymbolTable
+from semantic_analyzer import Quadruple, SymbolTable
 
+
+# KUCODE operator → Python operator mapping
+_OP_MAP = {
+    '&&': 'and',
+    '||': 'or',
+}
 
 # Default values for group member types
 _TYPE_DEFAULTS = {
@@ -31,30 +27,469 @@ _TYPE_DEFAULTS = {
     'letter': '""',
 }
 
-# KUCODE operator → Python operator mapping
-_OP_MAP = {
-    '&&': 'and',
-    '||': 'or',
-    '!': 'not',
-}
+# Arithmetic / comparison operators that translate directly
+_BINARY_OPS = {'+', '-', '*', '/', '//', '%', '**',
+               '==', '!=', '>', '<', '>=', '<='}
 
 
-class CodeGenerator(ASTVisitor):
-    """Walks the AST and emits Python source code."""
+class TACCodeGenerator:
+    """Reads TAC quadruples and emits Python source code."""
 
-    def __init__(self, symbol_table: SymbolTable) -> None:
+    def __init__(self, quadruples: List[Quadruple],
+                 symbol_table: SymbolTable) -> None:
+        self.quads = quadruples
         self.symbol_table = symbol_table
         self.lines: List[str] = []
         self._indent_level: int = 0
-        self._select_counter: int = 0
-        self._var_types: dict = {}  # name → datatype (populated as decls are visited)
 
-    def generate(self, ast: Program) -> str:
-        """Generate Python code from the AST. Returns the complete Python source."""
-        self.visit(ast)
+    # ── Public API ────────────────────────────────────────────
+
+    def generate(self) -> str:
+        """Generate Python code from TAC quadruples. Returns complete source."""
+        preamble, functions, main_block = self._segment_quadruples()
+
+        self._emit_line('# KUCODE Generated Code')
+        self._emit_blank()
+
+        # Group class definitions (from symbol table, TAC has no group opcode)
+        self._emit_groups()
+
+        # Runtime list-building stack must exist before the preamble uses it
+        self._emit_line('_elems = []')
+
+        # Worldwide variable assignments
+        if preamble:
+            self._emit_quads_straight(preamble)
+            self._emit_blank()
+
+        # Function definitions
+        for func_quads in functions:
+            self._emit_function(func_quads)
+            self._emit_blank()
+
+        # Runtime param-passing stack (list stack is re-initialised in main block below)
+        self._emit_line('_params = []')
+        self._emit_line('_elems = []')
+
+        # Main block (start...halt)
+        if main_block:
+            self._emit_block(main_block)
+
         return '\n'.join(self.lines) + '\n'
 
-    # ── Helpers ──────────────────────────────────────────────
+    # ── Segmentation ──────────────────────────────────────────
+
+    def _segment_quadruples(self) -> Tuple[List[Quadruple],
+                                           List[List[Quadruple]],
+                                           List[Quadruple]]:
+        """Split quads into (preamble, [function_blocks], main_block)."""
+        preamble: List[Quadruple] = []
+        functions: List[List[Quadruple]] = []
+        main_block: List[Quadruple] = []
+
+        i = 0
+        n = len(self.quads)
+
+        # Preamble: everything before first func_begin or label start
+        while i < n:
+            q = self.quads[i]
+            if q.op == 'func_begin':
+                break
+            if q.op == 'label' and q.arg1 == 'start':
+                break
+            preamble.append(q)
+            i += 1
+
+        # Functions: func_begin ... func_end blocks
+        while i < n and self.quads[i].op == 'func_begin':
+            func_block: List[Quadruple] = []
+            func_block.append(self.quads[i])
+            i += 1
+            while i < n and self.quads[i].op != 'func_end':
+                func_block.append(self.quads[i])
+                i += 1
+            if i < n:  # func_end
+                func_block.append(self.quads[i])
+                i += 1
+            functions.append(func_block)
+
+        # Main block: label start ... halt
+        while i < n:
+            main_block.append(self.quads[i])
+            i += 1
+
+        return preamble, functions, main_block
+
+    # ── Group class emission ──────────────────────────────────
+
+    def _emit_groups(self) -> None:
+        """Emit Python class definitions for KUCODE groups from symbol table."""
+        if not self.symbol_table.scopes:
+            return
+        global_scope = self.symbol_table.scopes[0]
+        for name, sym in global_scope.items():
+            if sym.kind == 'group':
+                self._emit_line(f'class {name}:')
+                self._indent()
+                self._emit_line('def __init__(self):')
+                self._indent()
+                if sym.group_members:
+                    for member_name, member_type in sym.group_members.items():
+                        default = _TYPE_DEFAULTS.get(member_type, 'None')
+                        self._emit_line(f'self.{member_name} = {default}')
+                else:
+                    self._emit_line('pass')
+                self._dedent()
+                self._dedent()
+                self._emit_blank()
+
+    # ── Function emission ─────────────────────────────────────
+
+    def _emit_function(self, quads: List[Quadruple]) -> None:
+        """Emit a Python function definition from func_begin...func_end quads."""
+        # First quad is func_begin
+        func_name = quads[0].arg1
+
+        # Collect param_receive quads to build parameter list
+        params: List[str] = []
+        body_start = 1
+        for j in range(1, len(quads)):
+            if quads[j].op == 'param_receive':
+                params.append(quads[j].arg1)
+                body_start = j + 1
+            else:
+                break
+
+        self._emit_line(f'def {func_name}({", ".join(params)}):')
+        self._indent()
+
+        # Emit global declarations for worldwide variables
+        worldwide_names = self._get_worldwide_names()
+        if worldwide_names:
+            self._emit_line(f'global {", ".join(worldwide_names)}')
+
+        # Runtime stacks for param passing and list building
+        needs_params = any(q.op in ('param', 'call') for q in quads)
+        needs_elems = any(q.op in ('list_elem', 'list_1d', 'list_2d') for q in quads)
+        if needs_params:
+            self._emit_line('_params = []')
+        if needs_elems:
+            self._emit_line('_elems = []')
+
+        # Body: everything between param_receive and func_end
+        body = quads[body_start:]
+        # Remove trailing func_end
+        if body and body[-1].op == 'func_end':
+            body = body[:-1]
+
+        if body:
+            self._emit_block(body)
+        else:
+            self._emit_line('pass')
+
+        self._dedent()
+
+    # ── Block emission (dispatch loop or straight-line) ───────
+
+    def _emit_block(self, quads: List[Quadruple]) -> None:
+        """Emit a block of quads, using dispatch loop if needed."""
+        has_control_flow = any(
+            q.op in ('goto', 'if_false', 'label', 'halt') for q in quads
+        )
+
+        if not has_control_flow:
+            self._emit_quads_straight(quads)
+            return
+
+        # Build blocks: split by labels
+        blocks = self._build_blocks(quads)
+
+        if not blocks:
+            return
+
+        # Get the first block label
+        first_label = blocks[0][0]
+
+        self._emit_line(f'_block = "{first_label}"')
+        self._emit_line('while True:')
+        self._indent()
+
+        for i, (label, block_quads) in enumerate(blocks):
+            keyword = 'if' if i == 0 else 'elif'
+            self._emit_line(f'{keyword} _block == "{label}":')
+            self._indent()
+            self._emit_quads_in_block(block_quads, blocks, i)
+            self._dedent()
+
+        self._dedent()
+
+    def _build_blocks(self, quads: List[Quadruple]) -> List[Tuple[str, List[Quadruple]]]:
+        """Split quads into labeled blocks: [(label, [quads_until_next_label])]."""
+        blocks: List[Tuple[str, List[Quadruple]]] = []
+        current_label: Optional[str] = None
+        current_quads: List[Quadruple] = []
+
+        for q in quads:
+            if q.op == 'label':
+                # Save previous block if it exists
+                if current_label is not None:
+                    blocks.append((current_label, current_quads))
+                current_label = q.arg1
+                current_quads = []
+            else:
+                if current_label is None:
+                    # Quads before any label — create a synthetic entry block
+                    current_label = '__entry'
+                current_quads.append(q)
+
+        # Save last block
+        if current_label is not None:
+            blocks.append((current_label, current_quads))
+
+        return blocks
+
+    def _emit_quads_in_block(self, quads: List[Quadruple],
+                             all_blocks: List[Tuple[str, List[Quadruple]]],
+                             block_idx: int) -> None:
+        """Emit quads within a dispatch block, handling fall-through."""
+        emitted_any = False
+        for j, q in enumerate(quads):
+            emitted = self._emit_single_quad(q)
+            if emitted:
+                emitted_any = True
+
+        # Determine if last instruction already transfers control
+        needs_fallthrough = True
+        if quads:
+            last = quads[-1]
+            if last.op in ('goto', 'halt', 'return'):
+                needs_fallthrough = False
+
+        # Add fall-through to next block if needed
+        if needs_fallthrough:
+            next_idx = block_idx + 1
+            if next_idx < len(all_blocks):
+                next_label = all_blocks[next_idx][0]
+                self._emit_line(f'_block = "{next_label}"')
+            else:
+                self._emit_line('break')
+
+    # ── Straight-line emission (no control flow) ──────────────
+
+    def _emit_quads_straight(self, quads: List[Quadruple]) -> None:
+        """Emit quads as straight-line Python code (no dispatch loop)."""
+        for q in quads:
+            self._emit_single_quad(q)
+
+    # ── Single quad → Python ──────────────────────────────────
+
+    def _emit_single_quad(self, q: Quadruple) -> bool:
+        """Emit Python for one quadruple. Returns True if a line was emitted."""
+        op = q.op
+
+        # ── Assignment ──
+        if op == '=':
+            val = self._translate_value(q.arg1)
+            self._emit_line(f'{q.result} = {val}')
+            return True
+
+        # ── Binary arithmetic / comparison ──
+        if op in _BINARY_OPS:
+            left = self._translate_value(q.arg1)
+            right = self._translate_value(q.arg2)
+            self._emit_line(f'{q.result} = ({left} {op} {right})')
+            return True
+
+        # ── Logical operators ──
+        if op == '&&':
+            left = self._translate_value(q.arg1)
+            right = self._translate_value(q.arg2)
+            self._emit_line(f'{q.result} = ({left} and {right})')
+            return True
+
+        if op == '||':
+            left = self._translate_value(q.arg1)
+            right = self._translate_value(q.arg2)
+            self._emit_line(f'{q.result} = ({left} or {right})')
+            return True
+
+        # ── Unary operators ──
+        if op == 'unary-':
+            val = self._translate_value(q.arg1)
+            self._emit_line(f'{q.result} = (-{val})')
+            return True
+
+        if op == '!':
+            val = self._translate_value(q.arg1)
+            self._emit_line(f'{q.result} = (not {val})')
+            return True
+
+        # ── Control flow ──
+        if op == 'if_false':
+            val = self._translate_value(q.arg1)
+            self._emit_line(f'if not {val}:')
+            self._indent()
+            self._emit_line(f'_block = "{q.result}"')
+            self._emit_line('continue')
+            self._dedent()
+            return True
+
+        if op == 'goto':
+            self._emit_line(f'_block = "{q.result}"')
+            self._emit_line('continue')
+            return True
+
+        if op == 'halt':
+            self._emit_line('break')
+            return True
+
+        # ── label is consumed during block building ──
+        if op == 'label':
+            return False
+
+        # ── Function boundaries (consumed during segmentation) ──
+        if op in ('func_begin', 'func_end', 'param_receive'):
+            return False
+
+        # ── Parameter passing ──
+        if op == 'param':
+            val = self._translate_value(q.arg1)
+            self._emit_line(f'_params.append({val})')
+            return True
+
+        # ── Function / built-in calls ──
+        if op == 'call':
+            return self._emit_call(q)
+
+        # ── Return ──
+        if op == 'return':
+            if q.arg1 != '_':
+                val = self._translate_value(q.arg1)
+                self._emit_line(f'return {val}')
+            else:
+                self._emit_line('return')
+            return True
+
+        # ── Read (input) ──
+        if op == 'read':
+            return self._emit_read(q)
+
+        # ── List operations ──
+        if op == 'list_elem':
+            self._emit_line(f'_elems.append({self._translate_value(q.arg1)})')
+            return True
+
+        if op == 'list_1d':
+            count = int(q.arg1)
+            self._emit_line(f'{q.result} = _elems[-{count}:]')
+            self._emit_line(f'_elems = _elems[:-{count}]')
+            return True
+
+        if op == 'list_2d':
+            row_count = int(q.arg1)
+            col_count = int(q.arg2)
+            total = row_count * col_count
+            self._emit_line(f'_flat = _elems[-{total}:]')
+            self._emit_line(f'_elems = _elems[:-{total}]')
+            self._emit_line(
+                f'{q.result} = [_flat[_i*{col_count}:(_i+1)*{col_count}] '
+                f'for _i in range({row_count})]'
+            )
+            return True
+
+        if op == 'list_assign':
+            val = self._translate_value(q.arg1)
+            self._emit_line(f'{q.result} = {val}')
+            return True
+
+        if op == 'list_access':
+            name = q.arg1
+            if ',' in q.arg2:
+                idx1, idx2 = q.arg2.split(',', 1)
+                self._emit_line(f'{q.result} = {name}[{idx1}][{idx2}]')
+            else:
+                self._emit_line(f'{q.result} = {name}[{q.arg2}]')
+            return True
+
+        # ── Member access ──
+        if op == 'member_access':
+            self._emit_line(f'{q.result} = {q.arg1}.{q.arg2}')
+            return True
+
+        # ── Size (len) ──
+        if op == 'size':
+            name = q.arg1
+            if q.arg2 != '_' and q.arg2 == '0':
+                self._emit_line(f'{q.result} = len({name}[0])')
+            else:
+                self._emit_line(f'{q.result} = len({name})')
+            return True
+
+        # Fallback: emit as comment
+        self._emit_line(f'# Unknown TAC op: {q}')
+        return True
+
+    # ── Call emission ─────────────────────────────────────────
+
+    def _emit_call(self, q: Quadruple) -> bool:
+        """Emit a function/built-in call quad."""
+        fname = q.arg1
+        argc = int(q.arg2) if q.arg2 != '_' else 0
+
+        if fname == 'show':
+            if argc > 0:
+                self._emit_line(f'print(*_params[-{argc}:], flush=True)')
+                self._emit_line(f'_params = _params[:-{argc}]')
+            else:
+                self._emit_line('print(flush=True)')
+            return True
+
+        if fname == 'display':
+            if argc > 0:
+                self._emit_line(
+                    f'print(*_params[-{argc}:], sep="", end="", flush=True)')
+                self._emit_line(f'_params = _params[:-{argc}]')
+            else:
+                self._emit_line('print(sep="", end="", flush=True)')
+            return True
+
+        # User-defined function call
+        if argc > 0:
+            args_str = ', '.join(
+                f'_params[{-argc + i}]' for i in range(argc))
+            if q.result != '_':
+                self._emit_line(f'{q.result} = {fname}({args_str})')
+            else:
+                self._emit_line(f'{fname}({args_str})')
+            self._emit_line(f'_params = _params[:-{argc}]')
+        else:
+            if q.result != '_':
+                self._emit_line(f'{q.result} = {fname}()')
+            else:
+                self._emit_line(f'{fname}()')
+        return True
+
+    # ── Read (input) emission ─────────────────────────────────
+
+    def _emit_read(self, q: Quadruple) -> bool:
+        """Emit type-coerced input() for a read quad."""
+        var_name = q.arg1
+        var_type = q.arg2 if q.arg2 != '_' else 'text'
+
+        if var_type == 'num':
+            self._emit_line(f'{var_name} = int(input())')
+        elif var_type in ('decimal', 'bigdecimal'):
+            self._emit_line(f'{var_name} = float(input())')
+        elif var_type == 'letter':
+            self._emit_line(f'{var_name} = input()[0]')
+        elif var_type == 'bool':
+            self._emit_line(
+                f"{var_name} = input().strip() in ('Yes', '1', 'true')")
+        else:
+            self._emit_line(f'{var_name} = input()')
+        return True
+
+    # ── Helpers ───────────────────────────────────────────────
 
     def _emit_line(self, line: str) -> None:
         self.lines.append('    ' * self._indent_level + line)
@@ -68,6 +503,20 @@ class CodeGenerator(ASTVisitor):
     def _dedent(self) -> None:
         self._indent_level -= 1
 
+    def _translate_value(self, val: str) -> str:
+        """Translate TAC value to Python value (Yes→True, No→False, fix doubled quotes)."""
+        if val == 'Yes':
+            return 'True'
+        if val == 'No':
+            return 'False'
+        # Fix doubled quotes: lexer keeps quotes, semantic analyzer adds another layer
+        # e.g. TAC stores ""hello"" → should be "hello"
+        if len(val) >= 4 and val[:2] == '""' and val[-2:] == '""':
+            return '"' + val[2:-2] + '"'
+        if len(val) >= 4 and val[:2] == "''" and val[-2:] == "''":
+            return "'" + val[2:-2] + "'"
+        return val
+
     def _get_worldwide_names(self) -> List[str]:
         """Get all worldwide variable names from the global scope."""
         names = []
@@ -77,343 +526,3 @@ class CodeGenerator(ASTVisitor):
                     names.append(name)
         return names
 
-    def _map_op(self, op: str) -> str:
-        """Map KUCODE operator to Python operator."""
-        return _OP_MAP.get(op, op)
-
-    def _is_negative_step(self, step_expr: Expr) -> Optional[bool]:
-        """Determine step direction. True=negative, False=positive, None=unknown."""
-        if isinstance(step_expr, Literal):
-            try:
-                return float(step_expr.value) < 0
-            except (ValueError, TypeError):
-                return None
-        if isinstance(step_expr, UnaryOp) and step_expr.op == '-':
-            return True
-        return None
-
-    def _get_var_type(self, name: str) -> str:
-        """Look up variable type from local tracking dict."""
-        return self._var_types.get(name, 'text')
-
-    def _visit_stmts(self, stmts: list) -> None:
-        """Visit a list of statements."""
-        for stmt in stmts:
-            self.visit(stmt)
-
-    # ── Program Structure ────────────────────────────────────
-
-    def visit_Program(self, node: Program) -> None:
-        self._emit_line('# KUCODE Generated Code')
-        self._emit_blank()
-
-        # Groups
-        for group in node.groups:
-            self.visit(group)
-            self._emit_blank()
-
-        # Worldwide declarations
-        for decl in node.worldwide_decls:
-            self.visit(decl)
-        if node.worldwide_decls:
-            self._emit_blank()
-
-        # Function definitions
-        for func in node.functions:
-            self.visit(func)
-            self._emit_blank()
-
-        # Start block (main)
-        self._visit_stmts(node.start_body)
-
-    def visit_GroupDef(self, node: GroupDef) -> None:
-        self._emit_line(f'class {node.name}:')
-        self._indent()
-        self._emit_line('def __init__(self):')
-        self._indent()
-        if node.members:
-            for member in node.members:
-                default = _TYPE_DEFAULTS.get(member.datatype, 'None')
-                self._emit_line(f'self.{member.name} = {default}')
-        else:
-            self._emit_line('pass')
-        self._dedent()
-        self._dedent()
-
-    def visit_WorldwideDecl(self, node: WorldwideDecl) -> None:
-        self._var_types[node.name] = node.datatype
-        if node.value is not None:
-            val = self.visit(node.value)
-            self._emit_line(f'{node.name} = {val}')
-        else:
-            default = _TYPE_DEFAULTS.get(node.datatype, 'None')
-            self._emit_line(f'{node.name} = {default}')
-
-    def visit_FuncDef(self, node: FuncDef) -> None:
-        params = ', '.join(p.name for p in node.params)
-        self._emit_line(f'def {node.name}({params}):')
-        self._indent()
-
-        # Register parameter types
-        for p in node.params:
-            self._var_types[p.name] = p.datatype
-
-        # Emit global declarations for worldwide variables
-        worldwide_names = self._get_worldwide_names()
-        if worldwide_names:
-            self._emit_line(f'global {", ".join(worldwide_names)}')
-
-        # Local declarations
-        for decl in node.local_decls:
-            self.visit(decl)
-
-        # Body
-        self._visit_stmts(node.body)
-
-        # Return statement
-        if node.return_stmt is not None:
-            self.visit(node.return_stmt)
-
-        # Empty function guard
-        if not node.local_decls and not node.body and node.return_stmt is None:
-            self._emit_line('pass')
-
-        self._dedent()
-
-    # ── Declarations ─────────────────────────────────────────
-
-    def visit_VarDecl(self, node: VarDecl) -> None:
-        self._var_types[node.name] = node.datatype
-        if node.is_group_typed:
-            self._emit_line(f'{node.name} = {node.datatype}()')
-        elif node.value is not None:
-            val = self.visit(node.value)
-            self._emit_line(f'{node.name} = {val}')
-        else:
-            default = _TYPE_DEFAULTS.get(node.datatype, 'None')
-            self._emit_line(f'{node.name} = {default}')
-
-    def visit_FixedDecl(self, node: FixedDecl) -> None:
-        self._var_types[node.name] = node.datatype
-        val = self.visit(node.value)
-        self._emit_line(f'{node.name} = {val}')
-
-    def visit_ListDecl(self, node: ListDecl) -> None:
-        self._var_types[node.name] = node.datatype
-        if node.value is not None:
-            val = self.visit(node.value)
-            self._emit_line(f'{node.name} = {val}')
-        else:
-            self._emit_line(f'{node.name} = []')
-
-    # ── Statements ───────────────────────────────────────────
-
-    def visit_Assignment(self, node: Assignment) -> None:
-        target = self.visit(node.target)
-        value = self.visit(node.value)
-        self._emit_line(f'{target} = {value}')
-
-    def visit_CompoundAssign(self, node: CompoundAssign) -> None:
-        target = self.visit(node.target)
-        value = self.visit(node.value)
-        self._emit_line(f'{target} {node.op} {value}')
-
-    def visit_Increment(self, node: Increment) -> None:
-        target = self.visit(node.target)
-        self._emit_line(f'{target} += 1')
-
-    def visit_Decrement(self, node: Decrement) -> None:
-        target = self.visit(node.target)
-        self._emit_line(f'{target} -= 1')
-
-    def visit_IfChain(self, node: IfChain) -> None:
-        cond = self.visit(node.condition)
-        self._emit_line(f'if {cond}:')
-        self._indent()
-        if node.body:
-            self._visit_stmts(node.body)
-        else:
-            self._emit_line('pass')
-        self._dedent()
-
-        for elif_branch in node.elif_branches:
-            cond = self.visit(elif_branch.condition)
-            self._emit_line(f'elif {cond}:')
-            self._indent()
-            if elif_branch.body:
-                self._visit_stmts(elif_branch.body)
-            else:
-                self._emit_line('pass')
-            self._dedent()
-
-        if node.else_body is not None:
-            self._emit_line('else:')
-            self._indent()
-            if node.else_body:
-                self._visit_stmts(node.else_body)
-            else:
-                self._emit_line('pass')
-            self._dedent()
-
-    def visit_SelectStmt(self, node: SelectStmt) -> None:
-        self._select_counter += 1
-        flag = f'_sel_done_{self._select_counter}'
-        self._emit_line(f'{flag} = False')
-
-        for option in node.options:
-            val = self.visit(option.value)
-            self._emit_line(f'if not {flag} and {node.variable} == {val}:')
-            self._indent()
-            if option.body:
-                self._visit_stmts(option.body)
-            else:
-                self._emit_line('pass')
-            if option.control_flow == 'stop':
-                self._emit_line(f'{flag} = True')
-            self._dedent()
-
-        if node.fallback is not None:
-            self._emit_line(f'if not {flag}:')
-            self._indent()
-            if node.fallback:
-                self._visit_stmts(node.fallback)
-            else:
-                self._emit_line('pass')
-            self._dedent()
-
-    def visit_EachLoop(self, node: EachLoop) -> None:
-        from_val = self.visit(node.from_expr)
-        to_val = self.visit(node.to_expr)
-
-        if node.step_expr is None:
-            # Default step is 1 (positive)
-            self._emit_line(
-                f'for {node.variable} in range({from_val}, {to_val} + 1):')
-        else:
-            is_neg = self._is_negative_step(node.step_expr)
-            step_val = self.visit(node.step_expr)
-
-            if is_neg is True:
-                self._emit_line(
-                    f'for {node.variable} in range({from_val}, {to_val} - 1, {step_val}):')
-            elif is_neg is False:
-                self._emit_line(
-                    f'for {node.variable} in range({from_val}, {to_val} + 1, {step_val}):')
-            else:
-                # Unknown direction — runtime check
-                step_temp = f'_step_{node.variable}'
-                self._emit_line(f'{step_temp} = {step_val}')
-                self._emit_line(
-                    f'for {node.variable} in range({from_val}, '
-                    f'{to_val} + (1 if {step_temp} > 0 else -1), {step_temp}):')
-
-        self._indent()
-        if node.body:
-            self._visit_stmts(node.body)
-        else:
-            self._emit_line('pass')
-        self._dedent()
-
-    def visit_DuringLoop(self, node: DuringLoop) -> None:
-        cond = self.visit(node.condition)
-        self._emit_line(f'while {cond}:')
-        self._indent()
-        if node.body:
-            self._visit_stmts(node.body)
-        else:
-            self._emit_line('pass')
-        self._dedent()
-
-    def visit_FuncCallStmt(self, node: FuncCallStmt) -> None:
-        call_expr = self.visit(node.call)
-        self._emit_line(call_expr)
-
-    def visit_ReturnStmt(self, node: ReturnStmt) -> None:
-        if node.value is not None:
-            val = self.visit(node.value)
-            self._emit_line(f'return {val}')
-        else:
-            self._emit_line('return')
-
-    def visit_ShowStmt(self, node: ShowStmt) -> None:
-        args = ', '.join(self.visit(arg) for arg in node.args)
-        self._emit_line(f'print({args}, flush=True)')
-
-    def visit_DisplayStmt(self, node: DisplayStmt) -> None:
-        args = ', '.join(self.visit(arg) for arg in node.args)
-        self._emit_line(f'print({args}, sep="", end="", flush=True)')
-
-    def visit_ReadStmt(self, node: ReadStmt) -> None:
-        var_type = self._get_var_type(node.variable)
-        if var_type == 'num':
-            self._emit_line(f'{node.variable} = int(input())')
-        elif var_type in ('decimal', 'bigdecimal'):
-            self._emit_line(f'{node.variable} = float(input())')
-        elif var_type == 'letter':
-            self._emit_line(f'{node.variable} = input()[0]')
-        elif var_type == 'bool':
-            self._emit_line(
-                f"{node.variable} = input().strip() in ('Yes', '1', 'true')")
-        else:  # text or fallback
-            self._emit_line(f'{node.variable} = input()')
-
-    # ── Expressions (return str) ─────────────────────────────
-
-    def visit_BinaryOp(self, node: BinaryOp) -> str:
-        left = self.visit(node.left)
-        right = self.visit(node.right)
-        op = self._map_op(node.op)
-        return f'({left} {op} {right})'
-
-    def visit_UnaryOp(self, node: UnaryOp) -> str:
-        operand = self.visit(node.operand)
-        op = self._map_op(node.op)
-        if op == 'not':
-            return f'(not {operand})'
-        return f'({op}{operand})'
-
-    def visit_Literal(self, node: Literal) -> str:
-        if node.token_type in ('string_lit', 'char_lit'):
-            # Lexer keeps surrounding quotes in value — strip them, then re-wrap
-            raw = node.value
-            if len(raw) >= 2 and raw[0] in ('"', "'") and raw[-1] in ('"', "'"):
-                raw = raw[1:-1]
-            if node.token_type == 'string_lit':
-                return f'"{raw}"'
-            else:
-                return f"'{raw}'"
-        if node.value == 'Yes':
-            return 'True'
-        if node.value == 'No':
-            return 'False'
-        return node.value
-
-    def visit_Identifier(self, node: Identifier) -> str:
-        return node.name
-
-    def visit_FuncCall(self, node: FuncCall) -> str:
-        args = ', '.join(self.visit(arg) for arg in node.args)
-        return f'{node.name}({args})'
-
-    def visit_ListAccess(self, node: ListAccess) -> str:
-        idx1 = self.visit(node.index1)
-        if node.index2 is not None:
-            idx2 = self.visit(node.index2)
-            return f'{node.name}[{idx1}][{idx2}]'
-        return f'{node.name}[{idx1}]'
-
-    def visit_MemberAccess(self, node: MemberAccess) -> str:
-        return f'{node.object_name}.{node.member}'
-
-    def visit_SizeCall(self, node: SizeCall) -> str:
-        if node.dimension is not None and node.dimension == '0':
-            return f'len({node.list_name}[0])'
-        return f'len({node.list_name})'
-
-    def visit_ListLiteral1D(self, node: ListLiteral1D) -> str:
-        elems = ', '.join(self.visit(e) for e in node.elements)
-        return f'[{elems}]'
-
-    def visit_ListLiteral2D(self, node: ListLiteral2D) -> str:
-        rows = ', '.join(self.visit(row) for row in node.rows)
-        return f'[{rows}]'
