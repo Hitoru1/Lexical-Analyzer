@@ -249,6 +249,22 @@ class SizeCall(Expr):
 
 
 @dataclass
+class TextLenCall(Expr):
+    argument: Optional[Expr] = None
+
+
+@dataclass
+class CharAtCall(Expr):
+    source: Optional[Expr] = None
+    index: Optional[Expr] = None
+
+
+@dataclass
+class OrdCall(Expr):
+    argument: Optional[Expr] = None
+
+
+@dataclass
 class ListLiteral1D(Expr):
     elements: List[Expr] = field(default_factory=list)
 

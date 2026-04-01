@@ -11,7 +11,7 @@ from ast_nodes import (
     IfChain, ElifBranch, SelectStmt, OptionBlock,
     EachLoop, DuringLoop, FuncCallStmt, ReturnStmt, ShowStmt, DisplayStmt, ReadStmt,
     BinaryOp, UnaryOp, Literal, Identifier, FuncCall,
-    ListAccess, MemberAccess, SizeCall, ListLiteral1D, ListLiteral2D,
+    ListAccess, MemberAccess, SizeCall, TextLenCall, CharAtCall, OrdCall, ListLiteral1D, ListLiteral2D,
 )
 
 
@@ -1168,10 +1168,8 @@ class SemanticChecker(ASTVisitor):
                     node
                 )
 
-        if node.token_type == 'string_lit':
-            place = f'"{node.value}"'
-        elif node.token_type == 'char_lit':
-            place = f"'{node.value}'"
+        if node.token_type in ('string_lit', 'char_lit'):
+            place = node.value  # lexer already includes surrounding quotes
         else:
             place = str(node.value)
         return place, dtype
@@ -1316,6 +1314,49 @@ class SemanticChecker(ASTVisitor):
 
         temp = self._new_temp()
         self._emit('size', node.list_name, dim_arg, temp)
+        return temp, 'num'
+
+    def visit_TextLenCall(self, node: TextLenCall) -> Tuple[str, str]:
+        arg_place, arg_type = self.visit(node.argument)
+        if arg_type not in ('text', 'letter'):
+            self._error(
+                f"textlen() argument must be of type text or letter; "
+                f"got '{arg_type}'",
+                node
+            )
+        temp = self._new_temp()
+        self._emit('textlen', arg_place, '_', temp)
+        return temp, 'num'
+
+    def visit_CharAtCall(self, node: CharAtCall) -> Tuple[str, str]:
+        src_place, src_type = self.visit(node.source)
+        if src_type not in ('text', 'letter'):
+            self._error(
+                f"charat() first argument must be of type text or letter; "
+                f"got '{src_type}'",
+                node
+            )
+        idx_place, idx_type = self.visit(node.index)
+        if idx_type not in ('num', 'bool'):
+            self._error(
+                f"charat() second argument (index) must be of type num or bool; "
+                f"got '{idx_type}'",
+                node
+            )
+        temp = self._new_temp()
+        self._emit('charat', src_place, idx_place, temp)
+        return temp, 'letter'
+
+    def visit_OrdCall(self, node: OrdCall) -> Tuple[str, str]:
+        arg_place, arg_type = self.visit(node.argument)
+        if arg_type != 'letter':
+            self._error(
+                f"ord() argument must be of type letter; "
+                f"got '{arg_type}'",
+                node
+            )
+        temp = self._new_temp()
+        self._emit('ord', arg_place, '_', temp)
         return temp, 'num'
 
     # ── Function call helper ──────────────────────────────────

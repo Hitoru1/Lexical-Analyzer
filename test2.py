@@ -38,6 +38,9 @@ RW_DISPLAY = 'display'
 
 # Reserved Words - Built-in Functions
 RW_SIZE = 'size'
+RW_TEXTLEN = 'textlen'
+RW_CHARAT = 'charat'
+RW_ORD = 'ord'
 
 # Reserved Words - Conditionals
 RW_CHECK = 'check'
@@ -219,6 +222,9 @@ TOKEN_DELIMITERS = {
     RW_SELECT: 'delim2',
     RW_SHOW: 'open_paren',
     RW_SIZE: 'open_paren',
+    RW_TEXTLEN: 'open_paren',
+    RW_CHARAT: 'open_paren',
+    RW_ORD: 'open_paren',
     RW_SKIP: 'sem_col',
     RW_START: 'delim1',
     RW_STEP: 'id3',
@@ -445,7 +451,10 @@ class TransitionDFA:
         trans[156] = {'e': 157, 'o': 161}
         trans[157] = {'x': 158}
         trans[158] = {'t': 159}
-        trans[159] = {}  # accept: text
+        trans[159] = {'l': 211}  # accept: text (continues to textlen)
+        trans[211] = {'e': 212}
+        trans[212] = {'n': 213}
+        trans[213] = {}  # accept: textlen
         trans[161] = {}  # accept: to
 
         # "worldwide"
@@ -464,9 +473,13 @@ class TransitionDFA:
         trans[174] = {'s': 175}
         trans[175] = {}  # accept: Yes
 
-        # "check"
+        # "check", "charat"
         trans[16] = {'h': 17}
-        trans[17] = {'e': 18}
+        trans[17] = {'e': 18, 'a': 214}  # 'e' for check, 'a' for charat
+        trans[214] = {'r': 215}
+        trans[215] = {'a': 216}
+        trans[216] = {'t': 217}
+        trans[217] = {}  # accept: charat
         trans[18] = {'c': 19}
         trans[19] = {'k': 20}
         trans[20] = {}  # accept: check
@@ -565,8 +578,10 @@ class TransitionDFA:
         trans[100] = {'o': 101}
         trans[101] = {}  # accept: No
 
-        # "option", "otherwise"
-        trans[103] = {'p': 104, 't': 110}
+        # "option", "otherwise", "ord"
+        trans[103] = {'p': 104, 't': 110, 'r': 218}
+        trans[218] = {'d': 219}
+        trans[219] = {}  # accept: ord
         trans[104] = {'t': 105}
         trans[105] = {'i': 106}
         trans[106] = {'o': 107}
@@ -642,6 +657,9 @@ class TransitionDFA:
             154: RW_STOP,
             151: RW_STEP,
             159: RW_TEXT,
+            213: RW_TEXTLEN,
+            217: RW_CHARAT,
+            219: RW_ORD,
             161: RW_TO,
             171: RW_WORLDWIDE,
             175: RW_YES,
@@ -2060,7 +2078,7 @@ class KuCodeLexerGUI:
             'start', 'finish', 'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool',
             'Yes', 'No', 'empty', 'read', 'show', 'display', 'check', 'otherwise', 'otherwisecheck',
             'fallback', 'select', 'option', 'each', 'during', 'from', 'to', 'step',
-            'stop', 'skip', 'give', 'define', 'worldwide', 'fixed', 'list', 'group', 'size'
+            'stop', 'skip', 'give', 'define', 'worldwide', 'fixed', 'list', 'group', 'size', 'textlen', 'charat', 'ord'
         ]) + r')\b'
 
         for match in re.finditer(keywords_pattern, content):

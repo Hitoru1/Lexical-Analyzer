@@ -425,6 +425,21 @@ class TACCodeGenerator:
                 self._emit_line(f'{q.result} = len({name})')
             return True
 
+        # ── Textlen (len for strings) ──
+        if op == 'textlen':
+            self._emit_line(f'{q.result} = len({q.arg1})')
+            return True
+
+        # ── Charat (string indexing) ──
+        if op == 'charat':
+            self._emit_line(f'{q.result} = {q.arg1}[{q.arg2}]')
+            return True
+
+        # ── Ord (character to ASCII) ──
+        if op == 'ord':
+            self._emit_line(f'{q.result} = ord({q.arg1})')
+            return True
+
         # Fallback: emit as comment
         self._emit_line(f'# Unknown TAC op: {q}')
         return True
@@ -504,17 +519,11 @@ class TACCodeGenerator:
         self._indent_level -= 1
 
     def _translate_value(self, val: str) -> str:
-        """Translate TAC value to Python value (Yes→True, No→False, fix doubled quotes)."""
+        """Translate TAC value to Python value (Yes→True, No→False)."""
         if val == 'Yes':
             return 'True'
         if val == 'No':
             return 'False'
-        # Fix doubled quotes: lexer keeps quotes, semantic analyzer adds another layer
-        # e.g. TAC stores ""hello"" → should be "hello"
-        if len(val) >= 4 and val[:2] == '""' and val[-2:] == '""':
-            return '"' + val[2:-2] + '"'
-        if len(val) >= 4 and val[:2] == "''" and val[-2:] == "''":
-            return "'" + val[2:-2] + "'"
         return val
 
     def _get_worldwide_names(self) -> List[str]:

@@ -6,7 +6,7 @@ from ast_nodes import (
     IfChain, ElifBranch, SelectStmt, OptionBlock,
     EachLoop, DuringLoop, FuncCallStmt, ReturnStmt, ShowStmt, DisplayStmt, ReadStmt,
     BinaryOp, UnaryOp, Literal, Identifier, FuncCall,
-    ListAccess, MemberAccess, SizeCall, ListLiteral1D, ListLiteral2D,
+    ListAccess, MemberAccess, SizeCall, TextLenCall, CharAtCall, OrdCall, ListLiteral1D, ListLiteral2D,
 )
 
 # Sentinel for tail-epsilon results
@@ -474,7 +474,10 @@ class TableDrivenParser:
                 ['(', '<stmt_value>', ')'],
                 ['<literal>'],
                 ['identifier', '<stmt_id_suffix>'],
-                ['<size_call>']
+                ['<size_call>'],
+                ['<textlen_call>'],
+                ['<charat_call>'],
+                ['<ord_call>']
             ],
 
             '<stmt_id_suffix>': [
@@ -555,7 +558,10 @@ class TableDrivenParser:
                 ['(', '<arg_value>', ')'],
                 ['<literal>'],
                 ['identifier', '<arg_id_suffix>'],
-                ['<size_call>']
+                ['<size_call>'],
+                ['<textlen_call>'],
+                ['<charat_call>'],
+                ['<ord_call>']
             ],
 
             '<arg_id_suffix>': [
@@ -612,7 +618,10 @@ class TableDrivenParser:
                 ['num_lit'],
                 ['decimal_lit'],
                 ['identifier', '<index_id_suffix>'],
-                ['<size_call>']
+                ['<size_call>'],
+                ['<textlen_call>'],
+                ['<charat_call>'],
+                ['<ord_call>']
             ],
 
             '<index_id_suffix>': [
@@ -633,8 +642,10 @@ class TableDrivenParser:
                 ['num_lit'],
                 ['decimal_lit'],
                 ['identifier', '<from_id_suffix>'],
-
-                ['<size_call>']
+                ['<size_call>'],
+                ['<textlen_call>'],
+                ['<charat_call>'],
+                ['<ord_call>']
             ],
 
             '<from_id_suffix>': [
@@ -654,7 +665,10 @@ class TableDrivenParser:
                 ['num_lit'],
                 ['decimal_lit'],
                 ['identifier', '<to_id_suffix>'],
-                ['<size_call>']
+                ['<size_call>'],
+                ['<textlen_call>'],
+                ['<charat_call>'],
+                ['<ord_call>']
             ],
 
             '<to_id_suffix>': [
@@ -675,7 +689,10 @@ class TableDrivenParser:
                 ['num_lit'],
                 ['decimal_lit'],
                 ['identifier', '<step_id_suffix>'],
-                ['<size_call>']
+                ['<size_call>'],
+                ['<textlen_call>'],
+                ['<charat_call>'],
+                ['<ord_call>']
             ],
 
             '<step_id_suffix>': [
@@ -699,6 +716,18 @@ class TableDrivenParser:
             '<size_second_arg>': [
                 [',', 'num_lit'],
                 ['λ']
+            ],
+
+            '<textlen_call>': [
+                ['textlen', '(', '<arg_value>', ')']
+            ],
+
+            '<charat_call>': [
+                ['charat', '(', '<arg_value>', ',', '<arg_value>', ')']
+            ],
+
+            '<ord_call>': [
+                ['ord', '(', '<arg_value>', ')']
             ],
         }
 
@@ -1902,6 +1931,28 @@ class TableDrivenParser:
     def _action_size_second_arg_epsilon(self, saved_depth):
         self.sem_stack.append(None)
 
+    def _action_textlen_call(self, saved_depth):
+        # textlen ( <arg_value> )
+        # sem_stack has: ... arg_expr
+        arg_expr = self.sem_stack.pop()
+        ln, col = (arg_expr.line, arg_expr.col) if hasattr(arg_expr, 'line') else (0, 0)
+        self.sem_stack.append(TextLenCall(argument=arg_expr, line=ln, col=col))
+
+    def _action_charat_call(self, saved_depth):
+        # charat ( <arg_value> , <arg_value> )
+        # sem_stack has: ... source_expr index_expr
+        idx_expr = self.sem_stack.pop()
+        src_expr = self.sem_stack.pop()
+        ln, col = (src_expr.line, src_expr.col) if hasattr(src_expr, 'line') else (0, 0)
+        self.sem_stack.append(CharAtCall(source=src_expr, index=idx_expr, line=ln, col=col))
+
+    def _action_ord_call(self, saved_depth):
+        # ord ( <arg_value> )
+        # sem_stack has: ... arg_expr
+        arg_expr = self.sem_stack.pop()
+        ln, col = (arg_expr.line, arg_expr.col) if hasattr(arg_expr, 'line') else (0, 0)
+        self.sem_stack.append(OrdCall(argument=arg_expr, line=ln, col=col))
+
     def _action_index_prim_num(self, saved_depth):
         # num_lit in index context
         tok = self.sem_stack.pop()
@@ -2339,6 +2390,12 @@ class TableDrivenParser:
                         self.production_actions[key] = 'PASS_THROUGH'
                     elif prod == ['<size_call>']:
                         self.production_actions[key] = 'PASS_THROUGH'
+                    elif prod == ['<textlen_call>']:
+                        self.production_actions[key] = 'PASS_THROUGH'
+                    elif prod == ['<charat_call>']:
+                        self.production_actions[key] = 'PASS_THROUGH'
+                    elif prod == ['<ord_call>']:
+                        self.production_actions[key] = 'PASS_THROUGH'
                     continue
 
                 if nt == '<index_prim>':
@@ -2351,6 +2408,12 @@ class TableDrivenParser:
                     elif prod[0] == 'identifier':
                         self.production_actions[key] = 'CUSTOM_prim_identifier'
                     elif prod == ['<size_call>']:
+                        self.production_actions[key] = 'PASS_THROUGH'
+                    elif prod == ['<textlen_call>']:
+                        self.production_actions[key] = 'PASS_THROUGH'
+                    elif prod == ['<charat_call>']:
+                        self.production_actions[key] = 'PASS_THROUGH'
+                    elif prod == ['<ord_call>']:
                         self.production_actions[key] = 'PASS_THROUGH'
                     continue
 
@@ -2389,6 +2452,18 @@ class TableDrivenParser:
                         self.production_actions[key] = 'CUSTOM_size_second_arg'
                     continue
 
+                if nt == '<textlen_call>':
+                    self.production_actions[key] = 'CUSTOM_textlen_call'
+                    continue
+
+                if nt == '<charat_call>':
+                    self.production_actions[key] = 'CUSTOM_charat_call'
+                    continue
+
+                if nt == '<ord_call>':
+                    self.production_actions[key] = 'CUSTOM_ord_call'
+                    continue
+
                 # Range primaries (from/to/step)
                 if nt in ('<from_primary>', '<to_primary>', '<step_primary>'):
                     if prod == ['num_lit']:
@@ -2398,6 +2473,12 @@ class TableDrivenParser:
                     elif prod[0] == 'identifier':
                         self.production_actions[key] = 'CUSTOM_prim_identifier'
                     elif prod == ['<size_call>']:
+                        self.production_actions[key] = 'PASS_THROUGH'
+                    elif prod == ['<textlen_call>']:
+                        self.production_actions[key] = 'PASS_THROUGH'
+                    elif prod == ['<charat_call>']:
+                        self.production_actions[key] = 'PASS_THROUGH'
+                    elif prod == ['<ord_call>']:
                         self.production_actions[key] = 'PASS_THROUGH'
                     continue
 
@@ -2521,6 +2602,9 @@ class TableDrivenParser:
             'CUSTOM_size_call': TableDrivenParser._action_size_call,
             'CUSTOM_size_second_arg': TableDrivenParser._action_size_second_arg,
             'CUSTOM_size_second_arg_epsilon': TableDrivenParser._action_size_second_arg_epsilon,
+            'CUSTOM_textlen_call': TableDrivenParser._action_textlen_call,
+            'CUSTOM_charat_call': TableDrivenParser._action_charat_call,
+            'CUSTOM_ord_call': TableDrivenParser._action_ord_call,
             'CUSTOM_index_prim_num': TableDrivenParser._action_index_prim_num,
             'CUSTOM_index_prim_decimal': TableDrivenParser._action_index_prim_decimal,
             'CUSTOM_index_unary_neg': TableDrivenParser._action_index_unary_neg,
