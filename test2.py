@@ -1839,6 +1839,7 @@ class KuCodeLexerGUI:
         self._subprocess = None
         self._temp_file_path = None
         self._running = False
+        self._run_id = 0
 
         # Configure style
         style = ttk.Style()
@@ -1960,6 +1961,7 @@ class KuCodeLexerGUI:
         self.source_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.source_text.bind('<KeyRelease>', self.update_line_numbers)
         self.source_text.bind('<MouseWheel>', self.sync_scroll)
+        self.source_text.bind('<Tab>', self._on_tab)
 
         # Right Panel - Tokens (hidden by default, toggle with button)
         self.right_panel = tk.Frame(
@@ -2151,6 +2153,8 @@ class KuCodeLexerGUI:
         import sys
 
         self._cleanup_subprocess()
+        self._run_id += 1
+        current_run_id = self._run_id
         self._running = True
 
         # Write generated code to temp file
@@ -2187,6 +2191,7 @@ class KuCodeLexerGUI:
         )
         self._watcher_thread = threading.Thread(
             target=self._watch_process,
+            args=(current_run_id,),
             daemon=True
         )
         self._stdout_thread.start()
@@ -2211,6 +2216,11 @@ class KuCodeLexerGUI:
         """Thread-safe: insert text into terminal (called via root.after)."""
         self.terminal_text.insert(tk.END, text, tag if tag else None)
         self.terminal_text.see(tk.END)
+
+    def _on_tab(self, event):
+        """Insert 4 spaces instead of a tab character."""
+        self.source_text.insert(tk.INSERT, '    ')
+        return 'break'
 
     def _on_terminal_key(self, event):
         """Buffer-based input: capture keystrokes, display them, send on Enter."""
@@ -2259,7 +2269,7 @@ class KuCodeLexerGUI:
 
         return 'break'  # block all default Text widget behavior
 
-    def _watch_process(self):
+    def _watch_process(self, run_id):
         """Wait for subprocess to finish."""
         proc = self._subprocess
         if proc:
@@ -2270,10 +2280,12 @@ class KuCodeLexerGUI:
             if hasattr(self, '_stderr_thread'):
                 self._stderr_thread.join(timeout=3)
             exit_code = proc.returncode
-            self.root.after(0, self._on_process_done, exit_code)
+            self.root.after(0, self._on_process_done, exit_code, run_id)
 
-    def _on_process_done(self, exit_code):
+    def _on_process_done(self, exit_code, run_id=None):
         """Called on main thread when subprocess finishes."""
+        if run_id is not None and run_id != self._run_id:
+            return  # stale callback from a superseded run, ignore
         self._running = False
         self.terminal_text.insert(tk.END, f"\n{'='*50}\n")
         if exit_code == 0:
