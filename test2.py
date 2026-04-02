@@ -1951,6 +1951,10 @@ class KuCodeLexerGUI:
                                     border=0, background='#0d1b2a', fg='#6c757d',
                                     state='disabled', wrap='none', font=("Courier New", 10))
         self.line_numbers.pack(side=tk.LEFT, fill=tk.Y)
+        # Block all mouse interaction on line numbers so it can't scroll independently
+        self.line_numbers.bind('<MouseWheel>', lambda e: 'break')
+        self.line_numbers.bind('<Button-1>', lambda e: 'break')
+        self.line_numbers.bind('<B1-Motion>', lambda e: 'break')
 
 # Source code text area
         self.source_text = scrolledtext.ScrolledText(line_frame, wrap=tk.NONE,
@@ -1960,8 +1964,12 @@ class KuCodeLexerGUI:
                                                      selectbackground="#264f78")
         self.source_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.source_text.bind('<KeyRelease>', self.update_line_numbers)
-        self.source_text.bind('<MouseWheel>', self.sync_scroll)
         self.source_text.bind('<Tab>', self._on_tab)
+        # Sync line numbers on every scroll (scrollbar, wheel, keyboard, etc.)
+        self.source_text.vbar.config(command=self._synced_yview)
+        self.source_text.bind('<MouseWheel>', self._on_source_scroll)
+        self.source_text.bind('<Button-4>', self._on_source_scroll)
+        self.source_text.bind('<Button-5>', self._on_source_scroll)
 
         # Right Panel - Tokens (hidden by default, toggle with button)
         self.right_panel = tk.Frame(
@@ -2121,11 +2129,20 @@ class KuCodeLexerGUI:
         self.line_numbers.delete(1.0, tk.END)
         self.line_numbers.insert(1.0, line_numbers_string)
         self.line_numbers.config(state='disabled')
+        self.line_numbers.yview_moveto(self.source_text.yview()[0])
 
         self.highlight_syntax()
 
-    def sync_scroll(self, event=None):
+    def _synced_yview(self, *args):
+        """Scrollbar command: scroll source text and sync line numbers."""
+        self.source_text.yview(*args)
         self.line_numbers.yview_moveto(self.source_text.yview()[0])
+
+    def _on_source_scroll(self, event=None):
+        """After any scroll event, sync line numbers."""
+        self.root.after_idle(
+            lambda: self.line_numbers.yview_moveto(self.source_text.yview()[0])
+        )
 
     def toggle_token_table(self):
         if self.token_table_visible:
