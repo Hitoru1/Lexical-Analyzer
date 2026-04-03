@@ -305,6 +305,7 @@ class SemanticChecker(ASTVisitor):
 
         self.current_function: Optional[Symbol] = None
         self._has_return: bool = False
+        self._loop_depth: int = 0
 
     # ── Error / location helpers ──────────────────────────────
 
@@ -486,6 +487,14 @@ class SemanticChecker(ASTVisitor):
     # ── Declaration visitors ──────────────────────────────────
 
     def visit_VarDecl(self, node: VarDecl):
+        if self._loop_depth > 0:
+            self._error(
+                f"Variable '{node.name}' cannot be declared inside a loop body; "
+                f"declare it before the loop",
+                node
+            )
+            return
+
         if node.is_group_typed:
             # Group-typed variable: GroupType varName;
             group_sym = self.symbol_table.lookup(node.datatype)
@@ -535,6 +544,14 @@ class SemanticChecker(ASTVisitor):
         self._emit('=', place, '_', node.name)
 
     def visit_FixedDecl(self, node: FixedDecl):
+        if self._loop_depth > 0:
+            self._error(
+                f"Fixed variable '{node.name}' cannot be declared inside a loop body; "
+                f"declare it before the loop",
+                node
+            )
+            return
+
         place, expr_type = self.visit(node.value)
         sym = Symbol(
             name=node.name, kind='variable', data_type=node.datatype,
@@ -563,6 +580,14 @@ class SemanticChecker(ASTVisitor):
         self._emit('=', place, '_', node.name)
 
     def visit_ListDecl(self, node: ListDecl):
+        if self._loop_depth > 0:
+            self._error(
+                f"List '{node.name}' cannot be declared inside a loop body; "
+                f"declare it before the loop",
+                node
+            )
+            return
+
         list_place, list_dim, elem_count, col_count = self._visit_val_list(node.value, node.datatype)
         sym = Symbol(
             name=node.name, kind='list', data_type=node.datatype,
@@ -966,10 +991,12 @@ class SemanticChecker(ASTVisitor):
         self._emit(cond_op, vname, to_place, temp_cond)
         self._emit('if_false', temp_cond, '_', L_end)
 
+        self._loop_depth += 1
         self.symbol_table.enter_scope()
         for stmt in node.body:
             self.visit(stmt)
         self._exit_scope_with_unused_check()
+        self._loop_depth -= 1
 
         temp_inc = self._new_temp()
         self._emit('+', vname, step_place, temp_inc)
@@ -992,10 +1019,12 @@ class SemanticChecker(ASTVisitor):
 
         self._emit('if_false', cond_place, '_', L_end)
 
+        self._loop_depth += 1
         self.symbol_table.enter_scope()
         for stmt in node.body:
             self.visit(stmt)
         self._exit_scope_with_unused_check()
+        self._loop_depth -= 1
 
         self._emit('goto', '_', '_', L_test)
         self._emit_label(L_end)
