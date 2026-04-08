@@ -179,7 +179,7 @@ DELIM_SETS = {
     # space_nline, ,, +, ), ], }, ;
     'string_char': {' ', '\n', ',', '+', ')', ']', '}', ';', ':'},
     # space_nline, null, }, ], ), ,, ;, mathop, relop, logicop, =
-    'lit_delim': {' ', '\n', '}', ']', ')', ',', ';', '+', '-', '*', '/', '%', '=', '!', '<', '>', '&', '|', ':'},
+    'lit_delim': {' ', '\n', '}', ']', ')', ',', ';', '+', '-', '*', '/', '%', '=', '!', '<', '>', '&', '|', ':', '{'},
     # space_nline, mathop, =, <, >, (, ), ], ,, ;, }, &, |, !
     'identifier_del': {' ', '\n', '+', '-', '*', '/', '%', '=', '<', '>', '(', ')', ']', ',', ';', '}', '&', '|', '!', '.', '{', '['},
     # num only
@@ -2429,7 +2429,8 @@ class KuCodeLexerGUI:
                     tk.END, "\nStarting code generation...\n\n", "info")
 
                 from code_generator import TACCodeGenerator
-                gen = TACCodeGenerator(analyzer.quadruples, analyzer.symbol_table)
+                gen = TACCodeGenerator(
+                    analyzer.quadruples, analyzer.symbol_table)
                 python_code = gen.generate()
 
                 self.terminal_text.insert(
