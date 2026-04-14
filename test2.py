@@ -9,7 +9,7 @@ LETTERNUM = NUM + LETTERS
 WHITESPACE = '\n\t '
 
 
-# Reserved Words - Program Structure
+# Reserved Words - Program Structures
 RW_START = 'start'
 RW_FINISH = 'finish'
 

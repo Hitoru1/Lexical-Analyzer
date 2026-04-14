@@ -9,7 +9,7 @@ from ast_nodes import (
     ListAccess, MemberAccess, SizeCall, TextLenCall, CharAtCall, OrdCall, ListLiteral1D, ListLiteral2D,
 )
 
-# Sentinel for tail-epsilon results
+# Sentinel for tail-epsilon result
 _TAIL_EMPTY = object()
 
 
@@ -1131,7 +1131,8 @@ class TableDrivenParser:
                 # ── Expand the production onto the parse stack ──
                 if production is not None:
                     action_key = (top, tuple(production))
-                    action = self.production_actions.get(action_key, 'PASS_THROUGH')
+                    action = self.production_actions.get(
+                        action_key, 'PASS_THROUGH')
 
                     self.stack.pop()
 
@@ -1198,9 +1199,11 @@ class TableDrivenParser:
                 # tail is a list of (op_token, right_expr) pairs
                 result = left
                 for op_tok, right in tail:
-                    op_str = op_tok.type if hasattr(op_tok, 'type') else str(op_tok)
+                    op_str = op_tok.type if hasattr(
+                        op_tok, 'type') else str(op_tok)
                     ln, col = self._token_loc(op_tok)
-                    result = BinaryOp(op=op_str, left=result, right=right, line=ln, col=col)
+                    result = BinaryOp(op=op_str, left=result,
+                                      right=right, line=ln, col=col)
                 self.sem_stack.append(result)
             return
 
@@ -1224,9 +1227,11 @@ class TableDrivenParser:
                 self.sem_stack.append(base)
             else:
                 op_tok, right = tail
-                op_str = op_tok.type if hasattr(op_tok, 'type') else str(op_tok)
+                op_str = op_tok.type if hasattr(
+                    op_tok, 'type') else str(op_tok)
                 ln, col = self._token_loc(op_tok)
-                self.sem_stack.append(BinaryOp(op=op_str, left=base, right=right, line=ln, col=col))
+                self.sem_stack.append(
+                    BinaryOp(op=op_str, left=base, right=right, line=ln, col=col))
             return
 
         if action == 'BUILD_EXP_TAIL':
@@ -1283,8 +1288,10 @@ class TableDrivenParser:
         # sem_stack has: ... literal_token
         tok = self.sem_stack.pop()
         ln, col = self._token_loc(tok)
-        val = tok.value if hasattr(tok, 'value') and tok.value is not None else ''
-        self.sem_stack.append(Literal(token_type=tok.type, value=str(val), line=ln, col=col))
+        val = tok.value if hasattr(
+            tok, 'value') and tok.value is not None else ''
+        self.sem_stack.append(
+            Literal(token_type=tok.type, value=str(val), line=ln, col=col))
 
     def _action_control_flow(self, saved_depth):
         # sem_stack has: ... stop/skip_token
@@ -1297,7 +1304,8 @@ class TableDrivenParser:
         dtype = self.sem_stack.pop()
         ln, col = self._token_loc(id_tok)
         name = id_tok.value if hasattr(id_tok, 'value') else str(id_tok)
-        self.sem_stack.append(GroupMember(datatype=dtype, name=name, line=ln, col=col))
+        self.sem_stack.append(GroupMember(
+            datatype=dtype, name=name, line=ln, col=col))
 
     def _action_group_definitions(self, saved_depth):
         # sem_stack has: ... identifier_token group_body_list
@@ -1307,7 +1315,8 @@ class TableDrivenParser:
         name = id_tok.value if hasattr(id_tok, 'value') else str(id_tok)
         if not isinstance(body_list, list):
             body_list = []
-        self.sem_stack.append(GroupDef(name=name, members=body_list, line=ln, col=col))
+        self.sem_stack.append(
+            GroupDef(name=name, members=body_list, line=ln, col=col))
 
     def _action_global_modifier(self, saved_depth):
         # sem_stack has: ... fixed_token
@@ -1339,7 +1348,8 @@ class TableDrivenParser:
         is_fixed = self.sem_stack.pop()
         dtype, name, value, ln, col = typed_decl
         self.sem_stack.append(
-            WorldwideDecl(is_fixed=is_fixed, datatype=dtype, name=name, value=value, line=ln, col=col)
+            WorldwideDecl(is_fixed=is_fixed, datatype=dtype,
+                          name=name, value=value, line=ln, col=col)
         )
 
     def _action_global_decl_choice_list(self, saved_depth):
@@ -1356,7 +1366,8 @@ class TableDrivenParser:
         dtype = self.sem_stack.pop()
         ln, col = self._token_loc(id_tok)
         name = id_tok.value if hasattr(id_tok, 'value') else str(id_tok)
-        self.sem_stack.append(Parameter(datatype=dtype, name=name, line=ln, col=col))
+        self.sem_stack.append(
+            Parameter(datatype=dtype, name=name, line=ln, col=col))
 
     def _action_parameter_list(self, saved_depth):
         # sem_stack has: ... first_param tail_list
@@ -1470,10 +1481,12 @@ class TableDrivenParser:
         name_tok = self.sem_stack.pop()
         type_tok = self.sem_stack.pop()
         ln, col = self._token_loc(name_tok)
-        group_type = type_tok.value if hasattr(type_tok, 'value') else str(type_tok)
+        group_type = type_tok.value if hasattr(
+            type_tok, 'value') else str(type_tok)
         vname = name_tok.value if hasattr(name_tok, 'value') else str(name_tok)
         self.sem_stack.append(
-            VarDecl(datatype=group_type, name=vname, is_group_typed=True, line=ln, col=col)
+            VarDecl(datatype=group_type, name=vname,
+                    is_group_typed=True, line=ln, col=col)
         )
 
     def _action_local_declaration_typed(self, saved_depth):
@@ -1518,7 +1531,8 @@ class TableDrivenParser:
         name = id_tok.value if hasattr(id_tok, 'value') else str(id_tok)
         ln, col = self._token_loc(id_tok)
         self.sem_stack.append(
-            ListDecl(datatype=dtype, name=name, value=val_list, line=ln, col=col)
+            ListDecl(datatype=dtype, name=name,
+                     value=val_list, line=ln, col=col)
         )
 
     def _action_list_declaration(self, saved_depth):
@@ -1582,7 +1596,8 @@ class TableDrivenParser:
         # sem_stack has: ... (id_tok is below us) member_identifier_token
         # Do NOT pop id_tok — _action_assignable will handle it.
         member_tok = self.sem_stack.pop()
-        member = member_tok.value if hasattr(member_tok, 'value') else str(member_tok)
+        member = member_tok.value if hasattr(
+            member_tok, 'value') else str(member_tok)
         self.sem_stack.append(MemberAccess(member=member))
 
     def _action_assignable_suffix_epsilon(self, saved_depth):
@@ -1735,7 +1750,8 @@ class TableDrivenParser:
         stmts = self.sem_stack.pop()
         if not isinstance(stmts, list):
             stmts = []
-        self.sem_stack.append([stmts])  # Wrap in list so parent can distinguish
+        # Wrap in list so parent can distinguish
+        self.sem_stack.append([stmts])
 
     def _action_otherwise_chain_epsilon(self, saved_depth):
         self.sem_stack.append([])
@@ -1752,7 +1768,8 @@ class TableDrivenParser:
             options = []
         fb = fallback if isinstance(fallback, list) else None
         self.sem_stack.append(
-            SelectStmt(variable=name, options=options, fallback=fb, line=ln, col=col)
+            SelectStmt(variable=name, options=options,
+                       fallback=fb, line=ln, col=col)
         )
 
     def _action_option_block(self, saved_depth):
@@ -1767,7 +1784,8 @@ class TableDrivenParser:
         ln = lit.line if hasattr(lit, 'line') else 0
         col = lit.col if hasattr(lit, 'col') else 0
         self.sem_stack.append(
-            OptionBlock(value=lit, body=stmts, control_flow=cf_str, line=ln, col=col)
+            OptionBlock(value=lit, body=stmts,
+                        control_flow=cf_str, line=ln, col=col)
         )
 
     def _action_optional_fallback(self, saved_depth):
@@ -1826,7 +1844,8 @@ class TableDrivenParser:
         operand = self.sem_stack.pop()
         op_tok = self.sem_stack.pop()
         ln, col = self._token_loc(op_tok)
-        self.sem_stack.append(UnaryOp(op='-', operand=operand, line=ln, col=col))
+        self.sem_stack.append(
+            UnaryOp(op='-', operand=operand, line=ln, col=col))
 
     def _action_unary_not(self, saved_depth):
         # ! <post>
@@ -1834,7 +1853,8 @@ class TableDrivenParser:
         operand = self.sem_stack.pop()
         op_tok = self.sem_stack.pop()
         ln, col = self._token_loc(op_tok)
-        self.sem_stack.append(UnaryOp(op='!', operand=operand, line=ln, col=col))
+        self.sem_stack.append(
+            UnaryOp(op='!', operand=operand, line=ln, col=col))
 
     def _action_unary_passthrough(self, saved_depth):
         # <post> — just pass through
@@ -1893,7 +1913,8 @@ class TableDrivenParser:
         # . identifier
         # sem_stack has: ... member_id_token
         member_tok = self.sem_stack.pop()
-        member = member_tok.value if hasattr(member_tok, 'value') else str(member_tok)
+        member = member_tok.value if hasattr(
+            member_tok, 'value') else str(member_tok)
         self.sem_stack.append(MemberAccess(member=member))
 
     def _action_id_suffix_epsilon(self, saved_depth):
@@ -1920,7 +1941,8 @@ class TableDrivenParser:
             dim = str(second.value)
         elif second is not None and isinstance(second, str):
             dim = second
-        self.sem_stack.append(SizeCall(list_name=name, dimension=dim, line=ln, col=col))
+        self.sem_stack.append(
+            SizeCall(list_name=name, dimension=dim, line=ln, col=col))
 
     def _action_size_second_arg(self, saved_depth):
         # , num_lit
@@ -1935,7 +1957,8 @@ class TableDrivenParser:
         # textlen ( <arg_value> )
         # sem_stack has: ... arg_expr
         arg_expr = self.sem_stack.pop()
-        ln, col = (arg_expr.line, arg_expr.col) if hasattr(arg_expr, 'line') else (0, 0)
+        ln, col = (arg_expr.line, arg_expr.col) if hasattr(
+            arg_expr, 'line') else (0, 0)
         self.sem_stack.append(TextLenCall(argument=arg_expr, line=ln, col=col))
 
     def _action_charat_call(self, saved_depth):
@@ -1943,36 +1966,44 @@ class TableDrivenParser:
         # sem_stack has: ... source_expr index_expr
         idx_expr = self.sem_stack.pop()
         src_expr = self.sem_stack.pop()
-        ln, col = (src_expr.line, src_expr.col) if hasattr(src_expr, 'line') else (0, 0)
-        self.sem_stack.append(CharAtCall(source=src_expr, index=idx_expr, line=ln, col=col))
+        ln, col = (src_expr.line, src_expr.col) if hasattr(
+            src_expr, 'line') else (0, 0)
+        self.sem_stack.append(CharAtCall(
+            source=src_expr, index=idx_expr, line=ln, col=col))
 
     def _action_ord_call(self, saved_depth):
         # ord ( <arg_value> )
         # sem_stack has: ... arg_expr
         arg_expr = self.sem_stack.pop()
-        ln, col = (arg_expr.line, arg_expr.col) if hasattr(arg_expr, 'line') else (0, 0)
+        ln, col = (arg_expr.line, arg_expr.col) if hasattr(
+            arg_expr, 'line') else (0, 0)
         self.sem_stack.append(OrdCall(argument=arg_expr, line=ln, col=col))
 
     def _action_index_prim_num(self, saved_depth):
         # num_lit in index context
         tok = self.sem_stack.pop()
         ln, col = self._token_loc(tok)
-        val = tok.value if hasattr(tok, 'value') and tok.value is not None else ''
-        self.sem_stack.append(Literal(token_type='num_lit', value=str(val), line=ln, col=col))
+        val = tok.value if hasattr(
+            tok, 'value') and tok.value is not None else ''
+        self.sem_stack.append(
+            Literal(token_type='num_lit', value=str(val), line=ln, col=col))
 
     def _action_index_prim_decimal(self, saved_depth):
         # decimal_lit in index context
         tok = self.sem_stack.pop()
         ln, col = self._token_loc(tok)
-        val = tok.value if hasattr(tok, 'value') and tok.value is not None else ''
-        self.sem_stack.append(Literal(token_type='decimal_lit', value=str(val), line=ln, col=col))
+        val = tok.value if hasattr(
+            tok, 'value') and tok.value is not None else ''
+        self.sem_stack.append(
+            Literal(token_type='decimal_lit', value=str(val), line=ln, col=col))
 
     def _action_index_unary_neg(self, saved_depth):
         # - <index_post>
         operand = self.sem_stack.pop()
         op_tok = self.sem_stack.pop()
         ln, col = self._token_loc(op_tok)
-        self.sem_stack.append(UnaryOp(op='-', operand=operand, line=ln, col=col))
+        self.sem_stack.append(
+            UnaryOp(op='-', operand=operand, line=ln, col=col))
 
     def _action_index_unary_passthrough(self, saved_depth):
         pass
@@ -1980,14 +2011,18 @@ class TableDrivenParser:
     def _action_from_primary_num(self, saved_depth):
         tok = self.sem_stack.pop()
         ln, col = self._token_loc(tok)
-        val = tok.value if hasattr(tok, 'value') and tok.value is not None else ''
-        self.sem_stack.append(Literal(token_type='num_lit', value=str(val), line=ln, col=col))
+        val = tok.value if hasattr(
+            tok, 'value') and tok.value is not None else ''
+        self.sem_stack.append(
+            Literal(token_type='num_lit', value=str(val), line=ln, col=col))
 
     def _action_from_primary_decimal(self, saved_depth):
         tok = self.sem_stack.pop()
         ln, col = self._token_loc(tok)
-        val = tok.value if hasattr(tok, 'value') and tok.value is not None else ''
-        self.sem_stack.append(Literal(token_type='decimal_lit', value=str(val), line=ln, col=col))
+        val = tok.value if hasattr(
+            tok, 'value') and tok.value is not None else ''
+        self.sem_stack.append(
+            Literal(token_type='decimal_lit', value=str(val), line=ln, col=col))
 
     def _action_range_primary_id(self, saved_depth):
         # identifier <id_suffix>

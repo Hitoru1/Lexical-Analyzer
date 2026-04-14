@@ -1,6 +1,6 @@
 """
 KUCODE Code Generator (TAC-Based)
-==================================
+=================================
 Translates TAC quadruples (from the semantic analyzer) into executable Python code.
 Uses block-dispatch loop to handle goto/label control flow.
 """
@@ -170,7 +170,8 @@ class TACCodeGenerator:
 
         # Runtime stacks for param passing and list building
         needs_params = any(q.op in ('param', 'call') for q in quads)
-        needs_elems = any(q.op in ('list_elem', 'list_1d', 'list_2d') for q in quads)
+        needs_elems = any(q.op in ('list_elem', 'list_1d', 'list_2d')
+                          for q in quads)
         if needs_params:
             self._emit_line('_params = []')
         if needs_elems:
@@ -537,4 +538,3 @@ class TACCodeGenerator:
                 if sym.is_worldwide:
                     names.append(name)
         return names
-

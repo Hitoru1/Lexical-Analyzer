@@ -15,27 +15,25 @@ from ast_nodes import (
 )
 
 
-
 # TYPE-SYSTEM CONSTANTS
 
 
-NUMERIC_TYPES   = {'num', 'decimal', 'bigdecimal'}
-BOOL_TYPE       = 'bool'
-TEXT_TYPE       = 'text'
-CHAR_TYPE       = 'letter'
+NUMERIC_TYPES = {'num', 'decimal', 'bigdecimal'}
+BOOL_TYPE = 'bool'
+TEXT_TYPE = 'text'
+CHAR_TYPE = 'letter'
 PRIMITIVE_TYPES = NUMERIC_TYPES | {BOOL_TYPE, TEXT_TYPE, CHAR_TYPE}
 NUMERIC_OR_BOOL = NUMERIC_TYPES | {BOOL_TYPE}   # truthy-coercion domain
-RETURN_TYPES    = PRIMITIVE_TYPES | {'empty'}
+RETURN_TYPES = PRIMITIVE_TYPES | {'empty'}
 
-ARITHMETIC_OPS  = {'+', '-', '*', '/', '//', '%', '**'}
-RELATIONAL_OPS  = {'>', '<', '>=', '<='}
-EQUALITY_OPS    = {'==', '!='}
-LOGICAL_OPS     = {'&&', '||', '!'}
+ARITHMETIC_OPS = {'+', '-', '*', '/', '//', '%', '**'}
+RELATIONAL_OPS = {'>', '<', '>=', '<='}
+EQUALITY_OPS = {'==', '!='}
+LOGICAL_OPS = {'&&', '||', '!'}
 COMPOUND_ASSIGN = {'+=', '-=', '*=', '/=', '//=', '%=', '**='}
 
 
-
-# DATA STRUCTURES
+# DATA STRUCTURE
 
 
 @dataclass
@@ -63,7 +61,8 @@ class Quadruple:
 @dataclass
 class Symbol:
     name: str
-    kind: str                          # 'variable' | 'function' | 'group' | 'parameter' | 'list'
+    # 'variable' | 'function' | 'group' | 'parameter' | 'list'
+    kind: str
     data_type: str                     # primitive type name, group name, or return type
     is_fixed: bool = False
     is_worldwide: bool = False
@@ -71,9 +70,11 @@ class Symbol:
     list_dim: int = 0                  # 1 or 2
     list_size: int = 0                 # element count for 1D; row count for 2D
     list_col_count: int = 0            # column count for 2D
-    params: List[Tuple[str, str]] = field(default_factory=list)   # [(type, name), ...]
+    params: List[Tuple[str, str]] = field(
+        default_factory=list)   # [(type, name), ...]
     return_type: str = ''
-    group_members: Dict[str, str] = field(default_factory=dict)   # {member_name: type}
+    group_members: Dict[str, str] = field(
+        default_factory=dict)   # {member_name: type}
     used: bool = False
     line: int = 0
     col: int = 0
@@ -194,7 +195,6 @@ def result_type_of_op(op: str, left: str, right: str) -> str:
     return 'unknown'
 
 
-
 # AST VISITOR BASE
 
 
@@ -208,7 +208,6 @@ class ASTVisitor:
 
     def generic_visit(self, node):
         return None
-
 
 
 # PASS 1 — DECLARATION COLLECTOR
@@ -263,7 +262,8 @@ class DeclarationCollector(ASTVisitor):
         if isinstance(node.value, ListLiteral2D):
             list_dim = 2
             elem_count = len(node.value.rows)
-            col_count = len(node.value.rows[0].elements) if node.value.rows else 0
+            col_count = len(
+                node.value.rows[0].elements) if node.value.rows else 0
         elif isinstance(node.value, ListLiteral1D):
             elem_count = len(node.value.elements)
 
@@ -285,7 +285,6 @@ class DeclarationCollector(ASTVisitor):
         )
         if not self.symbol_table.declare(sym):
             self._error(f"Duplicate function definition '{node.name}'", node)
-
 
 
 # PASS 2 — SEMANTIC CHECKER + TAC EMITTER
@@ -404,7 +403,8 @@ class SemanticChecker(ASTVisitor):
 
     def visit_WorldwideListDecl(self, node: WorldwideListDecl):
         # Reuse the same list-visiting logic as visit_ListDecl
-        list_place, list_dim, elem_count, col_count = self._visit_val_list(node.value, node.datatype)
+        list_place, list_dim, elem_count, col_count = self._visit_val_list(
+            node.value, node.datatype)
         # Symbol already registered by Pass 1 — just emit TAC
         self._emit('list_assign', list_place, str(list_dim), node.name)
 
@@ -440,7 +440,8 @@ class SemanticChecker(ASTVisitor):
 
         # Optional return
         if node.return_stmt is not None:
-            self._visit_return_in_function(node.return_stmt, node.return_type, node)
+            self._visit_return_in_function(
+                node.return_stmt, node.return_type, node)
 
         # Semantic Rule IV-5,7: non-empty function must have a return
         if node.return_type != 'empty' and not self._has_return:
@@ -588,7 +589,8 @@ class SemanticChecker(ASTVisitor):
             )
             return
 
-        list_place, list_dim, elem_count, col_count = self._visit_val_list(node.value, node.datatype)
+        list_place, list_dim, elem_count, col_count = self._visit_val_list(
+            node.value, node.datatype)
         sym = Symbol(
             name=node.name, kind='list', data_type=node.datatype,
             is_list=True, list_dim=list_dim,
@@ -814,7 +816,8 @@ class SemanticChecker(ASTVisitor):
             place, dtype = self.visit(arg)
             args.append((place, dtype))
         for arg_place, arg_dtype in args:
-            self._emit('param', arg_place, arg_dtype if arg_dtype == 'bool' else '_')
+            self._emit('param', arg_place,
+                       arg_dtype if arg_dtype == 'bool' else '_')
         self._emit('call', 'show', str(len(args)))
 
     def visit_DisplayStmt(self, node: DisplayStmt):
@@ -823,7 +826,8 @@ class SemanticChecker(ASTVisitor):
             place, dtype = self.visit(arg)
             args.append((place, dtype))
         for arg_place, arg_dtype in args:
-            self._emit('param', arg_place, arg_dtype if arg_dtype == 'bool' else '_')
+            self._emit('param', arg_place,
+                       arg_dtype if arg_dtype == 'bool' else '_')
         self._emit('call', 'display', str(len(args)))
 
     def visit_ReadStmt(self, node: ReadStmt):
@@ -850,7 +854,7 @@ class SemanticChecker(ASTVisitor):
             )
 
         L_else = self._new_label()
-        L_end  = self._new_label()
+        L_end = self._new_label()
 
         self._emit('if_false', cond_place, '_', L_else)
 
@@ -982,7 +986,7 @@ class SemanticChecker(ASTVisitor):
         self._emit('=', from_place, '_', vname)
 
         L_test = self._new_label()
-        L_end  = self._new_label()
+        L_end = self._new_label()
 
         self._emit_label(L_test)
 
@@ -1011,7 +1015,7 @@ class SemanticChecker(ASTVisitor):
 
     def visit_DuringLoop(self, node: DuringLoop):
         L_test = self._new_label()
-        L_end  = self._new_label()
+        L_end = self._new_label()
         self._emit_label(L_test)
 
         cond_place, cond_type = self.visit(node.condition)
@@ -1044,8 +1048,10 @@ class SemanticChecker(ASTVisitor):
 
         # Type checking per operator category
         if op in LOGICAL_OPS:
-            left_bad = not is_numeric_or_bool(left_type) and left_type != 'unknown'
-            right_bad = not is_numeric_or_bool(right_type) and right_type != 'unknown'
+            left_bad = not is_numeric_or_bool(
+                left_type) and left_type != 'unknown'
+            right_bad = not is_numeric_or_bool(
+                right_type) and right_type != 'unknown'
             if left_bad or right_bad:
                 if left_bad and right_bad and left_type == right_type:
                     self._error(
@@ -1131,7 +1137,8 @@ class SemanticChecker(ASTVisitor):
 
         if op in ('*', '/', '%'):
             if left_type in (TEXT_TYPE, CHAR_TYPE) or right_type in (TEXT_TYPE, CHAR_TYPE):
-                bad = left_type if left_type in (TEXT_TYPE, CHAR_TYPE) else right_type
+                bad = left_type if left_type in (
+                    TEXT_TYPE, CHAR_TYPE) else right_type
                 self._error(
                     f"Operator '{op}' is not valid for type '{bad}'",
                     node
@@ -1435,7 +1442,6 @@ class SemanticChecker(ASTVisitor):
 
         self._emit('call', fname, str(len(args)))
         return '_', 'empty'
-
 
 
 # ═══════════════════════════════════════════════════════════════
