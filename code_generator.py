@@ -22,7 +22,7 @@ _TYPE_DEFAULTS = {
     'num': '0',
     'decimal': '0.0',
     'bigdecimal': '0.0',
-    'bool': 'False',
+    'bool': '0',
     'text': '""',
     'letter': '""',
 }
@@ -354,7 +354,10 @@ class TACCodeGenerator:
         # ── Parameter passing ──
         if op == 'param':
             val = self._translate_value(q.arg1)
-            self._emit_line(f'_params.append({val})')
+            if q.arg2 == 'bool':
+                self._emit_line(f"_params.append('Yes' if {val} else 'No')")
+            else:
+                self._emit_line(f'_params.append({val})')
             return True
 
         # ── Function / built-in calls ──
@@ -519,11 +522,11 @@ class TACCodeGenerator:
         self._indent_level -= 1
 
     def _translate_value(self, val: str) -> str:
-        """Translate TAC value to Python value (Yes→True, No→False)."""
+        """Translate TAC value to Python value (Yes→1, No→0)."""
         if val == 'Yes':
-            return 'True'
+            return '1'
         if val == 'No':
-            return 'False'
+            return '0'
         return val
 
     def _get_worldwide_names(self) -> List[str]:

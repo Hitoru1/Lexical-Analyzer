@@ -813,8 +813,8 @@ class SemanticChecker(ASTVisitor):
         for arg in node.args:
             place, dtype = self.visit(arg)
             args.append((place, dtype))
-        for arg_place, _ in args:
-            self._emit('param', arg_place)
+        for arg_place, arg_dtype in args:
+            self._emit('param', arg_place, arg_dtype if arg_dtype == 'bool' else '_')
         self._emit('call', 'show', str(len(args)))
 
     def visit_DisplayStmt(self, node: DisplayStmt):
@@ -822,8 +822,8 @@ class SemanticChecker(ASTVisitor):
         for arg in node.args:
             place, dtype = self.visit(arg)
             args.append((place, dtype))
-        for arg_place, _ in args:
-            self._emit('param', arg_place)
+        for arg_place, arg_dtype in args:
+            self._emit('param', arg_place, arg_dtype if arg_dtype == 'bool' else '_')
         self._emit('call', 'display', str(len(args)))
 
     def visit_ReadStmt(self, node: ReadStmt):
@@ -1000,6 +1000,11 @@ class SemanticChecker(ASTVisitor):
 
         temp_inc = self._new_temp()
         self._emit('+', vname, step_place, temp_inc)
+        # Only update loop var if the next value is still within range.
+        # This ensures the variable retains its last valid value after the loop.
+        temp_check = self._new_temp()
+        self._emit(cond_op, temp_inc, to_place, temp_check)
+        self._emit('if_false', temp_check, '_', L_end)
         self._emit('=', temp_inc, '_', vname)
         self._emit('goto', '_', '_', L_test)
         self._emit_label(L_end)
