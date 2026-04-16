@@ -333,6 +333,12 @@ class TACCodeGenerator:
             self._emit_line(f'{q.result} = (not {val})')
             return True
 
+        # ── Num range guard ──
+        if op == 'num_check':
+            ctx = q.arg2 if q.arg2 != '_' else ''
+            self._emit_line(f'_check_num_range({q.arg1}, "{ctx}")')
+            return True
+
         # ── Control flow ──
         if op == 'if_false':
             val = self._translate_value(q.arg1)

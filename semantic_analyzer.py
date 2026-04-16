@@ -359,6 +359,10 @@ class SemanticChecker(ASTVisitor):
         self.quadruples.append(Quadruple(op, arg1, arg2, result))
         return len(self.quadruples) - 1
 
+    def _emit_num_check(self, place: str, ctx: str) -> None:
+        """Runtime overflow guard for num results."""
+        self._emit('num_check', place, ctx, '_')
+
     def _emit_label(self, label: str) -> None:
         self._emit('label', label)
 
@@ -543,6 +547,8 @@ class SemanticChecker(ASTVisitor):
             )
 
         self._emit('=', place, '_', node.name)
+        if node.datatype == 'num':
+            self._emit_num_check(node.name, 'assign')
 
     def visit_FixedDecl(self, node: FixedDecl):
         if self._loop_depth > 0:
@@ -667,6 +673,8 @@ class SemanticChecker(ASTVisitor):
                 node
             )
         self._emit('=', place, '_', target)
+        if target_type == 'num':
+            self._emit_num_check(target, 'assign')
 
     def visit_CompoundAssign(self, node: CompoundAssign):
         target, target_type, target_sym = self._resolve_assignable(node.target)
@@ -684,7 +692,11 @@ class SemanticChecker(ASTVisitor):
         base_op = node.op[:-1]   # strip trailing '='
         temp = self._new_temp()
         self._emit(base_op, target, place, temp)
+        if target_type == 'num' and base_op in ('+', '-', '*', '**'):
+            self._emit_num_check(temp, node.op)
         self._emit('=', temp, '_', target)
+        if target_type == 'num':
+            self._emit_num_check(target, 'assign')
 
     def visit_Increment(self, node: Increment):
         target, target_type, target_sym = self._resolve_assignable(node.target)
@@ -701,6 +713,8 @@ class SemanticChecker(ASTVisitor):
         temp = self._new_temp()
         self._emit('+', target, '1', temp)
         self._emit('=', temp, '_', target)
+        if target_type == 'num':
+            self._emit_num_check(target, '++')
 
     def visit_Decrement(self, node: Decrement):
         target, target_type, target_sym = self._resolve_assignable(node.target)
@@ -717,6 +731,8 @@ class SemanticChecker(ASTVisitor):
         temp = self._new_temp()
         self._emit('-', target, '1', temp)
         self._emit('=', temp, '_', target)
+        if target_type == 'num':
+            self._emit_num_check(target, '--')
 
     def _resolve_assignable(self, target) -> Tuple[str, str, Optional[Symbol]]:
         """Resolve a LHS target expression to (place, type, symbol)."""
@@ -1133,6 +1149,8 @@ class SemanticChecker(ASTVisitor):
             temp = self._new_temp()
             rtype = result_type_of_op(op, left_type, right_type)
             self._emit(op, left_place, right_place, temp)
+            if rtype == 'num':
+                self._emit_num_check(temp, op)
             return temp, rtype
 
         if op in ('*', '/', '%'):
@@ -1147,6 +1165,8 @@ class SemanticChecker(ASTVisitor):
             temp = self._new_temp()
             rtype = result_type_of_op(op, left_type, right_type)
             self._emit(op, left_place, right_place, temp)
+            if op == '*' and rtype == 'num':
+                self._emit_num_check(temp, '*')
             return temp, rtype
 
         if op == '**':
@@ -1166,6 +1186,8 @@ class SemanticChecker(ASTVisitor):
             temp = self._new_temp()
             rtype = result_type_of_op('**', left_type, right_type)
             self._emit('**', left_place, right_place, temp)
+            if rtype == 'num':
+                self._emit_num_check(temp, '**')
             return temp, rtype
 
         # Fallback
@@ -1183,6 +1205,8 @@ class SemanticChecker(ASTVisitor):
                 )
             temp = self._new_temp()
             self._emit('unary-', place, '_', temp)
+            if dtype == 'num':
+                self._emit_num_check(temp, 'unary-')
             return temp, dtype
 
         if node.op == '!':
