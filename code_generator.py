@@ -57,6 +57,14 @@ class TACCodeGenerator:
         # Runtime list-building stack must exist before the preamble uses it
         self._emit_line('_elems = []')
 
+        # Runtime num range guard (mirrors lexer's 11-digit cap)
+        self._emit_line('_NUM_MAX = 10**11')
+        self._emit_line('def _check_num_range(value, ctx=""):')
+        self._emit_line('    if abs(int(value)) >= _NUM_MAX:')
+        self._emit_line('        where = f" in {ctx}" if ctx else ""')
+        self._emit_line('        raise RuntimeError(f"Runtime error{where}: num value {value} exceeds 11-digit limit")')
+        self._emit_line('    return value')
+
         # Worldwide variable assignments
         if preamble:
             self._emit_quads_straight(preamble)
@@ -496,7 +504,7 @@ class TACCodeGenerator:
         var_type = q.arg2 if q.arg2 != '_' else 'text'
 
         if var_type == 'num':
-            self._emit_line(f'{var_name} = int(input())')
+            self._emit_line(f'{var_name} = _check_num_range(int(input()), "read")')
         elif var_type in ('decimal', 'bigdecimal'):
             self._emit_line(f'{var_name} = float(input())')
         elif var_type == 'letter':
