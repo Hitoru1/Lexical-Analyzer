@@ -1826,113 +1826,49 @@ class Lexer:
 
         return tokens, errors
 
+
 # gui tkinter
 
 
-class KuCodeLexerGUI:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("KuCode Compiler")
-        self.root.geometry("1400x800")
+class EditorTab(tk.Frame):
+    """One notebook page: source editor + token table + terminal + subprocess.
+
+    Owns all per-file state. The parent KuCodeLexerGUI is a thin shell that
+    delegates Analyze/Clear/Save/Open/Toggle-Tokens to the active tab.
+    """
+
+    # Shared color palette (mirrors original KuCodeLexerGUI values)
+    BG_PANEL = "#1a1a2e"
+    BG_DARK = "#152238"
+
+    def __init__(self, master, gui, filepath=None):
+        super().__init__(master, bg="#0d1b2a")
+        self.gui = gui
+        self.filepath = filepath
+        self.dirty = False
+        self.token_table_visible = False
 
         # Subprocess state
         self._subprocess = None
         self._temp_file_path = None
         self._running = False
         self._run_id = 0
+        self._stdout_thread = None
+        self._stderr_thread = None
+        self._watcher_thread = None
+        self._input_buffer = ""
 
-        # Configure style
-        style = ttk.Style()
-        style.theme_use('clam')
+        panel_bg = self.BG_PANEL
+        dark_blue = self.BG_DARK
 
-        style.configure("Treeview",
-                        background="#152238",
-                        foreground="#e0e0e0",
-                        fieldbackground="#152238",
-                        borderwidth=0,
-                        rowheight=25,
-                        font=("Arial", 10))
+        # Vertical PanedWindow: (source + tokens) on top, terminal on bottom
+        self.paned = tk.PanedWindow(self, orient=tk.VERTICAL,
+                                    bg="#0d1b2a", sashwidth=8,
+                                    sashrelief=tk.RAISED, bd=0)
+        self.paned.pack(fill=tk.BOTH, expand=True)
 
-        style.configure("Treeview.Heading",
-                        background="#1e3a5f",
-                        foreground="white",
-                        borderwidth=1,
-                        relief="flat",
-                        font=("Arial Black", 10, "bold"))
-
-        style.map("Treeview.Heading",
-                  background=[('active', '#2d5a8a')])  # Lighter blue on hover
-
-        style.map("Treeview",
-                  background=[('selected', '#264f78')],  # Selection color
-                  foreground=[('selected', 'white')])
-
-        # Configure colors
-        bg_color = "#1e3a5f"
-        fg_color = "white"
-        accent_blue = "#2d5a8a"
-        dark_blue = "#152238"
-        panel_bg = "#1a1a2e"
-
-        # Header Frame
-        header_frame = tk.Frame(root, bg=bg_color, height=60)
-        header_frame.pack(fill=tk.X, side=tk.TOP)
-        header_frame.pack_propagate(False)
-
-        # Logo and Title
-        title_label = tk.Label(header_frame, text="KuCode Compiler",
-                               font=("Courier New", 18, "bold"), bg=bg_color, fg=fg_color)
-        title_label.pack(side=tk.LEFT, padx=20, pady=10)
-
-        # Buttons
-        btn_frame = tk.Frame(header_frame, bg=bg_color)
-        btn_frame.pack(side=tk.RIGHT, padx=20)
-
-        analyze_btn = tk.Button(btn_frame, text="Analyze", command=self.analyze,
-                                bg="#2d5a8a", fg="white", font=("Courier New", 10, "bold"),
-                                padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
-                                activebackground="#3d6a9a")
-        analyze_btn.pack(side=tk.LEFT, padx=5)
-
-        clear_btn = tk.Button(btn_frame, text="Clear", command=self.clear_all,
-                              bg="#3d6a9f", fg="white", font=("Courier New", 10, "bold"),
-                              padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
-                              activebackground="#4d7aaf")
-        clear_btn.pack(side=tk.LEFT, padx=5)
-
-        save_btn = tk.Button(btn_frame, text="Save", command=self.save_file,
-                             bg="#1d4a7a", fg="white", font=("Courier New", 10, "bold"),
-                             padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
-                             activebackground="#2d5a8a")
-        save_btn.pack(side=tk.LEFT, padx=5)
-
-        open_btn = tk.Button(btn_frame, text="Open", command=self.open_file,
-                             bg="#1d4a7a", fg="white", font=("Courier New", 10, "bold"),
-                             padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
-                             activebackground="#2d5a8a")
-        open_btn.pack(side=tk.LEFT, padx=5)
-
-        toggle_btn = tk.Button(btn_frame, text="Toggle Tokens",
-                               command=self.toggle_token_table,
-                               bg="#4a3a6a", fg="white", font=("Courier New", 10, "bold"),
-                               padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
-                               activebackground="#5a4a7a")
-        toggle_btn.pack(side=tk.LEFT, padx=5)
-
-        # Main container
-        # Container for everything below header (for PanedWindow)
-        content_container = tk.Frame(root, bg="#0d1b2a")
-        content_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
-        # Create PanedWindow for draggable divider
-        paned_window = tk.PanedWindow(content_container, orient=tk.VERTICAL,
-                                      bg="#0d1b2a", sashwidth=8,
-                                      sashrelief=tk.RAISED, bd=0)
-        paned_window.pack(fill=tk.BOTH, expand=True)
-
-        # Main container (source code + tokens)
-        main_container = tk.Frame(paned_window, bg="#0d1b2a")
-        paned_window.add(main_container, minsize=200)
+        main_container = tk.Frame(self.paned, bg="#0d1b2a")
+        self.paned.add(main_container, minsize=200)
 
         # Left Panel - Source Code
         left_panel = tk.Frame(main_container, bg=panel_bg,
@@ -1940,109 +1876,120 @@ class KuCodeLexerGUI:
         left_panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
 
         source_label = tk.Label(left_panel, text="Source Code",
-                                font=("Courier New", 12, "bold"), bg=panel_bg, fg="white", anchor="w")
+                                font=("Courier New", 12, "bold"),
+                                bg=panel_bg, fg="white", anchor="w")
         source_label.pack(fill=tk.X, padx=10, pady=(10, 5))
-        # Line numbers frame
+
         line_frame = tk.Frame(left_panel, bg="white")
         line_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
 
-        # Line numbers
         self.line_numbers = tk.Text(line_frame, width=4, padx=5, takefocus=0,
                                     border=0, background='#0d1b2a', fg='#6c757d',
-                                    state='disabled', wrap='none', font=("Courier New", 10))
+                                    state='disabled', wrap='none',
+                                    font=("Courier New", 10))
         self.line_numbers.pack(side=tk.LEFT, fill=tk.Y)
-        # Block all mouse interaction on line numbers so it can't scroll independently
         self.line_numbers.bind('<MouseWheel>', lambda e: 'break')
         self.line_numbers.bind('<Button-1>', lambda e: 'break')
         self.line_numbers.bind('<B1-Motion>', lambda e: 'break')
 
-# Source code text area
-        self.source_text = scrolledtext.ScrolledText(line_frame, wrap=tk.NONE,
-                                                     font=("Courier New", 10),
-                                                     bg=dark_blue, fg="#e0e0e0",
-                                                     insertbackground="white",
-                                                     selectbackground="#264f78")
+        self.source_text = scrolledtext.ScrolledText(
+            line_frame, wrap=tk.NONE, font=("Courier New", 10),
+            bg=dark_blue, fg="#e0e0e0", insertbackground="white",
+            selectbackground="#264f78")
         self.source_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.source_text.bind('<KeyRelease>', self.update_line_numbers)
-        self.source_text.bind('<Tab>', self._on_tab)
-        # Sync line numbers on every scroll (scrollbar, wheel, keyboard, etc.)
+        self.source_text.bind('<Tab>', self._on_indent_key)
         self.source_text.vbar.config(command=self._synced_yview)
         self.source_text.bind('<MouseWheel>', self._on_source_scroll)
         self.source_text.bind('<Button-4>', self._on_source_scroll)
         self.source_text.bind('<Button-5>', self._on_source_scroll)
 
-        # Right Panel - Tokens (hidden by default, toggle with button)
-        self.right_panel = tk.Frame(
-            main_container, bg=panel_bg, relief=tk.RAISED, bd=1)
-        self.token_table_visible = False
+        # Dirty tracking via Tk's built-in modified flag
+        self.source_text.edit_modified(False)
+        self.source_text.bind('<<Modified>>', self._on_source_modified)
+
+        # Right Panel - Tokens (hidden by default, toggle with header button)
+        self.right_panel = tk.Frame(main_container, bg=panel_bg,
+                                    relief=tk.RAISED, bd=1)
+        self._main_container = main_container
 
         tokens_label = tk.Label(self.right_panel, text="Lexical Table",
-                                font=("Courier New", 12, "bold"), bg=panel_bg, fg="white", anchor="w")
+                                font=("Courier New", 12, "bold"),
+                                bg=panel_bg, fg="white", anchor="w")
         tokens_label.pack(fill=tk.X, padx=10, pady=(10, 5))
 
-        # Tokens table
         table_frame = tk.Frame(self.right_panel)
         table_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
 
-        # Scrollbars
-
-        style.configure("Vertical.TScrollbar",
-                        background="#1e3a5f",
-                        troughcolor="#0d1b2a",
-                        borderwidth=0,
-                        arrowcolor="white")
-
-        style.configure("Horizontal.TScrollbar",
-                        background="#1e3a5f",
-                        troughcolor="#0d1b2a",
-                        borderwidth=0,
-                        arrowcolor="white")
-
         vsb = ttk.Scrollbar(table_frame, orient="vertical")
         vsb.pack(side=tk.RIGHT, fill=tk.Y)
-
         hsb = ttk.Scrollbar(table_frame, orient="horizontal")
         hsb.pack(side=tk.BOTTOM, fill=tk.X)
 
-        # Treeview
         self.token_table = ttk.Treeview(table_frame,
                                         columns=("Lexeme", "Token"),
                                         show="headings",
                                         yscrollcommand=vsb.set,
                                         xscrollcommand=hsb.set,
                                         style="Treeview")
-
         vsb.config(command=self.token_table.yview)
         hsb.config(command=self.token_table.xview)
 
-        # Configure columns
         self.token_table.heading("Lexeme", text="LEXEME", anchor="center")
         self.token_table.heading("Token", text="TOKEN", anchor="center")
-
         self.token_table.column("Lexeme", width=250, anchor="center")
         self.token_table.column("Token", width=250, anchor="center")
-
         self.token_table.pack(fill=tk.BOTH, expand=True)
 
-        # Bottom Panel - Terminal (resizable)
-        # Bottom Panel - Terminal (in PanedWindow for draggable resize)
-        terminal_frame = tk.Frame(
-            paned_window, bg=panel_bg, relief=tk.RAISED, bd=1)
-        paned_window.add(terminal_frame, minsize=100)
+        # Bottom Panel - Terminal
+        terminal_frame = tk.Frame(self.paned, bg=panel_bg,
+                                  relief=tk.RAISED, bd=1)
+        self.paned.add(terminal_frame, minsize=100)
 
         terminal_label = tk.Label(terminal_frame, text="Terminal",
-                                  font=("Courier New", 12, "bold"), bg=panel_bg, fg="white", anchor="w")
+                                  font=("Courier New", 12, "bold"),
+                                  bg=panel_bg, fg="white", anchor="w")
         terminal_label.pack(fill=tk.X, padx=10, pady=(10, 5))
 
-        self.terminal_text = scrolledtext.ScrolledText(terminal_frame, wrap=tk.WORD,
-                                                       font=("Courier New", 9),
-                                                       bg=dark_blue, fg="#00ff00",
-                                                       height=6)
-        self.terminal_text.pack(
-            fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+        self.terminal_text = scrolledtext.ScrolledText(
+            terminal_frame, wrap=tk.WORD, font=("Courier New", 9),
+            bg=dark_blue, fg="#00ff00", height=6)
+        self.terminal_text.pack(fill=tk.BOTH, expand=True,
+                                padx=10, pady=(0, 10))
+
+        self.update_line_numbers()
+
+    # ── Title / dirty ─────────────────────────────────────────
+
+    def title(self):
+        import os
+        base = os.path.basename(self.filepath) if self.filepath else self._untitled_name
+        return ("*" if self.dirty else "") + base
+
+    @property
+    def _untitled_name(self):
+        return getattr(self, "_untitled_label", "Untitled")
+
+    def set_untitled_name(self, name):
+        self._untitled_label = name
+
+    def _on_source_modified(self, event=None):
+        # <<Modified>> fires on every insert/delete (user or programmatic).
+        # We latch it; callers that load content should clear it via mark_clean.
+        if self.source_text.edit_modified():
+            self.source_text.edit_modified(False)
+            if not self.dirty:
+                self.dirty = True
+                self.gui._refresh_tab_title(self)
+
+    def mark_clean(self):
+        self.dirty = False
+        self.source_text.edit_modified(False)
+        self.gui._refresh_tab_title(self)
+
+    # ── Editor helpers ────────────────────────────────────────
 
     def highlight_syntax(self, event=None):
-
         self.source_text.tag_remove("keyword", "1.0", "end")
         self.source_text.tag_remove("string", "1.0", "end")
         self.source_text.tag_remove("comment", "1.0", "end")
@@ -2051,13 +1998,9 @@ class KuCodeLexerGUI:
 
         content = self.source_text.get("1.0", "end-1c")
 
-        import re
-
-        # First, find all strings and comments to exclude them from other highlighting
         string_ranges = []
         comment_ranges = []
 
-    # Strings - green (APPLY FIRST)
         string_pattern = r'"[^"]*"|\'[^\']*\''
         for match in re.finditer(string_pattern, content):
             start_idx = f"1.0+{match.start()}c"
@@ -2065,7 +2008,6 @@ class KuCodeLexerGUI:
             self.source_text.tag_add("string", start_idx, end_idx)
             string_ranges.append((match.start(), match.end()))
 
-    # Comments - gray (APPLY SECOND)
         comment_pattern = r'~[^\n]*|~~.*?~~'
         for match in re.finditer(comment_pattern, content, re.DOTALL):
             start_idx = f"1.0+{match.start()}c"
@@ -2073,7 +2015,6 @@ class KuCodeLexerGUI:
             self.source_text.tag_add("comment", start_idx, end_idx)
             comment_ranges.append((match.start(), match.end()))
 
-        # Helper function to check if position is inside string or comment
         def is_inside_string_or_comment(pos):
             for start, end in string_ranges:
                 if start <= pos < end:
@@ -2083,7 +2024,6 @@ class KuCodeLexerGUI:
                     return True
             return False
 
-    # Keywords - purple/pink (SKIP if inside string/comment)
         keywords_pattern = r'\b(' + '|'.join([
             'start', 'finish', 'num', 'decimal', 'bigdecimal', 'letter', 'text', 'bool',
             'Yes', 'No', 'empty', 'read', 'show', 'display', 'check', 'otherwise', 'otherwisecheck',
@@ -2097,7 +2037,6 @@ class KuCodeLexerGUI:
                 end_idx = f"1.0+{match.end()}c"
                 self.source_text.tag_add("keyword", start_idx, end_idx)
 
-    # Numbers - orange (SKIP if inside string/comment)
         number_pattern = r'\b\d+\.?\d*\b'
         for match in re.finditer(number_pattern, content):
             if not is_inside_string_or_comment(match.start()):
@@ -2105,7 +2044,6 @@ class KuCodeLexerGUI:
                 end_idx = f"1.0+{match.end()}c"
                 self.source_text.tag_add("number", start_idx, end_idx)
 
-    # Operators - light blue (SKIP if inside string/comment)
         operator_pattern = r'[+\-*/%=<>!&|]+'
         for match in re.finditer(operator_pattern, content):
             if not is_inside_string_or_comment(match.start()):
@@ -2113,13 +2051,11 @@ class KuCodeLexerGUI:
                 end_idx = f"1.0+{match.end()}c"
                 self.source_text.tag_add("operator", start_idx, end_idx)
 
-    # Configure tag colors
-        self.source_text.tag_config("keyword", foreground="#c678dd")  # Purple
-        self.source_text.tag_config("string", foreground="#98c379")   # Green
-        self.source_text.tag_config("comment", foreground="#5c6370")  # Gray
-        self.source_text.tag_config("number", foreground="#d19a66")   # Orange
-        self.source_text.tag_config(
-            "operator", foreground="#61afef")  # Light blue
+        self.source_text.tag_config("keyword", foreground="#c678dd")
+        self.source_text.tag_config("string", foreground="#98c379")
+        self.source_text.tag_config("comment", foreground="#5c6370")
+        self.source_text.tag_config("number", foreground="#d19a66")
+        self.source_text.tag_config("operator", foreground="#61afef")
 
     def update_line_numbers(self, event=None):
         line_count = self.source_text.get("1.0", "end-1c").count('\n') + 1
@@ -2130,27 +2066,28 @@ class KuCodeLexerGUI:
         self.line_numbers.insert(1.0, line_numbers_string)
         self.line_numbers.config(state='disabled')
         self.line_numbers.yview_moveto(self.source_text.yview()[0])
-
         self.highlight_syntax()
 
     def _synced_yview(self, *args):
-        """Scrollbar command: scroll source text and sync line numbers."""
         self.source_text.yview(*args)
         self.line_numbers.yview_moveto(self.source_text.yview()[0])
 
     def _on_source_scroll(self, event=None):
-        """After any scroll event, sync line numbers."""
-        self.root.after_idle(
+        self.after_idle(
             lambda: self.line_numbers.yview_moveto(self.source_text.yview()[0])
         )
+
+    def _on_indent_key(self, event):
+        self.source_text.insert(tk.INSERT, '    ')
+        return 'break'
 
     def toggle_token_table(self):
         if self.token_table_visible:
             self.right_panel.pack_forget()
             self.token_table_visible = False
         else:
-            self.right_panel.pack(
-                side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
+            self.right_panel.pack(side=tk.RIGHT, fill=tk.BOTH,
+                                  expand=True, padx=(5, 0))
             self.token_table_visible = True
 
     def clear_all(self):
@@ -2159,11 +2096,11 @@ class KuCodeLexerGUI:
         self.token_table.delete(*self.token_table.get_children())
         self.terminal_text.delete(1.0, tk.END)
         self.update_line_numbers()
+        self.mark_clean()
 
-    # ── Subprocess execution infrastructure ────────────────
+    # ── Subprocess execution ─────────────────────────────────
 
-    def _execute_code(self, python_code: str):
-        """Write generated code to temp file and execute in subprocess."""
+    def _execute_code(self, python_code):
         import subprocess
         import threading
         import tempfile
@@ -2174,12 +2111,10 @@ class KuCodeLexerGUI:
         current_run_id = self._run_id
         self._running = True
 
-        # Write generated code to temp file
         self._temp_file_path = tempfile.mktemp(suffix='.py')
         with open(self._temp_file_path, 'w', encoding='utf-8') as f:
             f.write(python_code)
 
-        # Launch subprocess
         self._subprocess = subprocess.Popen(
             [sys.executable, '-u', self._temp_file_path],
             stdin=subprocess.PIPE,
@@ -2189,69 +2124,49 @@ class KuCodeLexerGUI:
             bufsize=1
         )
 
-        # Input buffer — tracks what the user types, independent of terminal state
         self._input_buffer = ""
-
-        # Bind keys for input
         self.terminal_text.bind('<Key>', self._on_terminal_key)
 
-        # Start output reader threads
         self._stdout_thread = threading.Thread(
             target=self._read_stream,
             args=(self._subprocess.stdout, False),
-            daemon=True
-        )
+            daemon=True)
         self._stderr_thread = threading.Thread(
             target=self._read_stream,
             args=(self._subprocess.stderr, True),
-            daemon=True
-        )
+            daemon=True)
         self._watcher_thread = threading.Thread(
             target=self._watch_process,
             args=(current_run_id,),
-            daemon=True
-        )
+            daemon=True)
         self._stdout_thread.start()
         self._stderr_thread.start()
         self._watcher_thread.start()
 
     def _read_stream(self, stream, is_error=False):
-        """Read from subprocess stdout/stderr in background thread.
-        Uses read(1) instead of readline() so that prompts printed
-        with end='' (no newline) appear immediately in the terminal."""
         tag = "error" if is_error else ""
         try:
             while True:
                 char = stream.read(1)
                 if not char:
                     break
-                self.root.after(0, self._append_output, char, tag)
+                self.after(0, self._append_output, char, tag)
         except (ValueError, OSError):
             pass
 
     def _append_output(self, text, tag=""):
-        """Thread-safe: insert text into terminal (called via root.after)."""
         self.terminal_text.insert(tk.END, text, tag if tag else None)
         self.terminal_text.see(tk.END)
 
-    def _on_tab(self, event):
-        """Insert 4 spaces instead of a tab character."""
-        self.source_text.insert(tk.INSERT, '    ')
-        return 'break'
-
     def _on_terminal_key(self, event):
-        """Buffer-based input: capture keystrokes, display them, send on Enter."""
-        # Allow Ctrl+C (copy) and Ctrl+A (select all) always
         if event.state & 0x4 and event.keysym in ('c', 'C', 'a', 'A'):
-            return  # let default Text widget handle it
+            return
 
         if not self._running:
             return 'break'
 
-        # Enter key — send buffered input to subprocess
         if event.keysym == 'Return':
             if self._subprocess and self._subprocess.poll() is None:
-                # Just add newline (typed chars are already visible)
                 self.terminal_text.insert(tk.END, '\n')
                 self.terminal_text.see(tk.END)
                 try:
@@ -2262,15 +2177,12 @@ class KuCodeLexerGUI:
                 self._input_buffer = ""
             return 'break'
 
-        # BackSpace — remove last char from buffer
         if event.keysym == 'BackSpace':
             if self._input_buffer:
                 self._input_buffer = self._input_buffer[:-1]
-                # Remove last visible character from terminal
                 self.terminal_text.delete('end-2c', 'end-1c')
             return 'break'
 
-        # Ignore non-printable / modifier keys
         if event.keysym in ('Shift_L', 'Shift_R', 'Control_L', 'Control_R',
                             'Alt_L', 'Alt_R', 'Caps_Lock', 'Escape', 'Tab',
                             'Left', 'Right', 'Up', 'Down', 'Home', 'End',
@@ -2278,31 +2190,27 @@ class KuCodeLexerGUI:
                             'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'):
             return 'break'
 
-        # Regular character — add to buffer and display
         if event.char and event.char.isprintable():
             self._input_buffer += event.char
             self.terminal_text.insert(tk.END, event.char)
             self.terminal_text.see(tk.END)
 
-        return 'break'  # block all default Text widget behavior
+        return 'break'
 
     def _watch_process(self, run_id):
-        """Wait for subprocess to finish."""
         proc = self._subprocess
         if proc:
             proc.wait()
-            # Wait for reader threads to finish draining output
-            if hasattr(self, '_stdout_thread'):
+            if self._stdout_thread:
                 self._stdout_thread.join(timeout=3)
-            if hasattr(self, '_stderr_thread'):
+            if self._stderr_thread:
                 self._stderr_thread.join(timeout=3)
             exit_code = proc.returncode
-            self.root.after(0, self._on_process_done, exit_code, run_id)
+            self.after(0, self._on_process_done, exit_code, run_id)
 
     def _on_process_done(self, exit_code, run_id=None):
-        """Called on main thread when subprocess finishes."""
         if run_id is not None and run_id != self._run_id:
-            return  # stale callback from a superseded run, ignore
+            return
         self._running = False
         self.terminal_text.insert(tk.END, f"\n{'='*50}\n")
         if exit_code == 0:
@@ -2312,29 +2220,28 @@ class KuCodeLexerGUI:
             self.terminal_text.insert(
                 tk.END, f"Program exited with code {exit_code}.\n", "error")
         self.terminal_text.see(tk.END)
-        # Unbind execution key handler
         self.terminal_text.unbind('<Key>')
-        # Configure tags
         self.terminal_text.tag_config("error", foreground="#ff6b6b")
         self.terminal_text.tag_config("success", foreground="#00ff00")
 
     def _cleanup_subprocess(self):
-        """Kill running subprocess and clean up temp file."""
         import os
-        if hasattr(self, '_subprocess') and self._subprocess \
-                and self._subprocess.poll() is None:
+        if self._subprocess and self._subprocess.poll() is None:
             self._subprocess.terminate()
             try:
                 self._subprocess.wait(timeout=5)
             except Exception:
                 self._subprocess.kill()
         self._subprocess = None
-        if hasattr(self, '_temp_file_path') and self._temp_file_path:
+        if self._temp_file_path:
             try:
                 os.unlink(self._temp_file_path)
             except OSError:
                 pass
             self._temp_file_path = None
+        self._running = False
+
+    # ── Pipeline entry ────────────────────────────────────────
 
     def analyze(self):
         self._cleanup_subprocess()
@@ -2342,17 +2249,14 @@ class KuCodeLexerGUI:
         self.terminal_text.delete(1.0, tk.END)
 
         source = self.source_text.get(1.0, "end-1c")
-
         if not source.strip():
-            self.terminal_text.insert(
-                tk.END, "Error: No source code to analyze\n")
+            self.terminal_text.insert(tk.END,
+                                      "Error: No source code to analyze\n")
             return
 
-        # LEXICAL ANALYSIS
         lexer = Lexer(source)
         tokens, errors = lexer.tokenize()
 
-        # Display tokens in table
         for token in tokens:
             if token.type not in [EOF]:
                 lexeme = token.value if token.value else "-"
@@ -2366,28 +2270,24 @@ class KuCodeLexerGUI:
                     display_type = "decimal_lit"
                 else:
                     display_type = token.type
-                self.token_table.insert(
-                    "", tk.END, values=(lexeme, display_type))
+                self.token_table.insert("", tk.END,
+                                        values=(lexeme, display_type))
 
-        # Check for lexical errors
         if errors:
             self.terminal_text.insert(
                 tk.END, "✗ Lexical analysis failed:\n\n", "error")
             for error in errors:
                 self.terminal_text.insert(tk.END, str(error) + "\n", "error")
             self.terminal_text.tag_config("error", foreground="#ff6b6b")
-            return  # Stop here if lexical errors exist
+            return
 
-        # SYNTAX ANALYSIS (only if no lexical errors)
         self.terminal_text.insert(
             tk.END, "✓ Lexical analysis passed.\n", "success")
         self.terminal_text.insert(
             tk.END, "\nStarting syntax analysis...\n\n", "info")
 
-        # Prepare tokens for parser
         parser_tokens = prepare_tokens_for_parser(tokens)
 
-        # Import and run parser
         from table_driven_parser import TableDrivenParser as Parser
         parser = Parser(parser_tokens)
 
@@ -2396,7 +2296,6 @@ class KuCodeLexerGUI:
             self.terminal_text.insert(
                 tk.END, "✓ Syntax analysis passed.\n", "success")
 
-            # SEMANTIC ANALYSIS (only runs if syntax passed)
             self.terminal_text.insert(
                 tk.END, "\nStarting semantic analysis...\n\n", "info")
 
@@ -2409,28 +2308,24 @@ class KuCodeLexerGUI:
                     tk.END,
                     f"✗ Semantic analysis failed "
                     f"({len(sem_errors)} error(s)):\n\n",
-                    "error"
-                )
+                    "error")
                 for err in sem_errors:
-                    self.terminal_text.insert(
-                        tk.END, f"  {err}\n", "error")
+                    self.terminal_text.insert(tk.END, f"  {err}\n", "error")
             else:
                 self.terminal_text.insert(
                     tk.END, "✓ Semantic analysis passed.\n", "success")
 
-                # Display warnings if any
                 if analyzer.warnings:
                     for w in analyzer.warnings:
                         self.terminal_text.insert(
                             tk.END, f"  {w}\n", "warning")
 
-                # CODE GENERATION
                 self.terminal_text.insert(
                     tk.END, "\nStarting code generation...\n\n", "info")
 
                 from code_generator import TACCodeGenerator
-                gen = TACCodeGenerator(
-                    analyzer.quadruples, analyzer.symbol_table)
+                gen = TACCodeGenerator(analyzer.quadruples,
+                                       analyzer.symbol_table)
                 python_code = gen.generate()
 
                 self.terminal_text.insert(
@@ -2440,63 +2335,331 @@ class KuCodeLexerGUI:
                 self.terminal_text.insert(
                     tk.END, "Program Output:\n\n", "info")
 
-                # Configure tags before execution
-                self.terminal_text.tag_config(
-                    "error", foreground="#ff6b6b")
-                self.terminal_text.tag_config(
-                    "success", foreground="#00ff00")
-                self.terminal_text.tag_config(
-                    "info", foreground="#61afef")
-                self.terminal_text.tag_config(
-                    "warning", foreground="#e5c07b")
+                self.terminal_text.tag_config("error", foreground="#ff6b6b")
+                self.terminal_text.tag_config("success", foreground="#00ff00")
+                self.terminal_text.tag_config("info", foreground="#61afef")
+                self.terminal_text.tag_config("warning", foreground="#e5c07b")
 
-                # Execute generated code
                 self._execute_code(python_code)
-                return  # execution runs async, skip stats
+                return
 
         except SyntaxError as e:
             self.terminal_text.insert(
                 tk.END, "✗ Syntax analysis failed:\n\n", "error")
             self.terminal_text.insert(tk.END, str(e) + "\n", "error")
 
-        # Configure tags
         self.terminal_text.tag_config("error", foreground="#ff6b6b")
         self.terminal_text.tag_config("success", foreground="#00ff00")
         self.terminal_text.tag_config("info", foreground="#61afef")
 
-        # Display statistics
         displayable_tokens = [t for t in tokens if t.type not in [EOF]]
         self.terminal_text.insert(tk.END, f"\n{'='*50}\n")
         self.terminal_text.insert(
             tk.END, f"Total Tokens: {len(displayable_tokens)}\n")
 
+    # ── File I/O ──────────────────────────────────────────────
+
     def save_file(self):
-        file_path = filedialog.asksaveasfilename(
+        """Save this tab. Returns True on success, False on cancel/error."""
+        if self.filepath:
+            return self._write_to_path(self.filepath)
+        return self.save_file_as()
+
+    def save_file_as(self):
+        path = filedialog.asksaveasfilename(
             defaultextension=".kc",
-            filetypes=[("KuCode files", "*.kc"), ("All files", "*.*")]
-        )
-        if not file_path:
-            return
+            filetypes=[("KuCode files", "*.kc"), ("All files", "*.*")])
+        if not path:
+            return False
+        if self._write_to_path(path):
+            self.filepath = path
+            self.mark_clean()
+            return True
+        return False
+
+    def _write_to_path(self, path):
         try:
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with open(path, 'w', encoding='utf-8') as f:
                 f.write(self.source_text.get(1.0, tk.END).rstrip('\n'))
-            messagebox.showinfo("Success", f"Saved to:\n{file_path}")
+            self.mark_clean()
+            return True
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save:\n{str(e)}")
+            return False
 
-    def open_file(self):
-        file_path = filedialog.askopenfilename(
-            filetypes=[("KuCode files", "*.kc"), ("All files", "*.*")]
-        )
-        if not file_path:
-            return
+    def load_from_path(self, path):
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(path, 'r', encoding='utf-8') as f:
                 content = f.read()
-            self.source_text.delete(1.0, tk.END)
-            self.source_text.insert(1.0, content)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open:\n{str(e)}")
+            return False
+        self.source_text.delete(1.0, tk.END)
+        self.source_text.insert(1.0, content)
+        self.filepath = path
+        self.update_line_numbers()
+        self.mark_clean()
+        return True
+
+
+class KuCodeLexerGUI:
+    """Shell: header + ttk.Notebook of EditorTab pages."""
+
+    def __init__(self, root):
+        self.root = root
+        self.root.title("KuCode Compiler")
+        self.root.geometry("1400x800")
+
+        self._untitled_counter = 0
+        self._closing = False
+
+        # Style setup (unchanged)
+        style = ttk.Style()
+        style.theme_use('clam')
+        style.configure("Treeview",
+                        background="#152238",
+                        foreground="#e0e0e0",
+                        fieldbackground="#152238",
+                        borderwidth=0,
+                        rowheight=25,
+                        font=("Arial", 10))
+        style.configure("Treeview.Heading",
+                        background="#1e3a5f",
+                        foreground="white",
+                        borderwidth=1,
+                        relief="flat",
+                        font=("Arial Black", 10, "bold"))
+        style.map("Treeview.Heading",
+                  background=[('active', '#2d5a8a')])
+        style.map("Treeview",
+                  background=[('selected', '#264f78')],
+                  foreground=[('selected', 'white')])
+        style.configure("Vertical.TScrollbar",
+                        background="#1e3a5f",
+                        troughcolor="#0d1b2a",
+                        borderwidth=0,
+                        arrowcolor="white")
+        style.configure("Horizontal.TScrollbar",
+                        background="#1e3a5f",
+                        troughcolor="#0d1b2a",
+                        borderwidth=0,
+                        arrowcolor="white")
+        style.configure("TNotebook", background="#0d1b2a", borderwidth=0)
+        style.configure("TNotebook.Tab",
+                        background="#1e3a5f",
+                        foreground="white",
+                        padding=[12, 6],
+                        font=("Courier New", 10, "bold"))
+        style.map("TNotebook.Tab",
+                  background=[('selected', '#2d5a8a')],
+                  foreground=[('selected', 'white')])
+
+        bg_color = "#1e3a5f"
+        fg_color = "white"
+
+        # Header
+        header_frame = tk.Frame(root, bg=bg_color, height=60)
+        header_frame.pack(fill=tk.X, side=tk.TOP)
+        header_frame.pack_propagate(False)
+
+        title_label = tk.Label(header_frame, text="KuCode Compiler",
+                               font=("Courier New", 18, "bold"),
+                               bg=bg_color, fg=fg_color)
+        title_label.pack(side=tk.LEFT, padx=20, pady=10)
+
+        btn_frame = tk.Frame(header_frame, bg=bg_color)
+        btn_frame.pack(side=tk.RIGHT, padx=20)
+
+        def mkbtn(text, bg, cmd):
+            return tk.Button(btn_frame, text=text, command=cmd,
+                             bg=bg, fg="white",
+                             font=("Courier New", 10, "bold"),
+                             padx=20, pady=5, relief=tk.FLAT, cursor="hand2",
+                             activebackground="#3d6a9a")
+
+        mkbtn("Analyze", "#2d5a8a",
+              self._cmd_analyze).pack(side=tk.LEFT, padx=5)
+        mkbtn("Clear", "#3d6a9f",
+              self._cmd_clear).pack(side=tk.LEFT, padx=5)
+        mkbtn("Save", "#1d4a7a",
+              self._cmd_save).pack(side=tk.LEFT, padx=5)
+        mkbtn("Open", "#1d4a7a",
+              self._cmd_open).pack(side=tk.LEFT, padx=5)
+        mkbtn("Toggle Tokens", "#4a3a6a",
+              self._cmd_toggle_tokens).pack(side=tk.LEFT, padx=5)
+        mkbtn("+ New Tab", "#2d8a5a",
+              self._cmd_new_tab).pack(side=tk.LEFT, padx=5)
+
+        # Notebook (container for EditorTab pages)
+        notebook_container = tk.Frame(root, bg="#0d1b2a")
+        notebook_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        self.notebook = ttk.Notebook(notebook_container)
+        self.notebook.pack(fill=tk.BOTH, expand=True)
+
+        # Right-click a tab to close it
+        self.notebook.bind('<Button-3>', self._on_notebook_rightclick)
+
+        # Global shortcuts
+        root.bind_all('<Control-t>', lambda e: self._cmd_new_tab())
+        root.bind_all('<Control-T>', lambda e: self._cmd_new_tab())
+        root.bind_all('<Control-w>', lambda e: self._cmd_close_active())
+        root.bind_all('<Control-W>', lambda e: self._cmd_close_active())
+        root.bind_all('<Control-Tab>', self._on_ctrl_tab_next)
+        root.bind_all('<Control-Shift-Tab>', self._on_ctrl_tab_prev)
+        root.bind_all('<Control-ISO_Left_Tab>', self._on_ctrl_tab_prev)
+
+        # Intercept window close to flush dirty tabs and kill subprocesses
+        root.protocol("WM_DELETE_WINDOW", self._on_window_close)
+
+        # Start with one blank scratchpad
+        self.new_tab()
+
+    # ── Active tab / title ────────────────────────────────────
+
+    def active_tab(self):
+        sel = self.notebook.select()
+        if not sel:
+            return None
+        return self.notebook.nametowidget(sel)
+
+    def _refresh_tab_title(self, tab):
+        try:
+            self.notebook.tab(tab, text=tab.title())
+        except tk.TclError:
+            pass
+
+    # ── Tab lifecycle ────────────────────────────────────────
+
+    def new_tab(self, filepath=None):
+        tab = EditorTab(self.notebook, gui=self, filepath=filepath)
+        if not filepath:
+            self._untitled_counter += 1
+            tab.set_untitled_name(f"Untitled {self._untitled_counter}")
+        self.notebook.add(tab, text=tab.title())
+        self.notebook.select(tab)
+        tab.source_text.focus_set()
+        return tab
+
+    def close_tab(self, tab=None):
+        if tab is None:
+            tab = self.active_tab()
+        if tab is None:
+            return False
+
+        if tab.dirty:
+            answer = messagebox.askyesnocancel(
+                "Save changes?",
+                f"Save changes to {tab.title().lstrip('*')}?")
+            if answer is None:  # Cancel
+                return False
+            if answer:  # Yes
+                if not tab.save_file():
+                    return False
+
+        tab._cleanup_subprocess()
+        try:
+            self.notebook.forget(tab)
+        except tk.TclError:
+            return False
+        tab.destroy()
+
+        # Never leave the notebook empty
+        if not self.notebook.tabs():
+            self.new_tab()
+        return True
+
+    def _on_notebook_rightclick(self, event):
+        try:
+            idx = self.notebook.index(f"@{event.x},{event.y}")
+        except tk.TclError:
+            return
+        tabs = self.notebook.tabs()
+        if 0 <= idx < len(tabs):
+            self.close_tab(self.notebook.nametowidget(tabs[idx]))
+
+    def _on_ctrl_tab_next(self, event):
+        tabs = self.notebook.tabs()
+        if not tabs:
+            return 'break'
+        cur = self.notebook.index(self.notebook.select())
+        self.notebook.select(tabs[(cur + 1) % len(tabs)])
+        return 'break'
+
+    def _on_ctrl_tab_prev(self, event):
+        tabs = self.notebook.tabs()
+        if not tabs:
+            return 'break'
+        cur = self.notebook.index(self.notebook.select())
+        self.notebook.select(tabs[(cur - 1) % len(tabs)])
+        return 'break'
+
+    def _on_window_close(self):
+        if self._closing:
+            return
+        self._closing = True
+        # Walk tabs in order, prompting for each dirty one
+        for tab_id in list(self.notebook.tabs()):
+            tab = self.notebook.nametowidget(tab_id)
+            self.notebook.select(tab)
+            if tab.dirty:
+                answer = messagebox.askyesnocancel(
+                    "Save changes?",
+                    f"Save changes to {tab.title().lstrip('*')}?")
+                if answer is None:
+                    self._closing = False
+                    return
+                if answer and not tab.save_file():
+                    self._closing = False
+                    return
+            tab._cleanup_subprocess()
+        self.root.destroy()
+
+    # ── Header button handlers ───────────────────────────────
+
+    def _cmd_analyze(self):
+        t = self.active_tab()
+        if t is not None:
+            t.analyze()
+
+    def _cmd_clear(self):
+        t = self.active_tab()
+        if t is not None:
+            t.clear_all()
+
+    def _cmd_save(self):
+        t = self.active_tab()
+        if t is not None:
+            t.save_file()
+
+    def _cmd_open(self):
+        path = filedialog.askopenfilename(
+            filetypes=[("KuCode files", "*.kc"), ("All files", "*.*")])
+        if not path:
+            return
+        # If the active tab is an empty/untouched scratchpad, reuse it;
+        # otherwise open in a new tab.
+        t = self.active_tab()
+        empty = (t is not None and not t.filepath and not t.dirty and
+                 not t.source_text.get(1.0, "end-1c").strip())
+        if empty:
+            t.load_from_path(path)
+            self._refresh_tab_title(t)
+        else:
+            tab = self.new_tab(filepath=path)
+            tab.load_from_path(path)
+            self._refresh_tab_title(tab)
+
+    def _cmd_toggle_tokens(self):
+        t = self.active_tab()
+        if t is not None:
+            t.toggle_token_table()
+
+    def _cmd_new_tab(self):
+        self.new_tab()
+
+    def _cmd_close_active(self):
+        self.close_tab()
 
 
 # main
