@@ -2507,7 +2507,10 @@ class KuCodeLexerGUI:
         root.bind_all('<Control-W>', lambda e: self._cmd_close_active())
         root.bind_all('<Control-Tab>', self._on_ctrl_tab_next)
         root.bind_all('<Control-Shift-Tab>', self._on_ctrl_tab_prev)
-        root.bind_all('<Control-ISO_Left_Tab>', self._on_ctrl_tab_prev)
+        try:
+            root.bind_all('<Control-ISO_Left_Tab>', self._on_ctrl_tab_prev)
+        except Exception:
+            pass
 
         # Intercept window close to flush dirty tabs and kill subprocesses
         root.protocol("WM_DELETE_WINDOW", self._on_window_close)
