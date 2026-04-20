@@ -1895,10 +1895,16 @@ class EditorTab(tk.Frame):
         self.source_text = scrolledtext.ScrolledText(
             line_frame, wrap=tk.NONE, font=("Courier New", 10),
             bg=dark_blue, fg="#e0e0e0", insertbackground="white",
-            selectbackground="#264f78")
+            selectbackground="#264f78",
+            undo=True, autoseparators=False, maxundo=-1)
         self.source_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.source_text.bind('<KeyRelease>', self.update_line_numbers)
         self.source_text.bind('<Tab>', self._on_indent_key)
+        self.source_text.bind('<KeyPress>', self._on_maybe_undo_sep)
+        self.source_text.bind('<Control-y>', self._redo)
+        self.source_text.bind('<Control-Y>', self._redo)
+        self.source_text.bind('<Control-Shift-z>', self._redo)
+        self.source_text.bind('<Control-Shift-Z>', self._redo)
         self.source_text.vbar.config(command=self._synced_yview)
         self.source_text.bind('<MouseWheel>', self._on_source_scroll)
         self.source_text.bind('<Button-4>', self._on_source_scroll)
@@ -1986,6 +1992,19 @@ class EditorTab(tk.Frame):
         self.dirty = False
         self.source_text.edit_modified(False)
         self.gui._refresh_tab_title(self)
+
+    _UNDO_SEP_CHARS = frozenset(' \n\r\t.,;:!?()[]{}"\'/\\+-=<>*&|^~@#')
+
+    def _on_maybe_undo_sep(self, event):
+        if event.char in self._UNDO_SEP_CHARS or event.keysym in ('Delete', 'BackSpace'):
+            self.source_text.edit_separator()
+
+    def _redo(self, event=None):
+        try:
+            self.source_text.edit_redo()
+        except Exception:
+            pass
+        return 'break'
 
     # ── Editor helpers ────────────────────────────────────────
 
@@ -2444,15 +2463,6 @@ class KuCodeLexerGUI:
                         troughcolor="#0d1b2a",
                         borderwidth=0,
                         arrowcolor="white")
-        style.configure("TNotebook", background="#0d1b2a", borderwidth=0)
-        style.configure("TNotebook.Tab",
-                        background="#1e3a5f",
-                        foreground="white",
-                        padding=[12, 6],
-                        font=("Courier New", 10, "bold"))
-        style.map("TNotebook.Tab",
-                  background=[('selected', '#2d5a8a')],
-                  foreground=[('selected', 'white')])
 
         bg_color = "#1e3a5f"
         fg_color = "white"
@@ -2487,18 +2497,25 @@ class KuCodeLexerGUI:
               self._cmd_open).pack(side=tk.LEFT, padx=5)
         mkbtn("Toggle Tokens", "#4a3a6a",
               self._cmd_toggle_tokens).pack(side=tk.LEFT, padx=5)
-        mkbtn("+ New Tab", "#2d8a5a",
-              self._cmd_new_tab).pack(side=tk.LEFT, padx=5)
+        # Custom browser-style tab bar
+        self._tabs = []
+        self._active = None
+        self._tab_widgets = {}
 
-        # Notebook (container for EditorTab pages)
-        notebook_container = tk.Frame(root, bg="#0d1b2a")
-        notebook_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self._tabbar_frame = tk.Frame(root, bg="#0d1b2a", height=36)
+        self._tabbar_frame.pack(fill=tk.X, side=tk.TOP)
+        self._tabbar_frame.pack_propagate(False)
 
-        self.notebook = ttk.Notebook(notebook_container)
-        self.notebook.pack(fill=tk.BOTH, expand=True)
+        self._add_btn = tk.Label(
+            self._tabbar_frame, text="+", bg="#0d1b2a", fg="#aaaaaa",
+            font=("Courier New", 14, "bold"), padx=10, pady=4, cursor="hand2")
+        self._add_btn.pack(side=tk.LEFT, padx=(2, 0))
+        self._add_btn.bind("<Button-1>", lambda e: self.new_tab())
+        self._add_btn.bind("<Enter>", lambda e: self._add_btn.config(fg="white"))
+        self._add_btn.bind("<Leave>", lambda e: self._add_btn.config(fg="#aaaaaa"))
 
-        # Right-click a tab to close it
-        self.notebook.bind('<Button-3>', self._on_notebook_rightclick)
+        self._content_frame = tk.Frame(root, bg="#0d1b2a")
+        self._content_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
 
         # Global shortcuts
         root.bind_all('<Control-t>', lambda e: self._cmd_new_tab())
@@ -2521,27 +2538,67 @@ class KuCodeLexerGUI:
     # ── Active tab / title ────────────────────────────────────
 
     def active_tab(self):
-        sel = self.notebook.select()
-        if not sel:
-            return None
-        return self.notebook.nametowidget(sel)
+        return self._active
 
     def _refresh_tab_title(self, tab):
-        try:
-            self.notebook.tab(tab, text=tab.title())
-        except tk.TclError:
-            pass
+        if tab in self._tab_widgets:
+            self._tab_widgets[tab]["label"].config(text=tab.title())
+
+    def _build_tab_entry(self, tab):
+        _ACTIVE_BG = "#2d5a8a"
+        _INACTIVE_BG = "#1e3a5f"
+        self._add_btn.pack_forget()
+
+        entry = tk.Frame(self._tabbar_frame, bg=_INACTIVE_BG, cursor="hand2")
+        entry.pack(side=tk.LEFT, padx=(2, 0), pady=(4, 0))
+
+        lbl = tk.Label(entry, text=tab.title(), bg=_INACTIVE_BG, fg="#cccccc",
+                       font=("Courier New", 10, "bold"), padx=10, pady=6)
+        lbl.pack(side=tk.LEFT)
+
+        close = tk.Label(entry, text="×", bg=_INACTIVE_BG, fg="#888888",
+                         font=("Courier New", 12, "bold"), padx=6, pady=6, cursor="hand2")
+        close.pack(side=tk.LEFT)
+
+        self._tab_widgets[tab] = {"frame": entry, "label": lbl, "close": close}
+
+        self._add_btn.pack(side=tk.LEFT, padx=(2, 0))
+
+        for widget in (entry, lbl):
+            widget.bind("<Button-1>", lambda e, t=tab: self._select_tab(t))
+        close.bind("<Button-1>", lambda e, t=tab: self.close_tab(t))
+        close.bind("<Enter>", lambda e, w=close: w.config(fg="#ff6b6b"))
+        close.bind("<Leave>", lambda e, w=close, t=tab: w.config(
+            fg="white" if t is self._active else "#888888"))
+
+    def _select_tab(self, tab):
+        _ACTIVE_BG = "#2d5a8a"
+        _INACTIVE_BG = "#1e3a5f"
+        if self._active is not None and self._active is not tab:
+            prev = self._tab_widgets.get(self._active)
+            if prev:
+                prev["frame"].config(bg=_INACTIVE_BG)
+                prev["label"].config(bg=_INACTIVE_BG, fg="#cccccc")
+                prev["close"].config(bg=_INACTIVE_BG, fg="#888888")
+            self._active.pack_forget()
+        self._active = tab
+        widgets = self._tab_widgets[tab]
+        widgets["frame"].config(bg=_ACTIVE_BG)
+        widgets["label"].config(bg=_ACTIVE_BG, fg="white")
+        widgets["close"].config(bg=_ACTIVE_BG, fg="white")
+        tab.pack(fill=tk.BOTH, expand=True)
+        tab.source_text.focus_set()
 
     # ── Tab lifecycle ────────────────────────────────────────
 
     def new_tab(self, filepath=None):
-        tab = EditorTab(self.notebook, gui=self, filepath=filepath)
+        tab = EditorTab(self._content_frame, gui=self, filepath=filepath)
         if not filepath:
             self._untitled_counter += 1
             tab.set_untitled_name(f"Untitled {self._untitled_counter}")
-        self.notebook.add(tab, text=tab.title())
-        self.notebook.select(tab)
-        tab.source_text.focus_set()
+        self._tabs.append(tab)
+        self._build_tab_entry(tab)
+        self._select_tab(tab)
         return tab
 
     def close_tab(self, tab=None):
@@ -2561,50 +2618,46 @@ class KuCodeLexerGUI:
                     return False
 
         tab._cleanup_subprocess()
-        try:
-            self.notebook.forget(tab)
-        except tk.TclError:
-            return False
+
+        was_active = (tab is self._active)
+        idx = self._tabs.index(tab)
+        self._tabs.remove(tab)
+
+        if tab in self._tab_widgets:
+            self._tab_widgets[tab]["frame"].destroy()
+            del self._tab_widgets[tab]
+
+        if was_active:
+            self._active = None
+            if self._tabs:
+                self._select_tab(self._tabs[max(0, idx - 1)])
+
         tab.destroy()
 
-        # Never leave the notebook empty
-        if not self.notebook.tabs():
+        if not self._tabs:
             self.new_tab()
         return True
 
-    def _on_notebook_rightclick(self, event):
-        try:
-            idx = self.notebook.index(f"@{event.x},{event.y}")
-        except tk.TclError:
-            return
-        tabs = self.notebook.tabs()
-        if 0 <= idx < len(tabs):
-            self.close_tab(self.notebook.nametowidget(tabs[idx]))
-
     def _on_ctrl_tab_next(self, event):
-        tabs = self.notebook.tabs()
-        if not tabs:
+        if not self._tabs:
             return 'break'
-        cur = self.notebook.index(self.notebook.select())
-        self.notebook.select(tabs[(cur + 1) % len(tabs)])
+        idx = self._tabs.index(self._active)
+        self._select_tab(self._tabs[(idx + 1) % len(self._tabs)])
         return 'break'
 
     def _on_ctrl_tab_prev(self, event):
-        tabs = self.notebook.tabs()
-        if not tabs:
+        if not self._tabs:
             return 'break'
-        cur = self.notebook.index(self.notebook.select())
-        self.notebook.select(tabs[(cur - 1) % len(tabs)])
+        idx = self._tabs.index(self._active)
+        self._select_tab(self._tabs[(idx - 1) % len(self._tabs)])
         return 'break'
 
     def _on_window_close(self):
         if self._closing:
             return
         self._closing = True
-        # Walk tabs in order, prompting for each dirty one
-        for tab_id in list(self.notebook.tabs()):
-            tab = self.notebook.nametowidget(tab_id)
-            self.notebook.select(tab)
+        for tab in list(self._tabs):
+            self._select_tab(tab)
             if tab.dirty:
                 answer = messagebox.askyesnocancel(
                     "Save changes?",
