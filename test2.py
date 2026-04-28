@@ -168,8 +168,8 @@ DELIM_SETS = {
     'comma_delim': {' ', '(', '"', "'", '{', '[', '\n'} | set(LETTERNUM),
     # space, num, ", ', [, ]
     'open_list': {' ', '"', "'", '[', ']'} | set(LETTERNUM),
-    # space, ;, ,, =
-    'close_list': {' ', ';', ',', '=', ']', '[', '+', '-', '*', '/', '%', '&', '|', '!', '<', '>', ')'},
+    # space, ;, ,, =, .
+    'close_list': {' ', ';', ',', '=', ']', '[', '+', '-', '*', '/', '%', '&', '|', '!', '<', '>', ')', '.'},
     # space, letternum, ', ", (, ), !
     'openparen_delim': {' ', "'", '"', '(', ')', '!', '-'} | set(LETTERNUM),
     # space, mathop, logicop, relop, ;, {, )
@@ -790,7 +790,7 @@ class Lexer:
                 'open_paren': '"("',
                 'comma_delim': 'space, letter, digit, "(", """, "{", "[", or "\'",\n',
                 'open_list': 'space, digit, """, "\'", "[" or "]"',
-                'close_list': 'space, ";", "," or "="',
+                'close_list': 'space, ";", ",", "=" or "."',
                 'openparen_delim': 'space, letter, digit, "\'", """, ")" or "!"',
                 'closeparen_delim': 'space, operator, ";", "{" or ")"',
                 'bool_delim': 'space, "&", "|", "!", ";", ")", ":", ",", "]" or "="',
@@ -1858,6 +1858,14 @@ class EditorTab(tk.Frame):
         self._watcher_thread = None
         self._input_buffer = ""
 
+        # Per-tab zoom state for source editor and terminal
+        self._SOURCE_FONT_DEFAULT = 10
+        self._TERMINAL_FONT_DEFAULT = 9
+        self._FONT_MIN = 6
+        self._FONT_MAX = 48
+        self._source_font_size = self._SOURCE_FONT_DEFAULT
+        self._terminal_font_size = self._TERMINAL_FONT_DEFAULT
+
         panel_bg = self.BG_PANEL
         dark_blue = self.BG_DARK
 
@@ -1909,6 +1917,16 @@ class EditorTab(tk.Frame):
         self.source_text.bind('<MouseWheel>', self._on_source_scroll)
         self.source_text.bind('<Button-4>', self._on_source_scroll)
         self.source_text.bind('<Button-5>', self._on_source_scroll)
+
+        # Source editor zoom (Ctrl+= / Ctrl+- / Ctrl+0 / Ctrl+MouseWheel)
+        self.source_text.bind('<Control-plus>', lambda e: self._zoom_source(1))
+        self.source_text.bind('<Control-equal>', lambda e: self._zoom_source(1))
+        self.source_text.bind('<Control-KP_Add>', lambda e: self._zoom_source(1))
+        self.source_text.bind('<Control-minus>', lambda e: self._zoom_source(-1))
+        self.source_text.bind('<Control-KP_Subtract>', lambda e: self._zoom_source(-1))
+        self.source_text.bind('<Control-0>', lambda e: self._reset_zoom_source())
+        self.source_text.bind('<Control-KP_0>', lambda e: self._reset_zoom_source())
+        self.source_text.bind('<Control-MouseWheel>', self._on_source_ctrl_wheel)
 
         # Dirty tracking via Tk's built-in modified flag
         self.source_text.edit_modified(False)
@@ -1962,6 +1980,16 @@ class EditorTab(tk.Frame):
             bg=dark_blue, fg="#00ff00", height=6)
         self.terminal_text.pack(fill=tk.BOTH, expand=True,
                                 padx=10, pady=(0, 10))
+
+        # Terminal zoom (Ctrl+= / Ctrl+- / Ctrl+0 / Ctrl+MouseWheel)
+        self.terminal_text.bind('<Control-plus>', lambda e: self._zoom_terminal(1))
+        self.terminal_text.bind('<Control-equal>', lambda e: self._zoom_terminal(1))
+        self.terminal_text.bind('<Control-KP_Add>', lambda e: self._zoom_terminal(1))
+        self.terminal_text.bind('<Control-minus>', lambda e: self._zoom_terminal(-1))
+        self.terminal_text.bind('<Control-KP_Subtract>', lambda e: self._zoom_terminal(-1))
+        self.terminal_text.bind('<Control-0>', lambda e: self._reset_zoom_terminal())
+        self.terminal_text.bind('<Control-KP_0>', lambda e: self._reset_zoom_terminal())
+        self.terminal_text.bind('<Control-MouseWheel>', self._on_terminal_ctrl_wheel)
 
         self.update_line_numbers()
 
@@ -2095,6 +2123,52 @@ class EditorTab(tk.Frame):
         self.after_idle(
             lambda: self.line_numbers.yview_moveto(self.source_text.yview()[0])
         )
+
+    # ── Zoom (font size) ─────────────────────────────────────
+    def _apply_source_font(self):
+        font = ("Courier New", self._source_font_size)
+        self.source_text.configure(font=font)
+        self.line_numbers.configure(font=font)
+
+    def _apply_terminal_font(self):
+        self.terminal_text.configure(
+            font=("Courier New", self._terminal_font_size))
+
+    def _zoom_source(self, delta):
+        new_size = max(self._FONT_MIN,
+                       min(self._FONT_MAX, self._source_font_size + delta))
+        if new_size != self._source_font_size:
+            self._source_font_size = new_size
+            self._apply_source_font()
+        return 'break'
+
+    def _zoom_terminal(self, delta):
+        new_size = max(self._FONT_MIN,
+                       min(self._FONT_MAX, self._terminal_font_size + delta))
+        if new_size != self._terminal_font_size:
+            self._terminal_font_size = new_size
+            self._apply_terminal_font()
+        return 'break'
+
+    def _reset_zoom_source(self):
+        if self._source_font_size != self._SOURCE_FONT_DEFAULT:
+            self._source_font_size = self._SOURCE_FONT_DEFAULT
+            self._apply_source_font()
+        return 'break'
+
+    def _reset_zoom_terminal(self):
+        if self._terminal_font_size != self._TERMINAL_FONT_DEFAULT:
+            self._terminal_font_size = self._TERMINAL_FONT_DEFAULT
+            self._apply_terminal_font()
+        return 'break'
+
+    def _on_source_ctrl_wheel(self, event):
+        delta = 1 if event.delta > 0 else -1
+        return self._zoom_source(delta)
+
+    def _on_terminal_ctrl_wheel(self, event):
+        delta = 1 if event.delta > 0 else -1
+        return self._zoom_terminal(delta)
 
     def _on_indent_key(self, event):
         self.source_text.insert(tk.INSERT, '    ')

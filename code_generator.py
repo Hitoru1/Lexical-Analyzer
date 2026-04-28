@@ -429,6 +429,12 @@ class TACCodeGenerator:
                 self._emit_line(f'{q.result} = {name}[{q.arg2}]')
             return True
 
+        # ── Group list creation ──
+        if op == 'group_list_create':
+            self._emit_line(
+                f'{q.result} = [{q.arg1}() for _ in range({q.arg2})]')
+            return True
+
         # ── Member access ──
         if op == 'member_access':
             self._emit_line(f'{q.result} = {q.arg1}.{q.arg2}')

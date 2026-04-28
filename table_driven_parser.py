@@ -6,7 +6,8 @@ from ast_nodes import (
     IfChain, ElifBranch, SelectStmt, OptionBlock,
     EachLoop, DuringLoop, FuncCallStmt, ReturnStmt, ShowStmt, DisplayStmt, ReadStmt,
     BinaryOp, UnaryOp, Literal, Identifier, FuncCall,
-    ListAccess, MemberAccess, SizeCall, TextLenCall, CharAtCall, OrdCall, ListLiteral1D, ListLiteral2D,
+    ListAccess, MemberAccess, IndexedMemberAccess,
+    SizeCall, TextLenCall, CharAtCall, OrdCall, ListLiteral1D, ListLiteral2D,
 )
 
 # Sentinel for tail-epsilon result
@@ -207,7 +208,8 @@ class TableDrivenParser:
                 ['bigdecimal', 'identifier', '=', '<val_list>', ';'],
                 ['bool', 'identifier', '=', '<val_list>', ';'],
                 ['text', 'identifier', '=', '<val_list>', ';'],
-                ['letter', 'identifier', '=', '<val_list>', ';']
+                ['letter', 'identifier', '=', '<val_list>', ';'],
+                ['identifier', 'identifier', '=', 'num_lit', ';'],
             ],
 
             # List literals
@@ -290,6 +292,7 @@ class TableDrivenParser:
 
             '<assignable_2d>': [
                 ['[', '<index_value>', ']'],
+                ['.', 'identifier'],
                 ['λ']
             ],
 
@@ -489,6 +492,7 @@ class TableDrivenParser:
 
             '<stmt_var_2d>': [
                 ['[', '<index_value>', ']'],
+                ['.', 'identifier'],
                 ['λ']
             ],
 
@@ -573,6 +577,7 @@ class TableDrivenParser:
 
             '<arg_var_2d>': [
                 ['[', '<index_value>', ']'],
+                ['.', 'identifier'],
                 ['λ']
             ],
 
@@ -633,6 +638,7 @@ class TableDrivenParser:
 
             '<index_var_2d>': [
                 ['[', '<index_value>', ']'],
+                ['.', 'identifier'],
                 ['λ']
             ],
 
@@ -657,6 +663,7 @@ class TableDrivenParser:
 
             '<from_var_2d>': [
                 ['[', '<index_value>', ']'],
+                ['.', 'identifier'],
                 ['λ']
             ],
 
@@ -680,6 +687,7 @@ class TableDrivenParser:
 
             '<to_var_2d>': [
                 ['[', '<index_value>', ']'],
+                ['.', 'identifier'],
                 ['λ']
             ],
 
@@ -704,6 +712,7 @@ class TableDrivenParser:
 
             '<step_var_2d>': [
                 ['[', '<index_value>', ']'],
+                ['.', 'identifier'],
                 ['λ']
             ],
 
@@ -1356,8 +1365,12 @@ class TableDrivenParser:
         # sem_stack has: ... list_decl_node (ListDecl from _action_list_typed_decl)
         list_decl = self.sem_stack.pop()
         self.sem_stack.append(
-            WorldwideListDecl(datatype=list_decl.datatype, name=list_decl.name,
-                              value=list_decl.value, line=list_decl.line, col=list_decl.col)
+            WorldwideListDecl(
+                datatype=list_decl.datatype, name=list_decl.name,
+                value=list_decl.value, line=list_decl.line, col=list_decl.col,
+                is_group_typed=getattr(list_decl, 'is_group_typed', False),
+                group_list_size=getattr(list_decl, 'group_list_size', 0),
+            )
         )
 
     def _action_parameter(self, saved_depth):
@@ -1535,6 +1548,25 @@ class TableDrivenParser:
                      value=val_list, line=ln, col=col)
         )
 
+    def _action_list_typed_decl_group(self, saved_depth):
+        # identifier identifier = num_lit ;
+        # sem_stack has: ... group_type_token var_name_token num_lit_token
+        size_tok = self.sem_stack.pop()  # num_lit (the declared size)
+        id_tok   = self.sem_stack.pop()  # variable name
+        type_tok = self.sem_stack.pop()  # group type name
+        group_type = type_tok.value if hasattr(type_tok, 'value') else str(type_tok)
+        vname      = id_tok.value   if hasattr(id_tok,   'value') else str(id_tok)
+        try:
+            size = int(size_tok.value) if hasattr(size_tok, 'value') else 1
+        except (ValueError, TypeError):
+            size = 1
+        ln, col = self._token_loc(id_tok)
+        self.sem_stack.append(
+            ListDecl(datatype=group_type, name=vname, value=None,
+                     is_group_typed=True, group_list_size=size,
+                     line=ln, col=col)
+        )
+
     def _action_list_declaration(self, saved_depth):
         # sem_stack has: ... list_decl_node (list keyword was structural)
         pass
@@ -1581,6 +1613,11 @@ class TableDrivenParser:
             suffix.line = ln
             suffix.col = col
             self.sem_stack.append(suffix)
+        elif isinstance(suffix, IndexedMemberAccess):
+            suffix.list_name = name
+            suffix.line = ln
+            suffix.col = col
+            self.sem_stack.append(suffix)
         else:
             self.sem_stack.append(suffix)
 
@@ -1589,8 +1626,12 @@ class TableDrivenParser:
         # Do NOT pop id_tok — _action_assignable will handle it.
         a2d = self.sem_stack.pop()
         idx1 = self.sem_stack.pop()
-        idx2 = a2d if a2d is not None else None
-        self.sem_stack.append(ListAccess(index1=idx1, index2=idx2))
+        if isinstance(a2d, tuple) and a2d[0] == 'MEMBER':
+            self.sem_stack.append(
+                IndexedMemberAccess(index=idx1, member=a2d[1]))
+        else:
+            idx2 = a2d if a2d is not None else None
+            self.sem_stack.append(ListAccess(index1=idx1, index2=idx2))
 
     def _action_assignable_suffix_member(self, saved_depth):
         # sem_stack has: ... (id_tok is below us) member_identifier_token
@@ -1890,6 +1931,11 @@ class TableDrivenParser:
             suffix.line = ln
             suffix.col = col
             self.sem_stack.append(suffix)
+        elif isinstance(suffix, IndexedMemberAccess):
+            suffix.list_name = name
+            suffix.line = ln
+            suffix.col = col
+            self.sem_stack.append(suffix)
         else:
             self.sem_stack.append(Identifier(name=name, line=ln, col=col))
 
@@ -1906,8 +1952,12 @@ class TableDrivenParser:
         # sem_stack has: ... index_expr var_2d_result
         var_2d = self.sem_stack.pop()
         idx1 = self.sem_stack.pop()
-        idx2 = var_2d if var_2d is not None else None
-        self.sem_stack.append(ListAccess(index1=idx1, index2=idx2))
+        if isinstance(var_2d, tuple) and var_2d[0] == 'MEMBER':
+            self.sem_stack.append(
+                IndexedMemberAccess(index=idx1, member=var_2d[1]))
+        else:
+            idx2 = var_2d if var_2d is not None else None
+            self.sem_stack.append(ListAccess(index1=idx1, index2=idx2))
 
     def _action_id_suffix_member(self, saved_depth):
         # . identifier
@@ -1928,6 +1978,14 @@ class TableDrivenParser:
 
     def _action_var_2d_epsilon(self, saved_depth):
         self.sem_stack.append(None)
+
+    def _action_var_2d_member(self, saved_depth):
+        # . identifier  (member access after a 1D index, e.g. list[i].field)
+        # sem_stack has: ... member_identifier_token
+        member_tok = self.sem_stack.pop()
+        member = member_tok.value if hasattr(
+            member_tok, 'value') else str(member_tok)
+        self.sem_stack.append(('MEMBER', member))
 
     def _action_size_call(self, saved_depth):
         # size ( identifier <size_second_arg> )
@@ -2258,7 +2316,10 @@ class TableDrivenParser:
 
                 # List typed decl
                 if nt == '<list_typed_decl>':
-                    self.production_actions[key] = 'CUSTOM_list_typed_decl'
+                    if prod == ['identifier', 'identifier', '=', 'num_lit', ';']:
+                        self.production_actions[key] = 'CUSTOM_list_typed_decl_group'
+                    else:
+                        self.production_actions[key] = 'CUSTOM_list_typed_decl'
                     continue
 
                 # List declaration
@@ -2303,6 +2364,8 @@ class TableDrivenParser:
                 if nt == '<assignable_2d>':
                     if is_epsilon:
                         self.production_actions[key] = 'CUSTOM_assignable_2d_epsilon'
+                    elif prod[0] == '.':
+                        self.production_actions[key] = 'CUSTOM_var_2d_member'
                     else:
                         self.production_actions[key] = 'CUSTOM_assignable_2d_index'
                     continue
@@ -2471,6 +2534,8 @@ class TableDrivenParser:
                           '<assignable_2d>'):
                     if is_epsilon:
                         self.production_actions[key] = 'CUSTOM_var_2d_epsilon'
+                    elif prod[0] == '.':
+                        self.production_actions[key] = 'CUSTOM_var_2d_member'
                     else:
                         self.production_actions[key] = 'CUSTOM_var_2d_index'
                     continue
@@ -2634,6 +2699,8 @@ class TableDrivenParser:
             'CUSTOM_id_suffix_epsilon': TableDrivenParser._action_id_suffix_epsilon,
             'CUSTOM_var_2d_index': TableDrivenParser._action_var_2d_index,
             'CUSTOM_var_2d_epsilon': TableDrivenParser._action_var_2d_epsilon,
+            'CUSTOM_var_2d_member': TableDrivenParser._action_var_2d_member,
+            'CUSTOM_list_typed_decl_group': TableDrivenParser._action_list_typed_decl_group,
             'CUSTOM_size_call': TableDrivenParser._action_size_call,
             'CUSTOM_size_second_arg': TableDrivenParser._action_size_second_arg,
             'CUSTOM_size_second_arg_epsilon': TableDrivenParser._action_size_second_arg_epsilon,

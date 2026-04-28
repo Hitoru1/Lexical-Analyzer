@@ -59,6 +59,8 @@ class WorldwideListDecl(ASTNode):
     datatype: str = ''
     name: str = ''
     value: Optional[ListLiteral1D | ListLiteral2D] = None
+    is_group_typed: bool = False
+    group_list_size: int = 0
 
 
 @dataclass
@@ -100,6 +102,8 @@ class ListDecl(Stmt):
     datatype: str = ''
     name: str = ''
     value: Optional[ListLiteral1D | ListLiteral2D] = None
+    is_group_typed: bool = False
+    group_list_size: int = 0
 
 
 # STATEMENTS (Stmt)
@@ -239,6 +243,13 @@ class ListAccess(Expr):
 @dataclass
 class MemberAccess(Expr):
     object_name: str = ''
+    member: str = ''
+
+
+@dataclass
+class IndexedMemberAccess(Expr):
+    list_name: str = ''
+    index: Optional[Expr] = None
     member: str = ''
 
 

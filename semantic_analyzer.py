@@ -11,7 +11,8 @@ from ast_nodes import (
     IfChain, ElifBranch, SelectStmt, OptionBlock,
     EachLoop, DuringLoop, FuncCallStmt, ReturnStmt, ShowStmt, DisplayStmt, ReadStmt,
     BinaryOp, UnaryOp, Literal, Identifier, FuncCall,
-    ListAccess, MemberAccess, SizeCall, TextLenCall, CharAtCall, OrdCall, ListLiteral1D, ListLiteral2D,
+    ListAccess, MemberAccess, IndexedMemberAccess,
+    SizeCall, TextLenCall, CharAtCall, OrdCall, ListLiteral1D, ListLiteral2D,
 )
 
 
@@ -255,6 +256,21 @@ class DeclarationCollector(ASTVisitor):
             self._error(f"Duplicate worldwide variable '{node.name}'", node)
 
     def visit_WorldwideListDecl(self, node: WorldwideListDecl):
+        if node.is_group_typed:
+            group_sym = self.symbol_table.lookup(node.datatype)
+            if group_sym is None or group_sym.kind != 'group':
+                self._error(
+                    f"Undefined group type '{node.datatype}'", node)
+            sym = Symbol(
+                name=node.name, kind='list', data_type=node.datatype,
+                is_list=True, is_worldwide=True,
+                list_dim=1, list_size=node.group_list_size, list_col_count=0,
+                line=node.line, col=node.col
+            )
+            if not self.symbol_table.declare(sym):
+                self._error(f"Duplicate worldwide list '{node.name}'", node)
+            return
+
         # Determine dimensions from the value node shape
         list_dim = 1
         elem_count = 0
@@ -406,6 +422,10 @@ class SemanticChecker(ASTVisitor):
             self._emit('=', place, '_', node.name)
 
     def visit_WorldwideListDecl(self, node: WorldwideListDecl):
+        if node.is_group_typed:
+            self._emit('group_list_create', node.datatype,
+                       str(node.group_list_size), node.name)
+            return
         # Reuse the same list-visiting logic as visit_ListDecl
         list_place, list_dim, elem_count, col_count = self._visit_val_list(
             node.value, node.datatype)
@@ -820,6 +840,48 @@ class SemanticChecker(ASTVisitor):
                 )
                 return f'{vname}.{target.member}', 'unknown', None
             return f'{vname}.{target.member}', group_sym.group_members[target.member], sym
+
+        if isinstance(target, IndexedMemberAccess):
+            list_sym = self.symbol_table.lookup(target.list_name)
+            if list_sym is None:
+                self._error(
+                    f"Undeclared variable '{target.list_name}'", target)
+                return f'{target.list_name}[0].{target.member}', 'unknown', None
+            if not list_sym.is_list:
+                self._error(
+                    f"'{target.list_name}' is not a list", target)
+                return f'{target.list_name}[0].{target.member}', 'unknown', None
+            group_sym = self.symbol_table.lookup(list_sym.data_type)
+            if group_sym is None or group_sym.kind != 'group':
+                self._error(
+                    f"'{target.list_name}' is not a list of group instances",
+                    target)
+                return f'{target.list_name}[0].{target.member}', 'unknown', None
+            if target.member not in group_sym.group_members:
+                self._error(
+                    f"Group '{list_sym.data_type}' has no member '{target.member}'",
+                    target)
+                return f'{target.list_name}[0].{target.member}', 'unknown', None
+            index_place, index_type = self.visit(target.index)
+            if not is_valid_index_type(index_type):
+                self._error(
+                    f"List index must be integer (num) or bool, got '{index_type}'",
+                    target)
+            if list_sym.list_size > 0 and isinstance(target.index, Literal) \
+                    and target.index.token_type == 'num_lit':
+                try:
+                    idx_val = int(target.index.value)
+                    max_idx = list_sym.list_size - 1
+                    if idx_val < 0 or idx_val > max_idx:
+                        self._error(
+                            f"Index {idx_val} is out of bounds for "
+                            f"'{target.list_name}' (valid range: 0 to {max_idx})",
+                            target)
+                except ValueError:
+                    pass
+            member_type = group_sym.group_members[target.member]
+            return (f'{target.list_name}[{index_place}].{target.member}',
+                    member_type, list_sym)
 
         return '_', 'unknown', None
 
@@ -1341,6 +1403,34 @@ class SemanticChecker(ASTVisitor):
 
         temp = self._new_temp()
         self._emit('member_access', vname, node.member, temp)
+        return temp, group_sym.group_members[node.member]
+
+    def visit_IndexedMemberAccess(self, node: IndexedMemberAccess) -> Tuple[str, str]:
+        list_sym = self.symbol_table.lookup(node.list_name)
+        if list_sym is None:
+            self._error(f"Undeclared variable '{node.list_name}'", node)
+            return '_', 'unknown'
+        if not list_sym.is_list:
+            self._error(f"'{node.list_name}' is not a list", node)
+            return '_', 'unknown'
+        group_sym = self.symbol_table.lookup(list_sym.data_type)
+        if group_sym is None or group_sym.kind != 'group':
+            self._error(
+                f"'{node.list_name}' is not a list of group instances", node)
+            return '_', 'unknown'
+        if node.member not in group_sym.group_members:
+            self._error(
+                f"Group '{list_sym.data_type}' has no member '{node.member}'",
+                node)
+            return '_', 'unknown'
+        index_place, index_type = self.visit(node.index)
+        if not is_valid_index_type(index_type):
+            self._error(
+                f"List index must be integer (num) or bool, got '{index_type}'",
+                node)
+        temp = self._new_temp()
+        self._emit('member_access',
+                   f'{node.list_name}[{index_place}]', node.member, temp)
         return temp, group_sym.group_members[node.member]
 
     def visit_SizeCall(self, node: SizeCall) -> Tuple[str, str]:
