@@ -1166,7 +1166,7 @@ class TableDrivenParser:
             if verbose:
                 print()
 
-            if step > 10000:
+            if step > 200000:
                 self._error(
                     "Parser exceeded maximum steps (possible infinite loop)")
 
