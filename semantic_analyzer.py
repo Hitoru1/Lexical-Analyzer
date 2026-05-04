@@ -978,10 +978,14 @@ class SemanticChecker(ASTVisitor):
             self._error(f"Undeclared variable '{node.variable}'", node)
 
         L_end = self._new_label()
-
         select_type = sym.data_type if sym else 'unknown'
+        n = len(node.options)
 
-        for opt in node.options:
+        # Pre-generate all labels so skip can jump directly to the next option's body
+        L_body = [self._new_label() for _ in node.options]
+        L_next = [self._new_label() for _ in node.options]
+
+        for i, opt in enumerate(node.options):
             lit_place, lit_type = self.visit(opt.value)
             if not type_compatible(select_type, lit_type):
                 self._error(
@@ -989,10 +993,11 @@ class SemanticChecker(ASTVisitor):
                     f"select variable type '{select_type}'",
                     opt
                 )
-            L_next = self._new_label()
             temp = self._new_temp()
             self._emit('==', node.variable, lit_place, temp)
-            self._emit('if_false', temp, '_', L_next)
+            self._emit('if_false', temp, '_', L_next[i])
+
+            self._emit_label(L_body[i])
 
             self.symbol_table.enter_scope()
             for stmt in opt.body:
@@ -1001,8 +1006,12 @@ class SemanticChecker(ASTVisitor):
 
             if opt.control_flow == 'stop':
                 self._emit('goto', '_', '_', L_end)
+            else:  # skip: jump directly to next option's body, bypassing its condition
+                if i + 1 < n:
+                    self._emit('goto', '_', '_', L_body[i + 1])
+                # last option with skip: fall through to L_next[i] → fallback → L_end
 
-            self._emit_label(L_next)
+            self._emit_label(L_next[i])
 
         if node.fallback is not None:
             self.symbol_table.enter_scope()

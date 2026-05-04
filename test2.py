@@ -203,6 +203,7 @@ TOKEN_DELIMITERS = {
     RW_CHECK: 'delim2',
     RW_DECIMAL: 'space',
     RW_DEFINE: 'space',
+    RW_DISPLAY: 'open_paren',
     RW_DURING: 'delim2',
     RW_EACH: 'delim2',
     RW_EMPTY: 'space',
@@ -409,263 +410,245 @@ class TransitionDFA:
 
         # Start state
         trans[0] = {
-            's': 1, 'f': 51, 'n': 92, 'd': 22, 'b': 180,
-            'l': 85, 't': 156, 'w': 163, 'Y': 173, 'e': 41,
-            'r': 125, 'c': 16, 'o': 103, 'g': 80, 'N': 100
+            'b': 1, 'c': 14, 'd': 23, 'e': 45, 'f': 53, 'g': 72,
+            'l': 80, 'N': 89, 'n': 91, 'o': 94, 'r': 115, 's': 119,
+            't': 142, 'w': 150, 'Y': 159
         }
 
-        # "start", "select", "show", "skip", "step", "stop", "size"
-        trans[1] = {'t': 2, 'h': 137, 'k': 141, 'e': 130, 'i': 195}
-        # 'a' for start, 'o' for stop, 'e' for step
-        trans[2] = {'a': 3, 'o': 153, 'e': 150}
-        trans[3] = {'r': 4}
-        trans[4] = {'t': 5}
-        trans[5] = {}  # accept: start
+        # "bigdecimal", "bool"
+        trans[1] = {'i': 2, 'o': 11}
+        trans[2] = {'g': 3}
+        trans[3] = {'d': 4}
+        trans[4] = {'e': 5}
+        trans[5] = {'c': 6}
+        trans[6] = {'i': 7}
+        trans[7] = {'m': 8}
+        trans[8] = {'a': 9}
+        trans[9] = {'l': 10}
+        trans[10] = {}  # accept: bigdecimal
+        trans[11] = {'o': 12}
+        trans[12] = {'l': 13}
+        trans[13] = {}  # accept: bool
 
-        trans[130] = {'l': 131}
-        trans[131] = {'e': 132}
-        trans[132] = {'c': 133}
-        trans[133] = {'t': 134}
-        trans[134] = {}  # accept: select
-
-        trans[137] = {'o': 138}
-        trans[138] = {'w': 139}
-        trans[139] = {}  # accept: show
-
-        trans[141] = {'i': 142}
-        trans[142] = {'p': 143}
-        trans[143] = {}  # accept: skip
-
-        # "size"
-        trans[195] = {'z': 196}
-        trans[196] = {'e': 197}
-        trans[197] = {}  # accept: size
-
-        trans[150] = {'p': 151}
-        trans[151] = {}  # accept: step
-
-        trans[153] = {'p': 154}
-        trans[154] = {}  # accept: stop
-
-        # "text", "to"
-        trans[156] = {'e': 157, 'o': 161}
-        trans[157] = {'x': 158}
-        trans[158] = {'t': 159}
-        trans[159] = {'l': 211}  # accept: text (continues to textlen)
-        trans[211] = {'e': 212}
-        trans[212] = {'n': 213}
-        trans[213] = {}  # accept: textlen
-        trans[161] = {}  # accept: to
-
-        # "worldwide"
-        trans[163] = {'o': 164}
-        trans[164] = {'r': 165}
-        trans[165] = {'l': 166}
-        trans[166] = {'d': 167}
-        trans[167] = {'w': 168}
-        trans[168] = {'i': 169}
-        trans[169] = {'d': 170}
-        trans[170] = {'e': 171}
-        trans[171] = {}  # accept: worldwide
-
-        # "Yes"
-        trans[173] = {'e': 174}
-        trans[174] = {'s': 175}
-        trans[175] = {}  # accept: Yes
-
-        # "check", "charat"
-        trans[16] = {'h': 17}
-        trans[17] = {'e': 18, 'a': 214}  # 'e' for check, 'a' for charat
-        trans[214] = {'r': 215}
-        trans[215] = {'a': 216}
-        trans[216] = {'t': 217}
-        trans[217] = {}  # accept: charat
-        trans[18] = {'c': 19}
-        trans[19] = {'k': 20}
-        trans[20] = {}  # accept: check
+        # "charat", "check"
+        trans[14] = {'h': 15}
+        trans[15] = {'a': 16, 'e': 20}
+        trans[16] = {'r': 17}
+        trans[17] = {'a': 18}
+        trans[18] = {'t': 19}
+        trans[19] = {}  # accept: charat
+        trans[20] = {'c': 21}
+        trans[21] = {'k': 22}
+        trans[22] = {}  # accept: check
 
         # "decimal", "define", "display", "during"
-        trans[22] = {'e': 23, 'i': 205, 'u': 35}
-        trans[23] = {'c': 24, 'f': 30}
-        trans[24] = {'i': 25}
-        trans[25] = {'m': 26}
-        trans[26] = {'a': 27}
-        trans[27] = {'l': 28}
-        trans[28] = {}  # accept: decimal
-
+        trans[23] = {'e': 24, 'i': 34, 'u': 40}
+        trans[24] = {'c': 25, 'f': 30}
+        trans[25] = {'i': 26}
+        trans[26] = {'m': 27}
+        trans[27] = {'a': 28}
+        trans[28] = {'l': 29}
+        trans[29] = {}  # accept: decimal
         trans[30] = {'i': 31}
         trans[31] = {'n': 32}
         trans[32] = {'e': 33}
         trans[33] = {}  # accept: define
-
-        trans[35] = {'r': 36}
-        trans[36] = {'i': 37}
-        trans[37] = {'n': 38}
-        trans[38] = {'g': 39}
-        trans[39] = {}  # accept: during
-
-        # "display"
-        trans[205] = {'s': 206}
-        trans[206] = {'p': 207}
-        trans[207] = {'l': 208}
-        trans[208] = {'a': 209}
-        trans[209] = {'y': 210}
-        trans[210] = {}  # accept: display
+        trans[34] = {'s': 35}
+        trans[35] = {'p': 36}
+        trans[36] = {'l': 37}
+        trans[37] = {'a': 38}
+        trans[38] = {'y': 39}
+        trans[39] = {}  # accept: display
+        trans[40] = {'r': 41}
+        trans[41] = {'i': 42}
+        trans[42] = {'n': 43}
+        trans[43] = {'g': 44}
+        trans[44] = {}  # accept: during
 
         # "each", "empty"
-        trans[41] = {'a': 42, 'm': 46}
-        trans[42] = {'c': 43}
-        trans[43] = {'h': 44}
-        trans[44] = {}  # accept: each
+        trans[45] = {'a': 46, 'm': 49}
+        trans[46] = {'c': 47}
+        trans[47] = {'h': 48}
+        trans[48] = {}  # accept: each
+        trans[49] = {'p': 50}
+        trans[50] = {'t': 51}
+        trans[51] = {'y': 52}
+        trans[52] = {}  # accept: empty
 
-        trans[46] = {'p': 47}
-        trans[47] = {'t': 48}
-        trans[48] = {'y': 49}
-        trans[49] = {}  # accept: empty
+        # "fallback", "finish", "fixed", "from"
+        trans[53] = {'a': 54, 'i': 61, 'r': 69}
+        trans[54] = {'l': 55}
+        trans[55] = {'l': 56}
+        trans[56] = {'b': 57}
+        trans[57] = {'a': 58}
+        trans[58] = {'c': 59}
+        trans[59] = {'k': 60}
+        trans[60] = {}  # accept: fallback
+        trans[61] = {'n': 62, 'x': 66}
+        trans[62] = {'i': 63}
+        trans[63] = {'s': 64}
+        trans[64] = {'h': 65}
+        trans[65] = {}  # accept: finish
+        trans[66] = {'e': 67}
+        trans[67] = {'d': 68}
+        trans[68] = {}  # accept: fixed
+        trans[69] = {'o': 70}
+        trans[70] = {'m': 71}
+        trans[71] = {}  # accept: from
 
-        # "finish", "fixed", "from", "fallback"
-        trans[51] = {'i': 60, 'a': 52, 'r': 66}
-
-        trans[52] = {'l': 53}
-        trans[53] = {'l': 54}
-        trans[54] = {'b': 55}
-        trans[55] = {'a': 56}
-        trans[56] = {'c': 57}
-        trans[57] = {'k': 58}
-        trans[58] = {}  # accept: fallback
-
-        trans[60] = {'n': 61, 'x': 71}
-        trans[61] = {'i': 62}
-        trans[62] = {'s': 63}
-        trans[63] = {'h': 64}
-        trans[64] = {}  # accept: finish
-
-        trans[66] = {'o': 67}
-        trans[67] = {'m': 68}
-        trans[68] = {}  # accept: from
-
-        trans[71] = {'e': 72}
-        trans[72] = {'d': 73}
-        trans[73] = {}  # accept: fixed
-
-        trans[80] = {'r': 81, 'i': 76}  # ADD 'i': 76 for "give"
-        trans[76] = {'v': 77}
-        trans[77] = {'e': 78}
-        trans[78] = {}  # accept: give
-
-        trans[81] = {'o': 82}
-        trans[82] = {'u': 83}
-        trans[83] = {'p': 84}
-        trans[84] = {}  # accept: group
+        # "give", "group"
+        trans[72] = {'i': 73, 'r': 76}
+        trans[73] = {'v': 74}
+        trans[74] = {'e': 75}
+        trans[75] = {}  # accept: give
+        trans[76] = {'o': 77}
+        trans[77] = {'u': 78}
+        trans[78] = {'p': 79}
+        trans[79] = {}  # accept: group
 
         # "letter", "list"
-        trans[85] = {'e': 86, 'i': 176}
-        trans[86] = {'t': 87}
+        trans[80] = {'e': 81, 'i': 86}
+        trans[81] = {'t': 82}
+        trans[82] = {'t': 83}
+        trans[83] = {'e': 84}
+        trans[84] = {'r': 85}
+        trans[85] = {}  # accept: letter
+        trans[86] = {'s': 87}
         trans[87] = {'t': 88}
-        trans[88] = {'e': 89}
-        trans[89] = {'r': 90}
-        trans[90] = {}  # accept: letter
+        trans[88] = {}  # accept: list
 
-        trans[176] = {'s': 177}
-        trans[177] = {'t': 178}
-        trans[178] = {}  # accept: list
+        # "No"
+        trans[89] = {'o': 90}
+        trans[90] = {}  # accept: No
 
-        # "num", "No"
-        trans[92] = {'u': 93}
-        trans[93] = {'m': 94}
-        trans[94] = {}  # accept: num
+        # "num"
+        trans[91] = {'u': 92}
+        trans[92] = {'m': 93}
+        trans[93] = {}  # accept: num
 
-        trans[100] = {'o': 101}
-        trans[101] = {}  # accept: No
-
-        # "option", "otherwise", "ord"
-        trans[103] = {'p': 104, 't': 110, 'r': 218}
-        trans[218] = {'d': 219}
-        trans[219] = {}  # accept: ord
-        trans[104] = {'t': 105}
-        trans[105] = {'i': 106}
-        trans[106] = {'o': 107}
-        trans[107] = {'n': 108}
-        trans[108] = {}  # accept: option
-
+        # "option", "ord", "otherwise", "otherwisecheck"
+        trans[94] = {'p': 95, 'r': 100, 't': 102}
+        trans[95] = {'t': 96}
+        trans[96] = {'i': 97}
+        trans[97] = {'o': 98}
+        trans[98] = {'n': 99}
+        trans[99] = {}  # accept: option
+        trans[100] = {'d': 101}
+        trans[101] = {}  # accept: ord
+        trans[102] = {'h': 103}
+        trans[103] = {'e': 104}
+        trans[104] = {'r': 105}
+        trans[105] = {'w': 106}
+        trans[106] = {'i': 107}
+        trans[107] = {'s': 108}
+        trans[108] = {'e': 109}
+        # accept: otherwise (continues to otherwisecheck)
+        trans[109] = {'c': 110}
         trans[110] = {'h': 111}
         trans[111] = {'e': 112}
-        trans[112] = {'r': 113}
-        trans[113] = {'w': 114}
-        trans[114] = {'i': 115}
-        trans[115] = {'s': 116}
-        trans[116] = {'e': 117}
-        trans[117] = {'c': 200}  # - continue to 'c'
-        trans[200] = {'h': 201}  # - continue to 'h'
-        trans[201] = {'e': 202}  # - continue to 'e'
-        trans[202] = {'c': 203}  # - continue to 'c'
-        trans[203] = {'k': 204}  # - continue to 'k'
-        trans[204] = {}  # accept: otherwisecheck
+        trans[112] = {'c': 113}
+        trans[113] = {'k': 114}
+        trans[114] = {}  # accept: otherwisecheck
 
         # "read"
-        trans[125] = {'e': 126}
-        trans[126] = {'a': 127}
-        trans[127] = {'d': 128}
-        trans[128] = {}  # accept: read
+        trans[115] = {'e': 116}
+        trans[116] = {'a': 117}
+        trans[117] = {'d': 118}
+        trans[118] = {}  # accept: read
 
-        # "bool", "bigdecimal"
-        trans[180] = {'o': 181, 'i': 184}
-        trans[181] = {'o': 182}
-        trans[182] = {'l': 183}
-        trans[183] = {}  # accept: bool
+        # "select", "show", "size", "skip", "start", "step", "stop"
+        trans[119] = {'e': 120, 'h': 125, 'i': 128, 'k': 131, 't': 134}
+        trans[120] = {'l': 121}
+        trans[121] = {'e': 122}
+        trans[122] = {'c': 123}
+        trans[123] = {'t': 124}
+        trans[124] = {}  # accept: select
+        trans[125] = {'o': 126}
+        trans[126] = {'w': 127}
+        trans[127] = {}  # accept: show
+        trans[128] = {'z': 129}
+        trans[129] = {'e': 130}
+        trans[130] = {}  # accept: size
+        trans[131] = {'i': 132}
+        trans[132] = {'p': 133}
+        trans[133] = {}  # accept: skip
+        trans[134] = {'a': 135, 'e': 138, 'o': 140}
+        trans[135] = {'r': 136}
+        trans[136] = {'t': 137}
+        trans[137] = {}  # accept: start
+        trans[138] = {'p': 139}
+        trans[139] = {}  # accept: step
+        trans[140] = {'p': 141}
+        trans[141] = {}  # accept: stop
 
-        trans[184] = {'g': 185}
-        trans[185] = {'d': 186}
-        trans[186] = {'e': 187}
-        trans[187] = {'c': 188}
-        trans[188] = {'i': 189}
-        trans[189] = {'m': 190}
-        trans[190] = {'a': 191}
-        trans[191] = {'l': 192}
-        trans[192] = {}  # accept: bigdecimal
+        # "text", "textlen", "to"
+        trans[142] = {'e': 143, 'o': 149}
+        trans[143] = {'x': 144}
+        trans[144] = {'t': 145}
+        trans[145] = {'l': 146}  # accept: text (continues to textlen)
+        trans[146] = {'e': 147}
+        trans[147] = {'n': 148}
+        trans[148] = {}  # accept: textlen
+        trans[149] = {}  # accept: to
+
+        # "worldwide"
+        trans[150] = {'o': 151}
+        trans[151] = {'r': 152}
+        trans[152] = {'l': 153}
+        trans[153] = {'d': 154}
+        trans[154] = {'w': 155}
+        trans[155] = {'i': 156}
+        trans[156] = {'d': 157}
+        trans[157] = {'e': 158}
+        trans[158] = {}  # accept: worldwide
+
+        # "Yes"
+        trans[159] = {'e': 160}
+        trans[160] = {'s': 161}
+        trans[161] = {}  # accept: Yes
 
         return trans
 
     def _build_accept_states(self):
         """Map accept states to token types"""
         return {
-            5: RW_START,
-            20: RW_CHECK,
-            28: RW_DECIMAL,
-            33: RW_DEFINE,
-            39: RW_DURING,
-            44: RW_EACH,
-            49: RW_EMPTY,
-            58: RW_FALLBACK,
-            64: RW_FINISH,
-            68: RW_FROM,
-            73: RW_FIXED,
-            78: RW_GIVE,
-            84: RW_GROUP,
-            90: RW_LETTER,
-            94: RW_NUM,
-            101: RW_NO,
-            108: RW_OPTION,
-            117: RW_OTHERWISE,
-            204: RW_OTHERWISECHECK,
-            128: RW_READ,
-            134: RW_SELECT,
-            139: RW_SHOW,
-            210: RW_DISPLAY,
-            197: RW_SIZE,
-            143: RW_SKIP,
-            154: RW_STOP,
-            151: RW_STEP,
-            159: RW_TEXT,
-            213: RW_TEXTLEN,
-            217: RW_CHARAT,
-            219: RW_ORD,
-            161: RW_TO,
-            171: RW_WORLDWIDE,
-            175: RW_YES,
-            178: RW_LIST,
-            183: RW_BOOL,
-            192: RW_BIGDECIMAL,
+            10:  RW_BIGDECIMAL,
+            13:  RW_BOOL,
+            19:  RW_CHARAT,
+            22:  RW_CHECK,
+            29:  RW_DECIMAL,
+            33:  RW_DEFINE,
+            39:  RW_DISPLAY,
+            44:  RW_DURING,
+            48:  RW_EACH,
+            52:  RW_EMPTY,
+            60:  RW_FALLBACK,
+            65:  RW_FINISH,
+            68:  RW_FIXED,
+            71:  RW_FROM,
+            75:  RW_GIVE,
+            79:  RW_GROUP,
+            85:  RW_LETTER,
+            88:  RW_LIST,
+            90:  RW_NO,
+            93:  RW_NUM,
+            99:  RW_OPTION,
+            101: RW_ORD,
+            109: RW_OTHERWISE,
+            114: RW_OTHERWISECHECK,
+            118: RW_READ,
+            124: RW_SELECT,
+            127: RW_SHOW,
+            130: RW_SIZE,
+            133: RW_SKIP,
+            137: RW_START,
+            139: RW_STEP,
+            141: RW_STOP,
+            145: RW_TEXT,
+            148: RW_TEXTLEN,
+            149: RW_TO,
+            158: RW_WORLDWIDE,
+            161: RW_YES,
         }
 
     def recognize_keyword(self, source, start_idx):
@@ -1920,13 +1903,20 @@ class EditorTab(tk.Frame):
 
         # Source editor zoom (Ctrl+= / Ctrl+- / Ctrl+0 / Ctrl+MouseWheel)
         self.source_text.bind('<Control-plus>', lambda e: self._zoom_source(1))
-        self.source_text.bind('<Control-equal>', lambda e: self._zoom_source(1))
-        self.source_text.bind('<Control-KP_Add>', lambda e: self._zoom_source(1))
-        self.source_text.bind('<Control-minus>', lambda e: self._zoom_source(-1))
-        self.source_text.bind('<Control-KP_Subtract>', lambda e: self._zoom_source(-1))
-        self.source_text.bind('<Control-0>', lambda e: self._reset_zoom_source())
-        self.source_text.bind('<Control-KP_0>', lambda e: self._reset_zoom_source())
-        self.source_text.bind('<Control-MouseWheel>', self._on_source_ctrl_wheel)
+        self.source_text.bind(
+            '<Control-equal>', lambda e: self._zoom_source(1))
+        self.source_text.bind('<Control-KP_Add>',
+                              lambda e: self._zoom_source(1))
+        self.source_text.bind(
+            '<Control-minus>', lambda e: self._zoom_source(-1))
+        self.source_text.bind('<Control-KP_Subtract>',
+                              lambda e: self._zoom_source(-1))
+        self.source_text.bind(
+            '<Control-0>', lambda e: self._reset_zoom_source())
+        self.source_text.bind(
+            '<Control-KP_0>', lambda e: self._reset_zoom_source())
+        self.source_text.bind('<Control-MouseWheel>',
+                              self._on_source_ctrl_wheel)
 
         # Dirty tracking via Tk's built-in modified flag
         self.source_text.edit_modified(False)
@@ -1982,14 +1972,22 @@ class EditorTab(tk.Frame):
                                 padx=10, pady=(0, 10))
 
         # Terminal zoom (Ctrl+= / Ctrl+- / Ctrl+0 / Ctrl+MouseWheel)
-        self.terminal_text.bind('<Control-plus>', lambda e: self._zoom_terminal(1))
-        self.terminal_text.bind('<Control-equal>', lambda e: self._zoom_terminal(1))
-        self.terminal_text.bind('<Control-KP_Add>', lambda e: self._zoom_terminal(1))
-        self.terminal_text.bind('<Control-minus>', lambda e: self._zoom_terminal(-1))
-        self.terminal_text.bind('<Control-KP_Subtract>', lambda e: self._zoom_terminal(-1))
-        self.terminal_text.bind('<Control-0>', lambda e: self._reset_zoom_terminal())
-        self.terminal_text.bind('<Control-KP_0>', lambda e: self._reset_zoom_terminal())
-        self.terminal_text.bind('<Control-MouseWheel>', self._on_terminal_ctrl_wheel)
+        self.terminal_text.bind(
+            '<Control-plus>', lambda e: self._zoom_terminal(1))
+        self.terminal_text.bind(
+            '<Control-equal>', lambda e: self._zoom_terminal(1))
+        self.terminal_text.bind(
+            '<Control-KP_Add>', lambda e: self._zoom_terminal(1))
+        self.terminal_text.bind(
+            '<Control-minus>', lambda e: self._zoom_terminal(-1))
+        self.terminal_text.bind('<Control-KP_Subtract>',
+                                lambda e: self._zoom_terminal(-1))
+        self.terminal_text.bind(
+            '<Control-0>', lambda e: self._reset_zoom_terminal())
+        self.terminal_text.bind(
+            '<Control-KP_0>', lambda e: self._reset_zoom_terminal())
+        self.terminal_text.bind('<Control-MouseWheel>',
+                                self._on_terminal_ctrl_wheel)
 
         self.update_line_numbers()
 
@@ -1997,7 +1995,8 @@ class EditorTab(tk.Frame):
 
     def title(self):
         import os
-        base = os.path.basename(self.filepath) if self.filepath else self._untitled_name
+        base = os.path.basename(
+            self.filepath) if self.filepath else self._untitled_name
         return ("*" if self.dirty else "") + base
 
     @property
@@ -2585,11 +2584,14 @@ class KuCodeLexerGUI:
             font=("Courier New", 14, "bold"), padx=10, pady=4, cursor="hand2")
         self._add_btn.pack(side=tk.LEFT, padx=(2, 0))
         self._add_btn.bind("<Button-1>", lambda e: self.new_tab())
-        self._add_btn.bind("<Enter>", lambda e: self._add_btn.config(fg="white"))
-        self._add_btn.bind("<Leave>", lambda e: self._add_btn.config(fg="#aaaaaa"))
+        self._add_btn.bind(
+            "<Enter>", lambda e: self._add_btn.config(fg="white"))
+        self._add_btn.bind(
+            "<Leave>", lambda e: self._add_btn.config(fg="#aaaaaa"))
 
         self._content_frame = tk.Frame(root, bg="#0d1b2a")
-        self._content_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+        self._content_frame.pack(
+            fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
 
         # Global shortcuts
         root.bind_all('<Control-t>', lambda e: self._cmd_new_tab())

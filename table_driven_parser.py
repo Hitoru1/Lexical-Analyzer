@@ -1274,9 +1274,7 @@ class TableDrivenParser:
             handler(self, saved_depth)
         # else: no action needed (e.g., for simple forwarding NTs)
 
-    # ══════════════════════════════════════════════════════════════
     # CUSTOM ACTION HANDLERS
-    # ══════════════════════════════════════════════════════════════
 
     # Use a class-level dict to map action names to handler methods.
     # Each handler takes (self, saved_depth) and manipulates self.sem_stack.
@@ -1552,10 +1550,11 @@ class TableDrivenParser:
         # identifier identifier = num_lit ;
         # sem_stack has: ... group_type_token var_name_token num_lit_token
         size_tok = self.sem_stack.pop()  # num_lit (the declared size)
-        id_tok   = self.sem_stack.pop()  # variable name
+        id_tok = self.sem_stack.pop()  # variable name
         type_tok = self.sem_stack.pop()  # group type name
-        group_type = type_tok.value if hasattr(type_tok, 'value') else str(type_tok)
-        vname      = id_tok.value   if hasattr(id_tok,   'value') else str(id_tok)
+        group_type = type_tok.value if hasattr(
+            type_tok, 'value') else str(type_tok)
+        vname = id_tok.value if hasattr(id_tok,   'value') else str(id_tok)
         try:
             size = int(size_tok.value) if hasattr(size_tok, 'value') else 1
         except (ValueError, TypeError):
