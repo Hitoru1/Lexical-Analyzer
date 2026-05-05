@@ -615,6 +615,26 @@ class SemanticChecker(ASTVisitor):
             )
             return
 
+        if node.is_group_typed:
+            group_sym = self.symbol_table.lookup(node.datatype)
+            if group_sym is None or group_sym.kind != 'group':
+                self._error(f"Undefined group type '{node.datatype}'", node)
+            sym = Symbol(
+                name=node.name, kind='list', data_type=node.datatype,
+                is_list=True, list_dim=1,
+                list_size=node.group_list_size, list_col_count=0,
+                line=node.line, col=node.col
+            )
+            self._check_name_conflicts(node.name, node)
+            if not self.symbol_table.declare(sym):
+                self._error(
+                    f"Variable '{node.name}' already declared in this scope",
+                    node
+                )
+            self._emit('group_list_create', node.datatype,
+                       str(node.group_list_size), node.name)
+            return
+
         list_place, list_dim, elem_count, col_count = self._visit_val_list(
             node.value, node.datatype)
         sym = Symbol(
